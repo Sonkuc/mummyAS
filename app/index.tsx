@@ -18,8 +18,7 @@ export default function Home() {
       <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>Milá maminko, </Text>
-        <Text style={styles.subtitle}>vítej v MummyAS 💜</Text>
-        <Text style={styles.subtitle}>Tvoje místo pro vzpomínky a pokroky</Text>
+        <Text style={styles.subtitle}>vítej 🩷</Text>
         <Image source={require("/home/sona/mummyAS/assets/images/logo2.png")} style={styles.logo} />
       </View>
 
@@ -48,14 +47,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 35,
     color: "#992769",
     fontWeight: "bold",
     textAlign: "center",
     marginTop: 20,
   },
   subtitle: {
-    fontSize: 22,
+    fontSize: 27,
     color: "#bf5f82",
     textAlign: "center",
     marginBottom: 20,
@@ -77,7 +76,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   logo: {
-    width: 250,
+    width: 350,
     height: 180,
     marginTop: 100,
   },
