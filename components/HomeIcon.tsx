@@ -19,7 +19,7 @@ export default function HomeIcon(){
 const styles = StyleSheet.create({
   homeButton: {
     padding: 80,
-    marginTop: 170,
+    marginTop: 120,
     alignItems: "center",
   },
 });

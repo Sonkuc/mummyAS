@@ -1,11 +1,12 @@
 import CheckButton from '@/components/CheckButton';
-import { saveChildren } from '@/components/storage/saveChildren';
+import { loadChildren } from "@/components/storage/loadChildren";
+import { Child } from "@/components/storage/saveChildren";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
-import { useRouter } from "expo-router";
-import { useLayoutEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import HomeIcon from "../components/HomeIcon";
 import MyButton from "../components/MyButton";
 import MyTextInput from "../components/MyTextInput";
@@ -19,15 +20,33 @@ export default function PridatDitko() {
   const [pohlavi, setPohlavi] = useState("");
   const [datumNarozeni, setDatumNarozeni] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [children, setChildren] = useState<Child[]>([]);
+  const { index } = useLocalSearchParams();
 
-
+  
     useLayoutEffect(() => {
-      navigation.setOptions({
-        title: "Přidej dítě",
+     navigation.setOptions({
+        title: "Uprav dítě",
         headerShown: false,
       });
     }, [navigation]);
-  
+
+  useEffect(() => {
+    const loadData = async () => {
+      const loaded = await loadChildren();
+      setChildren(loaded);
+
+      const idx = parseInt(index as string, 10);
+      const kid = loaded[idx];
+      if (kid) {
+        setJmeno(kid.jmeno);
+        setPohlavi(kid.pohlavi);
+        setDatumNarozeni(new Date(kid.datumNarozeni));
+      }
+    };
+
+    loadData();
+  }, [index]);  
   
   
   const handleSave = async () => {
@@ -36,23 +55,45 @@ export default function PridatDitko() {
     return;
   }
 
-  const newChild = { jmeno, pohlavi, datumNarozeni };
-  const saved = await saveChildren(newChild);
+  const updated = [...children];
+    updated[parseInt(index as string, 10)] = { jmeno, pohlavi, datumNarozeni };
+    await AsyncStorage.setItem("kids", JSON.stringify(updated));
 
-  if (saved) {
-
-    console.log(
-    "Obsah AsyncStorage:",
-    await AsyncStorage.getItem("kids")
-  );
+    alert("Údaje byly uloženy.");
     router.replace("/");
-  } else {
-    alert("Chyba při ukládání.");
-  }
+  };
+
+  const handleDelete = async () => {
+    Alert.alert(
+    "Smazat dítě",
+    "Opravdu chceš tento záznam smazat?",
+    [
+      { text: "Zrušit", style: "cancel" },
+      {
+        text: "Smazat",
+        style: "destructive",
+        onPress: async () => {
+          const idx = parseInt(index as string, 10);
+          const updated = children.filter((_, i) => i !== idx);
+
+          await AsyncStorage.setItem("kids", JSON.stringify(updated));
+
+          alert("Záznam byl smazán.");
+          router.replace("/");
+        },
+      },
+    ],
+    { cancelable: true }
+  );
 };
 
   return (
     <View style={styles.container}>
+      <Pressable onPress={handleDelete}
+        style={{ alignSelf: "flex-end", marginTop: 50, marginBottom: -70 }}>
+        <Text style={{ fontSize: 30 }}>🚮</Text>
+      </Pressable>
+
       <Title>Zadej informace</Title>
       <Subtitle>Jméno dítěte</Subtitle>
 
