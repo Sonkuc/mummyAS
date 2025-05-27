@@ -1,15 +1,18 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Child } from "./saveChildren";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Child } from './saveChildren';
 
+const STORAGE_KEY = 'kids';
+
+/**
+ * Načte pole dětí uložené v AsyncStorage.
+ * Pokud žádná data nejsou, vrátí prázdné pole.
+ */
 export const loadChildren = async (): Promise<Child[]> => {
   try {
-    const raw = await AsyncStorage.getItem("kids");
-    console.log("loadChildren → raw string:", raw);          // <—
-    const parsed = raw ? (JSON.parse(raw) as Child[]) : [];
-    console.log("loadChildren → parsed.length:", parsed.length); // <—
-    return parsed;
-  } catch (e) {
-    console.error("Chyba při načítání dětí:", e);
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Child[]) : [];
+  } catch (error) {
+    console.error('Chyba při načítání dětí:', error);
     return [];
   }
 };

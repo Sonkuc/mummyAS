@@ -1,22 +1,32 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type Child = {
+export interface Child {
   jmeno: string;
   pohlavi: string;
   datumNarozeni: Date;
-};
+}
 
+const STORAGE_KEY = 'kids';
+
+/**
+ * Uloží nové dítě do AsyncStorage.
+ * Vrací `true`, pokud vše proběhlo bez chyby.
+ */
 export const saveChildren = async (newChild: Child): Promise<boolean> => {
   try {
-    const staraData = await AsyncStorage.getItem("kids");
-    const kids: Child[] = staraData ? JSON.parse(staraData) : [];
+    // Načti existující záznamy (pokud žádné nejsou → prázdné pole)
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const kids: Child[] = raw ? JSON.parse(raw) : [];
 
+    // Přidej nové dítě
     kids.push(newChild);
-    await AsyncStorage.setItem("kids", JSON.stringify(kids));
+
+    // Ulož zpět
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(kids));
 
     return true;
-  } catch (e) {
-    console.error("Chyba při ukládání:", e);
+  } catch (error) {
+    console.error('Chyba při ukládání dítěte:', error);
     return false;
   }
 };

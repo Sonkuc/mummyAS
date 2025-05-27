@@ -73,7 +73,17 @@ export default function Home() {
                   justifyContent: "space-between",
                 },
               ]}>
+                 {/* Fotka a jméno */}
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    {kid.foto && (
+                      <Image
+                        source={{ uri: kid.foto }}
+                        style={styles.childImage}
+                        resizeMode="cover"
+                      />
+                    )}
                 <Text style={styles.name}>{kid.jmeno}</Text>
+                </View>
                 <Pressable 
                   onPress={() => 
                     router.push({
@@ -142,7 +152,7 @@ const styles = StyleSheet.create({
   },
   childCard: {
     backgroundColor: "rgb(164, 91, 143)",
-    padding: 15,
+    padding: 5,
     marginVertical: 10,
     borderRadius: 10,
     shadowColor: "#aaa",
@@ -157,7 +167,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   editText: {
-  fontSize: 18,
-  marginLeft: 10,
-},
+    fontSize: 18,
+    marginLeft: 10,
+  },
+  childImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 25,
+    marginRight: 10,
+  },
 });

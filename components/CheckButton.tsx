@@ -16,7 +16,7 @@ export default function CheckButton({ onPress }: Props){
 
 const styles = StyleSheet.create({
     checkButton: {
-        marginTop: 5,
+        marginBottom: 70,
         padding: 3,
         alignItems: "center",
         borderRadius: 10,

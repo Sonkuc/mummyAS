@@ -56,7 +56,11 @@ export default function PridatDitko() {
   }
 
   const updated = [...children];
-    updated[parseInt(index as string, 10)] = { jmeno, pohlavi, datumNarozeni };
+    updated[parseInt(index as string, 10)] = {
+      jmeno,
+      pohlavi,
+      datumNarozeni: datumNarozeni.toISOString(),
+      foto: photoUri || "",}
     await AsyncStorage.setItem("kids", JSON.stringify(updated));
 
     alert("Údaje byly uloženy.");

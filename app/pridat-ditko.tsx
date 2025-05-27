@@ -5,10 +5,12 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useLayoutEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import BackButton from "../components/BackButton";
 import HomeIcon from "../components/HomeIcon";
 import MyButton from "../components/MyButton";
 import MyTextInput from "../components/MyTextInput";
+import PhotoChooser from "../components/PhotoChooser";
 import Subtitle from "../components/Subtitle";
 import Title from "../components/Title";
 
@@ -19,6 +21,7 @@ export default function PridatDitko() {
   const [pohlavi, setPohlavi] = useState("");
   const [datumNarozeni, setDatumNarozeni] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
 
     useLayoutEffect(() => {
@@ -36,7 +39,13 @@ export default function PridatDitko() {
     return;
   }
 
-  const newChild = { jmeno, pohlavi, datumNarozeni };
+  const newChild = {
+    jmeno,
+    pohlavi,
+    datumNarozeni: datumNarozeni.toISOString(),
+    foto: photoUri || "",
+  };
+
   const saved = await saveChildren(newChild);
 
   if (saved) {
@@ -53,6 +62,7 @@ export default function PridatDitko() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <Title>Zadej informace</Title>
       <Subtitle>Jméno dítěte</Subtitle>
 
@@ -101,7 +111,24 @@ export default function PridatDitko() {
         />
       )}
 
-      <MyButton title="Vyber fotku nebo avatar" onPress={() => {}} />
+      <PhotoChooser onSelect={(uri) => setPhotoUri(uri)} />
+
+      {photoUri && (
+        <Image
+          source={
+            typeof photoUri === "string"
+              ? { uri: photoUri }
+              : photoUri // když je to asset (require)
+          }
+          style={{
+            width: 120,
+            height: 120,
+            borderRadius: 60,
+            alignSelf: "center",
+            marginVertical: 20,
+          }}
+        />
+      )}
       <CheckButton onPress = {handleSave} />
       <HomeIcon />
 
