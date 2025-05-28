@@ -3,10 +3,9 @@ import { loadChildren } from "@/components/storage/loadChildren";
 import { Child } from "@/components/storage/saveChildren";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useLayoutEffect, useState } from "react";
-import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import BackButton from "../components/BackButton";
 import MyButton from "../components/MyButton";
 import MyTextInput from "../components/MyTextInput";
@@ -16,22 +15,13 @@ import Title from "../components/Title";
 
 export default function UpravDitko() {
   const router = useRouter();
-  const navigation = useNavigation();
   const [jmeno, setJmeno] = useState("");
   const [pohlavi, setPohlavi] = useState("");
   const [datumNarozeni, setDatumNarozeni] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [show, setShow] = useState(false);
   const [children, setChildren] = useState<Child[]>([]);
   const { index } = useLocalSearchParams();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-
-  
-    useLayoutEffect(() => {
-     navigation.setOptions({
-        title: "Uprav dítě",
-        headerShown: false,
-      });
-    }, [navigation]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -101,7 +91,7 @@ export default function UpravDitko() {
 };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <BackButton />
       <Pressable onPress={handleDelete}
         style={{ alignSelf: "flex-end", marginTop: 35, marginBottom: -70 }}>
@@ -139,19 +129,26 @@ export default function UpravDitko() {
         </Pressable>
       </View>
 
-      <MyButton
-        title="Vyber datum narození"
-        onPress={() => setShowDatePicker(true)}
-      />
+      <MyButton title="Vyber datum narození" onPress={() => setShow(true)} />
+      <Text style={{ 
+        textAlign: "center", 
+        fontSize: 16,
+        fontWeight: "500",
+        marginBottom: 20, 
+        marginTop: -30 }}>
+        {datumNarozeni.toLocaleDateString()}
+      </Text>
 
-      {showDatePicker && (
+      {show && (
         <DateTimePicker
           value={datumNarozeni}
           mode="date"
-          display="default"
-          onChange={(_, date) => {
-            setShowDatePicker(false);
-            if (date) setDatumNarozeni(date);
+          display="spinner"
+          onChange={(event, selectedDate) => {
+            setShow(false);
+            if (selectedDate) {
+              setDatumNarozeni(selectedDate);
+            }
           }}
         />
       )}
@@ -177,7 +174,7 @@ export default function UpravDitko() {
 
       <CheckButton onPress = {handleSave} />
 
-    </View>
+    </ScrollView>
   );
 }
 
@@ -190,8 +187,8 @@ const styles = StyleSheet.create({
   genderContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: 30,
-    marginBottom: 50,
+    marginTop: 20,
+    marginBottom: 30,
   },
   genderButton: {
     padding: 10,

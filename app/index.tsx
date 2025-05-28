@@ -1,22 +1,13 @@
 import { loadChildren } from "@/components/storage/loadChildren";
 import { Child } from "@/components/storage/saveChildren";
-import { useNavigation } from "@react-navigation/native";
+import { FontAwesome } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Home() {
   const router = useRouter();
-  const navigation = useNavigation();
   const [kids, setKids] = useState<Child[]>([]);
-
-  /* nastavení hlavičky */
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      title: "Domov",
-      headerShown: false,
-    });
-  }, [navigation]);
 
   /* načtení dětí při zobrazení stránky */
   useFocusEffect(
@@ -42,6 +33,11 @@ export default function Home() {
     gender === "chlapec" ? "#add8e6" :
     gender === "divka"   ? "#ffc0cb" :
     "lightgray";
+
+  const getIconColor = (gender: string) =>
+    gender === "chlapec" ? "#00008b" :       // tmavě modrá
+    gender === "divka"   ? "#8b0000" :       // tmavě červená
+    "gray";   
 
   /* render */
   return (
@@ -92,7 +88,14 @@ export default function Home() {
                     })
                   }
                 >
-                  <Text style={[styles.editText, { transform: [{ scaleX: -1 }] }]}>✏</Text>
+                  <FontAwesome
+                    name="pencil"
+                    size={24}
+                    style= {{
+                      marginRight: 10,
+                      color: getIconColor(kid.pohlavi),
+                      }}/>
+
                 </Pressable>
               </View>
             ))

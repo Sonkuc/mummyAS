@@ -3,7 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface Child {
   jmeno: string;
   pohlavi: string;
-  datumNarozeni: Date;
+  datumNarozeni: string;
+  foto: string;
 }
 
 const STORAGE_KEY = 'kids';

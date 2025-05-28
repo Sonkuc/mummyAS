@@ -7,6 +7,7 @@ export default function About() {
       <Text style={styles.text}>Já ti to povím.</Text>
       <Link href="/" style={styles.link}>
           Domů
+
         </Link>
     </View>
   );

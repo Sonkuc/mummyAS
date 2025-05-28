@@ -1,11 +1,9 @@
 import CheckButton from '@/components/CheckButton';
 import { saveChildren } from '@/components/storage/saveChildren';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { useNavigation } from "@react-navigation/native";
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from "expo-router";
-import { useLayoutEffect, useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import BackButton from "../components/BackButton";
 import MyButton from "../components/MyButton";
 import MyTextInput from "../components/MyTextInput";
@@ -15,23 +13,12 @@ import Title from "../components/Title";
 
 export default function PridatDitko() {
   const router = useRouter();
-  const navigation = useNavigation();
   const [jmeno, setJmeno] = useState("");
   const [pohlavi, setPohlavi] = useState("");
   const [datumNarozeni, setDatumNarozeni] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [show, setShow] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
 
-
-    useLayoutEffect(() => {
-      navigation.setOptions({
-        title: "Přidej dítě",
-        headerShown: false,
-      });
-    }, [navigation]);
-  
-  
-  
   const handleSave = async () => {
   if (!jmeno || !pohlavi || !datumNarozeni) {
     alert("Vyplň všechna pole.");
@@ -48,11 +35,6 @@ export default function PridatDitko() {
   const saved = await saveChildren(newChild);
 
   if (saved) {
-
-    console.log(
-    "Obsah AsyncStorage:",
-    await AsyncStorage.getItem("kids")
-  );
     router.replace("/");
   } else {
     alert("Chyba při ukládání.");
@@ -60,7 +42,7 @@ export default function PridatDitko() {
 };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <BackButton />
       <Title>Zadej informace</Title>
       <Subtitle>Jméno dítěte</Subtitle>
@@ -93,19 +75,26 @@ export default function PridatDitko() {
         </Pressable>
       </View>
 
-      <MyButton
-        title="Vyber datum narození"
-        onPress={() => setShowDatePicker(true)}
-      />
+      <MyButton title="Vyber datum narození" onPress={() => setShow(true)} />
+      <Text style={{ 
+        textAlign: "center", 
+        fontSize: 16,
+        fontWeight: "500",
+        marginBottom: 50, 
+        marginTop: -20 }}>
+        {datumNarozeni.toLocaleDateString()}
+      </Text>
 
-      {showDatePicker && (
+      {show && (
         <DateTimePicker
           value={datumNarozeni}
           mode="date"
-          display="default"
-          onChange={(_, date) => {
-            setShowDatePicker(false);
-            if (date) setDatumNarozeni(date);
+          display="spinner"
+          onChange={(event, selectedDate) => {
+            setShow(false);
+            if (selectedDate) {
+              setDatumNarozeni(selectedDate);
+            }
           }}
         />
       )}
@@ -130,7 +119,7 @@ export default function PridatDitko() {
       )}
       <CheckButton onPress = {handleSave} />
 
-    </View>
+    </ScrollView>
   );
 }
 
@@ -143,8 +132,8 @@ const styles = StyleSheet.create({
   genderContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: 30,
-    marginBottom: 50,
+    marginTop: 20,
+    marginBottom: 30,
   },
   genderButton: {
     padding: 10,

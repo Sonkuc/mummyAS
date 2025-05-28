@@ -68,7 +68,7 @@ export default function PhotoChooser({ onSelect }: Props) {
 }
 
 const styles = StyleSheet.create({
-  avatarList: { marginTop: 15 },
+  avatarList: { marginTop: 10 },
   avatarWrapper: {
     marginRight: 10,
     borderRadius: 50,
@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
   avatarSelected: { borderColor: "#a45b8f" },
   avatarImg: { width: 70, height: 70 },
   subtitle: {
-    marginTop: 0,
     fontSize: 16,
     fontWeight: "500",
     textAlign: "center",

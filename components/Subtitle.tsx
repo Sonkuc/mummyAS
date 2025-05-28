@@ -9,6 +9,5 @@ const styles = StyleSheet.create({
         fontSize: 20,
         color: "#bf5f82",
         marginBottom: 5,
-        marginTop: 20,
       },
 });
