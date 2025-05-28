@@ -7,7 +7,6 @@ import { useRouter } from "expo-router";
 import { useLayoutEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import BackButton from "../components/BackButton";
-import HomeIcon from "../components/HomeIcon";
 import MyButton from "../components/MyButton";
 import MyTextInput from "../components/MyTextInput";
 import PhotoChooser from "../components/PhotoChooser";
@@ -130,7 +129,6 @@ export default function PridatDitko() {
         />
       )}
       <CheckButton onPress = {handleSave} />
-      <HomeIcon />
 
     </View>
   );

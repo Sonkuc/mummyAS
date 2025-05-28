@@ -6,14 +6,15 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import HomeIcon from "../components/HomeIcon";
+import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import BackButton from "../components/BackButton";
 import MyButton from "../components/MyButton";
 import MyTextInput from "../components/MyTextInput";
+import PhotoChooser from "../components/PhotoChooser";
 import Subtitle from "../components/Subtitle";
 import Title from "../components/Title";
 
-export default function PridatDitko() {
+export default function UpravDitko() {
   const router = useRouter();
   const navigation = useNavigation();
   const [jmeno, setJmeno] = useState("");
@@ -22,6 +23,7 @@ export default function PridatDitko() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [children, setChildren] = useState<Child[]>([]);
   const { index } = useLocalSearchParams();
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   
     useLayoutEffect(() => {
@@ -33,6 +35,12 @@ export default function PridatDitko() {
 
   useEffect(() => {
     const loadData = async () => {
+      if (typeof index !== "string" || isNaN(parseInt(index))) {
+      alert("Chyba: neplatný index.");
+      router.replace("/");
+      return;
+      }
+
       const loaded = await loadChildren();
       setChildren(loaded);
 
@@ -42,6 +50,7 @@ export default function PridatDitko() {
         setJmeno(kid.jmeno);
         setPohlavi(kid.pohlavi);
         setDatumNarozeni(new Date(kid.datumNarozeni));
+        setPhotoUri(kid.foto);
       }
     };
 
@@ -93,8 +102,9 @@ export default function PridatDitko() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <Pressable onPress={handleDelete}
-        style={{ alignSelf: "flex-end", marginTop: 50, marginBottom: -70 }}>
+        style={{ alignSelf: "flex-end", marginTop: 35, marginBottom: -70 }}>
         <Text style={{ fontSize: 30 }}>🚮</Text>
       </Pressable>
 
@@ -146,9 +156,26 @@ export default function PridatDitko() {
         />
       )}
 
-      <MyButton title="Vyber fotku nebo avatar" onPress={() => {}} />
+      <PhotoChooser onSelect={(uri) => setPhotoUri(uri)} />
+      
+            {photoUri && (
+              <Image
+                source={
+                  typeof photoUri === "string"
+                    ? { uri: photoUri }
+                    : photoUri // když je to asset (require)
+                }
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: 60,
+                  alignSelf: "center",
+                  marginVertical: 20,
+                }}
+              />
+            )}
+
       <CheckButton onPress = {handleSave} />
-      <HomeIcon />
 
     </View>
   );
