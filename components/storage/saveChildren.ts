@@ -7,7 +7,7 @@ export interface Child {
   foto: string;
 }
 
-const STORAGE_KEY = 'kids';
+const STORAGE_KEY = 'children';
 
 /**
  * Uloží nové dítě do AsyncStorage.

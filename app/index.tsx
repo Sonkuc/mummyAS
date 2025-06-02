@@ -1,5 +1,6 @@
 import { loadChildren } from "@/components/storage/loadChildren";
 import { Child } from "@/components/storage/saveChildren";
+import { useChild } from "@/contexts/ChildContext";
 import { FontAwesome } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -8,6 +9,7 @@ import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } fr
 export default function Home() {
   const router = useRouter();
   const [kids, setKids] = useState<Child[]>([]);
+  const { setSelectedChild } = useChild();
 
   /* načtení dětí při zobrazení stránky */
   useFocusEffect(
@@ -60,7 +62,15 @@ export default function Home() {
             <Text style={styles.subtitle}>Zatím není přidáno žádné dítě.</Text>
           ) : (
             kids.map((kid, idx) => (
-              <View key={idx} style={[
+              <Pressable 
+                onPress={() => {
+                  setSelectedChild(kid);
+                  router.push({
+                    pathname: "/akce",
+                    params: { index: idx.toString() },
+                    });
+                    }} 
+                    key={idx} style={[
                 styles.childCard, 
                 {
                   backgroundColor: getCardColor(kid.pohlavi),
@@ -70,7 +80,8 @@ export default function Home() {
                 },
               ]}>
                  {/* Fotka a jméno */}
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <View
+                    style={{ flexDirection: "row", alignItems: "center" }}>
                     {kid.foto && (
                       <Image
                         source={{ uri: kid.foto }}
@@ -97,7 +108,7 @@ export default function Home() {
                       }}/>
 
                 </Pressable>
-              </View>
+              </Pressable>
             ))
           )}
 
