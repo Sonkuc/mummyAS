@@ -5,7 +5,7 @@ import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } fr
 
 export default function Home() {
   const router = useRouter();
-  const { setSelectedChild, allChildren } = useChild();
+  const { setSelectedChildIndex, allChildren } = useChild();
 
   const getCardColor = (gender: string) =>
     gender === "chlapec" ? "#add8e6" :
@@ -40,11 +40,9 @@ export default function Home() {
             allChildren.map((kid, idx) => (
               <Pressable 
                 onPress={() => {
-                  setSelectedChild(kid);
+                  setSelectedChildIndex(idx);
                   router.push({
-                    pathname: "/actions",
-                    params: { index: idx.toString() },
-                    });
+                    pathname: "/actions" });
                     }} 
                     key={idx} style={[
                 styles.childCard, 
@@ -99,9 +97,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff0f5",
   },
   container: {
-    flexGrow: 1,               // aby zabíral celý ScrollView
-    justifyContent: 'center',  // svislé zarovnání na střed
-    alignItems: 'center',      // vodorovné zarovnání na střed
+    flexGrow: 1,               
+    justifyContent: 'center',  
+    alignItems: 'center',     
     padding: 20,
     backgroundColor: '#fff0f5',
   },

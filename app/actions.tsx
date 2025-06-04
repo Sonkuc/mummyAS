@@ -16,7 +16,7 @@ type Action = {
 
 export default function Actions() {
   const router = useRouter();
-  const { selectedChild } = useChild();
+  const { selectedChild, selectedChildIndex } = useChild();
 
   const actions: Action[] = [
   { title: "Spánek", route: "/spanek", icon: <Moon color="white" size={20} /> },
@@ -33,7 +33,14 @@ export default function Actions() {
     <ScrollView style={styles.container}>
       <Pressable 
         style={styles.avatarContainer}
-        onPress={() => router.push({ pathname: "/modify-child" })}>
+        onPress={() => {
+          if (selectedChildIndex !== null) {
+            router.push({ 
+              pathname: "/modify-child", 
+              params: { index: selectedChildIndex.toString()} 
+              });
+            }
+          }}>
         {selectedChild?.photo ? (
           <>
             <Image source={{ uri: selectedChild.photo }} 

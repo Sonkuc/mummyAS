@@ -1,10 +1,11 @@
 import { Child } from "@/components/storage/SaveChildren";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 type ChildContextType = {
   selectedChild: Child | null;
-  setSelectedChild: (child: Child) => void;
+  selectedChildIndex: number | null;
+  setSelectedChildIndex: (index: number) => void;
   allChildren: Child[];
   saveAllChildren: (children: Child[]) => Promise<void>;
 };
@@ -12,39 +13,51 @@ type ChildContextType = {
 const ChildContext = createContext<ChildContextType | undefined>(undefined);
 
 export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
-  const [selectedChild, setSelectedChildState] = useState<Child | null>(null);
 	const [allChildren, setAllChildren] = useState<Child[]>([]);
+  const [selectedChildIndex, setSelectedChildIndexState] = useState<number | null>(null);
+  const selectedChild = selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
 
 	useEffect(() => {
     const loadChildren = async () => {
-      const stored = await AsyncStorage.getItem("children");
-      if (stored) {
-        const parsed: Child[] = JSON.parse(stored);
-        setAllChildren(parsed);
-      }
+      try {
+        const stored = await AsyncStorage.getItem("children");
+        if (stored) {
+          const parsed: Child[] = JSON.parse(stored);
+          setAllChildren(parsed);
+        }
 
-      const storedSelected = await AsyncStorage.getItem("selectedChild");
-      if (storedSelected) {
-        const parsed: Child = JSON.parse(storedSelected);
-        setSelectedChildState(parsed);
+      const storedIndex = await AsyncStorage.getItem("selectedChildIndex");
+        if (storedIndex !== null) {
+          setSelectedChildIndexState(Number(storedIndex));
+        }
+      } catch (e) {
+        console.error("Error loading children or selected index", e);
       }
     };
 
     loadChildren();
   }, []);
 
-  const setSelectedChild = async (child: Child) => {
-    setSelectedChildState(child);
-    await AsyncStorage.setItem("selectedChild", JSON.stringify(child));
-  };
+  const setSelectedChildIndex = useCallback(async (index: number) => {
+    setSelectedChildIndexState(index);
+    await AsyncStorage.setItem("selectedChildIndex", index.toString());
+  }, []);
 
-  const saveAllChildren = async (children: Child[]) => {
-  await AsyncStorage.setItem("children", JSON.stringify(children));
-  setAllChildren(children);
-};
+  const saveAllChildren = useCallback(async (children: Child[]) => {
+    await AsyncStorage.setItem("children", JSON.stringify(children));
+    setAllChildren(children);
+  }, []);
 
   return (
-    <ChildContext.Provider value={{ selectedChild, setSelectedChild, allChildren, saveAllChildren,  }}>
+    <ChildContext.Provider
+      value={{
+        selectedChild,
+        selectedChildIndex,
+        setSelectedChildIndex,
+        allChildren,
+        saveAllChildren,
+      }}
+    >
       {children}
     </ChildContext.Provider>
   );
