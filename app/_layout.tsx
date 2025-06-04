@@ -25,9 +25,11 @@ export default function RootLayout() {
           screenOptions={{
             headerShown: false,
           }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
           <Stack.Screen name="index" />
+          <Stack.Screen name="add-child" />
+          <Stack.Screen name="modify-child" />
+          <Stack.Screen name="actions" />
         </Stack>
         <StatusBar style="auto" />
       </ChildProvider>

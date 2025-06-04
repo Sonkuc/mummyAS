@@ -1,7 +1,5 @@
 import CheckButton from '@/components/CheckButton';
-import { loadChildren } from "@/components/storage/loadChildren";
-import { Child } from "@/components/storage/saveChildren";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useChild } from "@/contexts/ChildContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -13,55 +11,42 @@ import PhotoChooser from "../components/PhotoChooser";
 import Subtitle from "../components/Subtitle";
 import Title from "../components/Title";
 
-export default function UpravDitko() {
+export default function ModifyChild() {
   const router = useRouter();
-  const [jmeno, setJmeno] = useState("");
-  const [pohlavi, setPohlavi] = useState("");
-  const [datumNarozeni, setDatumNarozeni] = useState(new Date());
+  const [name, setName] = useState("");
+  const [sex, setSex] = useState("");
+  const [birthDate, setBirthDate] = useState(new Date());
   const [show, setShow] = useState(false);
-  const [children, setChildren] = useState<Child[]>([]);
   const { index } = useLocalSearchParams();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
 
+  const { allChildren, saveAllChildren } = useChild();
+
   useEffect(() => {
-    const loadData = async () => {
-      if (typeof index !== "string" || isNaN(parseInt(index))) {
-      alert("Chyba: neplatný index.");
-      router.replace("/");
-      return;
-      }
-
-      const loaded = await loadChildren();
-      setChildren(loaded);
-
       const idx = parseInt(index as string, 10);
-      const kid = loaded[idx];
+      const kid = allChildren[idx];
       if (kid) {
-        setJmeno(kid.jmeno);
-        setPohlavi(kid.pohlavi);
-        setDatumNarozeni(new Date(kid.datumNarozeni));
-        setPhotoUri(kid.foto);
+        setName(kid.name);
+        setSex(kid.sex);
+        setBirthDate(new Date(kid.birthDate));
+        setPhotoUri(kid.photo);
       }
-    };
-
-    loadData();
-  }, [index]);  
-  
+    }, [index]);
   
   const handleSave = async () => {
-  if (!jmeno || !pohlavi || !datumNarozeni) {
+  if (!name || !sex || !birthDate) {
     alert("Vyplň všechna pole.");
     return;
   }
 
-  const updated = [...children];
+  const updated = [...allChildren];
     updated[parseInt(index as string, 10)] = {
-      jmeno,
-      pohlavi,
-      datumNarozeni: datumNarozeni.toISOString(),
-      foto: photoUri || "",}
-    await AsyncStorage.setItem("kids", JSON.stringify(updated));
+      name: name,
+      sex: sex,
+      birthDate: birthDate.toISOString(),
+      photo: photoUri || "",}
 
+    await saveAllChildren(updated);
     alert("Údaje byly uloženy.");
     router.replace("/");
   };
@@ -77,10 +62,8 @@ export default function UpravDitko() {
         style: "destructive",
         onPress: async () => {
           const idx = parseInt(index as string, 10);
-          const updated = children.filter((_, i) => i !== idx);
-
-          await AsyncStorage.setItem("kids", JSON.stringify(updated));
-
+          const updated = allChildren.filter((_, i) => i !== idx);
+          await saveAllChildren(updated);
           alert("Záznam byl smazán.");
           router.replace("/");
         },
@@ -103,17 +86,17 @@ export default function UpravDitko() {
 
       <MyTextInput
         placeholder="Jméno"
-        value={jmeno}
-        onChangeText={setJmeno}
+        value={name}
+        onChangeText={setName}
       />
 
       <View style={styles.genderContainer}>
         <Pressable
           style={[
             styles.genderButton,
-            pohlavi === "chlapec" && styles.genderSelected,
+            sex === "chlapec" && styles.genderSelected,
           ]}
-          onPress={() => setPohlavi("chlapec")}
+          onPress={() => setSex("chlapec")}
         >
           <Text style={styles.genderText}>Chlapec</Text>
         </Pressable>
@@ -121,9 +104,9 @@ export default function UpravDitko() {
         <Pressable
           style={[
             styles.genderButton,
-            pohlavi === "divka" && styles.genderSelected,
+            sex === "divka" && styles.genderSelected,
           ]}
-          onPress={() => setPohlavi("divka")}
+          onPress={() => setSex("divka")}
         >
           <Text style={styles.genderText}>Dívka</Text>
         </Pressable>
@@ -136,18 +119,18 @@ export default function UpravDitko() {
         fontWeight: "500",
         marginBottom: 20, 
         marginTop: -30 }}>
-        {datumNarozeni.toLocaleDateString()}
+        {birthDate.toLocaleDateString()}
       </Text>
 
       {show && (
         <DateTimePicker
-          value={datumNarozeni}
+          value={birthDate}
           mode="date"
           display="spinner"
           onChange={(event, selectedDate) => {
             setShow(false);
             if (selectedDate) {
-              setDatumNarozeni(selectedDate);
+              setBirthDate(selectedDate);
             }
           }}
         />

@@ -1,5 +1,6 @@
 import CheckButton from '@/components/CheckButton';
-import { saveChildren } from '@/components/storage/saveChildren';
+import { saveChildren } from '@/components/storage/SaveChildren';
+import { useChild } from "@/contexts/ChildContext";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -11,30 +12,32 @@ import PhotoChooser from "../components/PhotoChooser";
 import Subtitle from "../components/Subtitle";
 import Title from "../components/Title";
 
-export default function PridatDitko() {
+export default function AddChild() {
   const router = useRouter();
-  const [jmeno, setJmeno] = useState("");
-  const [pohlavi, setPohlavi] = useState("");
-  const [datumNarozeni, setDatumNarozeni] = useState(new Date());
+  const [name, setName] = useState("");
+  const [sex, setSex] = useState("");
+  const [birthDate, setbirthDate] = useState(new Date());
   const [show, setShow] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const { saveAllChildren, allChildren } = useChild();
 
   const handleSave = async () => {
-  if (!jmeno || !pohlavi || !datumNarozeni) {
+  if (!name || !sex || !birthDate) {
     alert("Vyplň všechna pole.");
     return;
   }
 
   const newChild = {
-    jmeno,
-    pohlavi,
-    datumNarozeni: datumNarozeni.toISOString(),
-    foto: photoUri || "",
+    name,
+    sex,
+    birthDate: birthDate.toISOString(),
+    photo: photoUri || "",
   };
 
   const saved = await saveChildren(newChild);
 
   if (saved) {
+    await saveAllChildren([...allChildren, newChild]);
     router.replace("/");
   } else {
     alert("Chyba při ukládání.");
@@ -49,17 +52,17 @@ export default function PridatDitko() {
 
       <MyTextInput
         placeholder="Jméno"
-        value={jmeno}
-        onChangeText={setJmeno}
+        value={name}
+        onChangeText={setName}
       />
 
       <View style={styles.genderContainer}>
         <Pressable
           style={[
             styles.genderButton,
-            pohlavi === "chlapec" && styles.genderSelected,
+            sex === "chlapec" && styles.genderSelected,
           ]}
-          onPress={() => setPohlavi("chlapec")}
+          onPress={() => setSex("chlapec")}
         >
           <Text style={styles.genderText}>Chlapec</Text>
         </Pressable>
@@ -67,9 +70,9 @@ export default function PridatDitko() {
         <Pressable
           style={[
             styles.genderButton,
-            pohlavi === "divka" && styles.genderSelected,
+            sex === "divka" && styles.genderSelected,
           ]}
-          onPress={() => setPohlavi("divka")}
+          onPress={() => setSex("divka")}
         >
           <Text style={styles.genderText}>Dívka</Text>
         </Pressable>
@@ -82,18 +85,18 @@ export default function PridatDitko() {
         fontWeight: "500",
         marginBottom: 50, 
         marginTop: -20 }}>
-        {datumNarozeni.toLocaleDateString()}
+        {birthDate.toLocaleDateString()}
       </Text>
 
       {show && (
         <DateTimePicker
-          value={datumNarozeni}
+          value={birthDate}
           mode="date"
           display="spinner"
           onChange={(event, selectedDate) => {
             setShow(false);
             if (selectedDate) {
-              setDatumNarozeni(selectedDate);
+              setbirthDate(selectedDate);
             }
           }}
         />

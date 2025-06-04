@@ -1,4 +1,4 @@
-import { Child } from "@/components/storage/saveChildren";
+import { Child } from "@/components/storage/SaveChildren";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
@@ -6,6 +6,7 @@ type ChildContextType = {
   selectedChild: Child | null;
   setSelectedChild: (child: Child) => void;
   allChildren: Child[];
+  saveAllChildren: (children: Child[]) => Promise<void>;
 };
 
 const ChildContext = createContext<ChildContextType | undefined>(undefined);
@@ -16,7 +17,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
 
 	useEffect(() => {
     const loadChildren = async () => {
-      const stored = await AsyncStorage.getItem("kids");
+      const stored = await AsyncStorage.getItem("children");
       if (stored) {
         const parsed: Child[] = JSON.parse(stored);
         setAllChildren(parsed);
@@ -37,8 +38,13 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     await AsyncStorage.setItem("selectedChild", JSON.stringify(child));
   };
 
+  const saveAllChildren = async (children: Child[]) => {
+  await AsyncStorage.setItem("children", JSON.stringify(children));
+  setAllChildren(children);
+};
+
   return (
-    <ChildContext.Provider value={{ selectedChild, setSelectedChild, allChildren  }}>
+    <ChildContext.Provider value={{ selectedChild, setSelectedChild, allChildren, saveAllChildren,  }}>
       {children}
     </ChildContext.Provider>
   );

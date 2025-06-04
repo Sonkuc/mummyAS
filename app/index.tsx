@@ -1,35 +1,11 @@
-import { loadChildren } from "@/components/storage/loadChildren";
-import { Child } from "@/components/storage/saveChildren";
 import { useChild } from "@/contexts/ChildContext";
 import { FontAwesome } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useRouter } from "expo-router";
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Home() {
   const router = useRouter();
-  const [kids, setKids] = useState<Child[]>([]);
-  const { setSelectedChild } = useChild();
-
-  /* načtení dětí při zobrazení stránky */
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
-
-      const fetchData = async () => {
-        const loaded = await loadChildren();
-        if (isActive) {
-          setKids(loaded);
-        }
-      };
-
-      fetchData();
-
-      return () => {
-        isActive = false;
-      };
-    }, [])
-  );
+  const { setSelectedChild, allChildren } = useChild();
 
   const getCardColor = (gender: string) =>
     gender === "chlapec" ? "#add8e6" :
@@ -52,28 +28,28 @@ export default function Home() {
           <View style={styles.bottom}>
           <Pressable
             style={styles.button}
-            onPress={() => router.replace("/pridat-ditko")}
+            onPress={() => router.push("/add-child")}
           >
             <Text style={styles.buttonText}>Přidat dítko</Text>
           </Pressable>
         
         </View>
-          {kids.length === 0 ? (
+          {allChildren.length === 0 ? (
             <Text style={styles.subtitle}>Zatím není přidáno žádné dítě.</Text>
           ) : (
-            kids.map((kid, idx) => (
+            allChildren.map((kid, idx) => (
               <Pressable 
                 onPress={() => {
                   setSelectedChild(kid);
                   router.push({
-                    pathname: "/akce",
+                    pathname: "/actions",
                     params: { index: idx.toString() },
                     });
                     }} 
                     key={idx} style={[
                 styles.childCard, 
                 {
-                  backgroundColor: getCardColor(kid.pohlavi),
+                  backgroundColor: getCardColor(kid.sex),
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -82,19 +58,19 @@ export default function Home() {
                  {/* Fotka a jméno */}
                   <View
                     style={{ flexDirection: "row", alignItems: "center" }}>
-                    {kid.foto && (
+                    {kid.photo && (
                       <Image
-                        source={{ uri: kid.foto }}
+                        source={{ uri: kid.photo }}
                         style={styles.childImage}
                         resizeMode="cover"
                       />
                     )}
-                <Text style={styles.name}>{kid.jmeno}</Text>
+                <Text style={styles.name}>{kid.name}</Text>
                 </View>
                 <Pressable 
                   onPress={() => 
                     router.push({
-                      pathname: "/upravit-ditko", 
+                      pathname: "/modify-child", 
                       params: { index: idx.toString()},
                     })
                   }
@@ -104,7 +80,7 @@ export default function Home() {
                     size={24}
                     style= {{
                       marginRight: 10,
-                      color: getIconColor(kid.pohlavi),
+                      color: getIconColor(kid.sex),
                       }}/>
 
                 </Pressable>

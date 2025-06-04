@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Child } from './saveChildren';
+import { Child } from './SaveChildren';
 
-const STORAGE_KEY = 'kids';
+const STORAGE_KEY = 'children';
 
 /**
  * Načte pole dětí uložené v AsyncStorage.

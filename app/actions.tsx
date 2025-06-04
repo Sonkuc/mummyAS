@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import {
   Apple, Baby, Calendar, Heart, MessageCircle, Moon, Ruler, Star
 } from "lucide-react-native";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import BackButton from "../components/BackButton";
 import MyButton from "../components/MyButton";
 import Title from "../components/Title";
@@ -14,7 +14,7 @@ type Action = {
   icon: React.ReactNode;
 };
 
-export default function Akce() {
+export default function Actions() {
   const router = useRouter();
   const { selectedChild } = useChild();
 
@@ -31,19 +31,28 @@ export default function Akce() {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.avatarContainer}>
-      {
-        selectedChild?.photo ? (
-          <Image source={selectedChild.photo} style={styles.avatar} />
+      <Pressable 
+        style={styles.avatarContainer}
+        onPress={() => router.push({ pathname: "/modify-child" })}>
+        {selectedChild?.photo ? (
+          <>
+            <Image source={{ uri: selectedChild.photo }} 
+            style={styles.avatar} 
+            resizeMode="cover"/>
+            <View style={styles.avatarInitialOverlay}>
+              <Text style={styles.avatarInitialText}>
+                {selectedChild?.name?.charAt(0) || "?"}
+              </Text>
+            </View>
+          </>
         ) : (
           <View style={styles.initialCircle}>
             <Text style={styles.initial}>
               {selectedChild?.name?.charAt(0) || "?"}
             </Text>
           </View>
-        )
-      }
-    </View>
+        )}
+      </Pressable>
       <BackButton/>
       <Title>Vyber akci</Title>
       <View style={styles.buttonContainer}>
@@ -65,6 +74,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff0f5",
     padding: 20,
+    position: "relative",
   },
   buttonContainer: {
     marginTop: 20,
@@ -72,23 +82,41 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatarContainer: {
-    marginRight: 16,
+    position: "absolute",
+    top: 45,
+    right: 25,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   initialCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: "rgb(164, 91, 143)",
     alignItems: "center",
     justifyContent: "center",
   },
   initial: {
     color: "white",
+    fontWeight: "bold",
+  },
+  avatarInitialOverlay: {
+    position: "absolute",
+    bottom: -4,
+    right: -4,
+    backgroundColor: "#a45b8f",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarInitialText: {
+    color: "white",
+    fontSize: 12,
     fontWeight: "bold",
   },
 });
