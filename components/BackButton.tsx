@@ -2,11 +2,23 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet } from "react-native";
 
-export default function BackButton() {
+type BackButtonProps = {
+  targetPath?: string;
+};
+
+export default function BackButton({ targetPath }: BackButtonProps) {
   const router = useRouter();
 
+  const handlePress = () => {
+    if (targetPath) {
+    router.replace(targetPath);
+  } else {
+    router.back();
+  }
+};
+
   return (
-    <Pressable style={styles.backButton} onPress={() => router.replace("/")}>
+    <Pressable style={styles.backButton} onPress={handlePress}>
       <Ionicons name="arrow-back" size={28} color="#993769"/>
     </Pressable>
   );

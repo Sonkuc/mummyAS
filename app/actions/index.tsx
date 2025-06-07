@@ -2,11 +2,12 @@ import { useRouter } from "expo-router";
 import {
   Apple, Baby, Calendar, Heart, MessageCircle, Moon, Ruler, Star
 } from "lucide-react-native";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import BackButton from "../components/BackButton";
-import MyButton from "../components/MyButton";
-import Title from "../components/Title";
-import { useChild } from "../contexts/ChildContext";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import BackButton from "../../components/BackButton";
+import MainScreenContainer from "../../components/MainScreenContainer";
+import MyButton from "../../components/MyButton";
+import Title from "../../components/Title";
+import { useChild } from "../../contexts/ChildContext";
 
 type Action = {
   title: string;
@@ -19,24 +20,25 @@ export default function Actions() {
   const { selectedChild, selectedChildIndex } = useChild();
 
   const actions: Action[] = [
-  { title: "Spánek", route: "/spanek", icon: <Moon color="white" size={20} /> },
-  { title: "Kojení", route: "/kojeni", icon: <Heart color="white" size={20} /> },
-  { title: "Výška/váha", route: "/vaha-vyska", icon: <Ruler color="white" size={20} /> },
-  { title: "Pokroky", route: "/pokroky", icon: <Star color="white" size={20} /> },
-  { title: "Zoubky", route: "/zoubky", icon: <Baby color="white" size={20} /> },
-  { title: "Mluvení", route: "/mluva", icon: <MessageCircle color="white" size={20} /> },
-  { title: "Potraviny", route: "/potraviny", icon: <Apple color="white" size={20} /> },
-  { title: "Kalendář", route: "/kalendar", icon: <Calendar color="white" size={20} /> },
+  { title: "Spánek", route: "./sleep", icon: <Moon color="white" size={20} /> },
+  { title: "Kojení", route: "./breastfeeding", icon: <Heart color="white" size={20} /> },
+  { title: "Výška/váha", route: "./weight-height", icon: <Ruler color="white" size={20} /> },
+  { title: "Pokroky", route: "./progress", icon: <Star color="white" size={20} /> },
+  { title: "Zoubky", route: "./teeth", icon: <Baby color="white" size={20} /> },
+  { title: "Mluvení", route: "./speaking", icon: <MessageCircle color="white" size={20} /> },
+  { title: "Potraviny", route: "./food", icon: <Apple color="white" size={20} /> },
+  { title: "Kalendář", route: "./calendar", icon: <Calendar color="white" size={20} /> },
 ];
 
   return (
-    <ScrollView style={styles.container}>
+    <MainScreenContainer contentContainerStyle={{position: "relative"}}>
       <Pressable 
         style={styles.avatarContainer}
+        hitSlop={20} 
         onPress={() => {
           if (selectedChildIndex !== null) {
             router.push({ 
-              pathname: "/modify-child", 
+              pathname: "../modify-child", 
               params: { index: selectedChildIndex.toString()} 
               });
             }
@@ -72,17 +74,11 @@ export default function Actions() {
           />
       ))}
       </View>
-    </ScrollView>
+    </MainScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff0f5",
-    padding: 20,
-    position: "relative",
-  },
   buttonContainer: {
     marginTop: 20,
     gap: 1,

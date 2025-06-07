@@ -4,8 +4,9 @@ import { useChild } from "@/contexts/ChildContext";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import BackButton from "../components/BackButton";
+import MainScreenContainer from "../components/MainScreenContainer";
 import MyButton from "../components/MyButton";
 import MyTextInput from "../components/MyTextInput";
 import PhotoChooser from "../components/PhotoChooser";
@@ -45,7 +46,7 @@ export default function AddChild() {
 };
 
   return (
-    <ScrollView style={styles.container}>
+    <MainScreenContainer>
       <BackButton />
       <Title>Zadej informace</Title>
       <Subtitle>Jméno dítěte</Subtitle>
@@ -122,16 +123,11 @@ export default function AddChild() {
       )}
       <CheckButton onPress = {handleSave} />
 
-    </ScrollView>
+    </MainScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff0f5",
-    padding: 20,
-  },
   genderContainer: {
     flexDirection: "row",
     justifyContent: "space-around",

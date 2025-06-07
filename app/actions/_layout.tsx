@@ -3,14 +3,14 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-import { ChildProvider } from "../contexts/ChildContext";
+import { ChildProvider } from "../../contexts/ChildContext";
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require('../../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   if (!loaded) {
@@ -25,10 +25,15 @@ export default function RootLayout() {
           screenOptions={{
             headerShown: false,
           }}>
-          <Stack.Screen name="+not-found" />
           <Stack.Screen name="index" />
-          <Stack.Screen name="add-child" />
-          <Stack.Screen name="modify-child" />
+          <Stack.Screen name="breastfeeding" />
+          <Stack.Screen name="calendar" />
+          <Stack.Screen name="food" />
+          <Stack.Screen name="progress" />
+          <Stack.Screen name="sleep" />
+          <Stack.Screen name="speaking" />
+          <Stack.Screen name="teeth" />
+          <Stack.Screen name="weight-height" />
         </Stack>
         <StatusBar style="auto" />
       </ChildProvider>

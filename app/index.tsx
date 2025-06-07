@@ -1,7 +1,8 @@
 import { useChild } from "@/contexts/ChildContext";
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from "expo-router";
-import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import MainScreenContainer from "../components/MainScreenContainer";
 
 export default function Home() {
   const router = useRouter();
@@ -19,8 +20,10 @@ export default function Home() {
 
   /* render */
   return (
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.container}>
+        <MainScreenContainer contentContainerStyle={{
+          justifyContent: "center",
+          alignItems: "center",
+        }}>
           <Text style={styles.title}>Milá maminko, </Text>
           <Text style={styles.subtitle}>vítej 🩷</Text>
           <Image source={require("@/assets/images/logo2.png")} style={styles.logo} />
@@ -86,23 +89,11 @@ export default function Home() {
             ))
           )}
 
-      </ScrollView>
-    </SafeAreaView>
+      </MainScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#fff0f5",
-  },
-  container: {
-    flexGrow: 1,               
-    justifyContent: 'center',  
-    alignItems: 'center',     
-    padding: 20,
-    backgroundColor: '#fff0f5',
-  },
   title: {
     fontSize: 35,
     color: "#992769",

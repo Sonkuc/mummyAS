@@ -3,8 +3,9 @@ import { useChild } from "@/contexts/ChildContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import BackButton from "../components/BackButton";
+import MainScreenContainer from "../components/MainScreenContainer";
 import MyButton from "../components/MyButton";
 import MyTextInput from "../components/MyTextInput";
 import PhotoChooser from "../components/PhotoChooser";
@@ -74,7 +75,7 @@ export default function ModifyChild() {
 };
 
   return (
-    <ScrollView style={styles.container}>
+    <MainScreenContainer>
       <BackButton />
       <Pressable onPress={handleDelete}
         style={{ alignSelf: "flex-end", marginTop: 35, marginBottom: -70 }}>
@@ -157,16 +158,11 @@ export default function ModifyChild() {
 
       <CheckButton onPress = {handleSave} />
 
-    </ScrollView>
+    </MainScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff0f5",
-    padding: 20,
-  },
   genderContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
