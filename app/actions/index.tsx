@@ -1,13 +1,13 @@
+import BackButton from "@/components/BackButton";
+import MainScreenContainer from "@/components/MainScreenContainer";
+import MyButton from "@/components/MyButton";
+import Title from "@/components/Title";
+import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import {
   Apple, Baby, Calendar, Heart, MessageCircle, Moon, Ruler, Star
 } from "lucide-react-native";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import BackButton from "../../components/BackButton";
-import MainScreenContainer from "../../components/MainScreenContainer";
-import MyButton from "../../components/MyButton";
-import Title from "../../components/Title";
-import { useChild } from "../../contexts/ChildContext";
 
 type Action = {
   title: string;

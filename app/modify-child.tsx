@@ -1,16 +1,16 @@
-import CheckButton from '@/components/CheckButton';
+import BackButton from "@/components/BackButton";
+import CheckButton from "@/components/CheckButton";
+import MainScreenContainer from "@/components/MainScreenContainer";
+import MyButton from "@/components/MyButton";
+import MyTextInput from "@/components/MyTextInput";
+import PhotoChooser from "@/components/PhotoChooser";
+import Subtitle from "@/components/Subtitle";
+import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
-import BackButton from "../components/BackButton";
-import MainScreenContainer from "../components/MainScreenContainer";
-import MyButton from "../components/MyButton";
-import MyTextInput from "../components/MyTextInput";
-import PhotoChooser from "../components/PhotoChooser";
-import Subtitle from "../components/Subtitle";
-import Title from "../components/Title";
 
 export default function ModifyChild() {
   const router = useRouter();

@@ -1,7 +1,7 @@
+import { avatars } from "@/assets/images/avatars";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { avatars } from "../assets/images/avatars";
 import MyButton from "./MyButton";
 
 type Props = {

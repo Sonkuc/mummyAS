@@ -1,8 +1,8 @@
+import MainScreenContainer from "@/components/MainScreenContainer";
 import { useChild } from "@/contexts/ChildContext";
-import { FontAwesome } from '@expo/vector-icons';
+import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import MainScreenContainer from "../components/MainScreenContainer";
 
 export default function Home() {
   const router = useRouter();

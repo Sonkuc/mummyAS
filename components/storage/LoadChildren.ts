@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Child } from './SaveChildren';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Child } from "./SaveChildren";
 
 const STORAGE_KEY = 'children';
 

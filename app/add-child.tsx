@@ -1,17 +1,17 @@
-import CheckButton from '@/components/CheckButton';
-import { saveChildren } from '@/components/storage/SaveChildren';
+import BackButton from "@/components/BackButton";
+import CheckButton from "@/components/CheckButton";
+import MainScreenContainer from "@/components/MainScreenContainer";
+import MyButton from "@/components/MyButton";
+import MyTextInput from "@/components/MyTextInput";
+import PhotoChooser from "@/components/PhotoChooser";
+import { saveChildren } from "@/components/storage/SaveChildren";
+import Subtitle from "@/components/Subtitle";
+import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import BackButton from "../components/BackButton";
-import MainScreenContainer from "../components/MainScreenContainer";
-import MyButton from "../components/MyButton";
-import MyTextInput from "../components/MyTextInput";
-import PhotoChooser from "../components/PhotoChooser";
-import Subtitle from "../components/Subtitle";
-import Title from "../components/Title";
 
 export default function AddChild() {
   const router = useRouter();
