@@ -76,7 +76,7 @@ export default function ModifyChild() {
 
   return (
     <MainScreenContainer>
-      <BackButton />
+      <BackButton/>
       <Pressable onPress={handleDelete}
         style={{ alignSelf: "flex-end", marginTop: 35, marginBottom: -70 }}>
         <Text style={{ fontSize: 30 }}>🚮</Text>

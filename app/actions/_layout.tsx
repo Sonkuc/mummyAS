@@ -13,28 +13,12 @@ export default function RootLayout() {
     SpaceMono: require('../../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+  if (!loaded) { return null; }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <ChildProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="breastfeeding" />
-          <Stack.Screen name="calendar" />
-          <Stack.Screen name="food" />
-          <Stack.Screen name="progress" />
-          <Stack.Screen name="sleep" />
-          <Stack.Screen name="speaking" />
-          <Stack.Screen name="teeth" />
-          <Stack.Screen name="weight-height" />
-        </Stack>
+        <Stack screenOptions={{ headerShown: false }}/>
         <StatusBar style="auto" />
       </ChildProvider>
     </ThemeProvider>

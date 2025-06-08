@@ -24,12 +24,7 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-          }}>
-          <Stack.Screen name="+not-found" />
-          <Stack.Screen name="index" />
-          <Stack.Screen name="add-child" />
-          <Stack.Screen name="modify-child" />
-        </Stack>
+          }}/>
         <StatusBar style="auto" />
       </ChildProvider>
     </ThemeProvider>

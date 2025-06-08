@@ -20,14 +20,14 @@ export default function Actions() {
   const { selectedChild, selectedChildIndex } = useChild();
 
   const actions: Action[] = [
-  { title: "Spánek", route: "./sleep", icon: <Moon color="white" size={20} /> },
-  { title: "Kojení", route: "./breastfeeding", icon: <Heart color="white" size={20} /> },
-  { title: "Výška/váha", route: "./weight-height", icon: <Ruler color="white" size={20} /> },
-  { title: "Pokroky", route: "./progress", icon: <Star color="white" size={20} /> },
-  { title: "Zoubky", route: "./teeth", icon: <Baby color="white" size={20} /> },
-  { title: "Mluvení", route: "./speaking", icon: <MessageCircle color="white" size={20} /> },
-  { title: "Potraviny", route: "./food", icon: <Apple color="white" size={20} /> },
-  { title: "Kalendář", route: "./calendar", icon: <Calendar color="white" size={20} /> },
+  { title: "Spánek", route: "/actions/sleep", icon: <Moon color="white" size={20} /> },
+  { title: "Kojení", route: "/actions/breastfeeding", icon: <Heart color="white" size={20} /> },
+  { title: "Výška/váha", route: "/actions/weight-height", icon: <Ruler color="white" size={20} /> },
+  { title: "Pokroky", route: "/actions/progress", icon: <Star color="white" size={20} /> },
+  { title: "Zoubky", route: "/actions/teeth", icon: <Baby color="white" size={20} /> },
+  { title: "Mluvení", route: "/actions/speaking", icon: <MessageCircle color="white" size={20} /> },
+  { title: "Potraviny", route: "/actions/food", icon: <Apple color="white" size={20} /> },
+  { title: "Kalendář", route: "/actions/calendar", icon: <Calendar color="white" size={20} /> },
 ];
 
   return (

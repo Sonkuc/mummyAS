@@ -10,8 +10,8 @@ export default function BackButton({ targetPath }: BackButtonProps) {
   const router = useRouter();
 
   const handlePress = () => {
-    if (targetPath) {
-    router.replace(targetPath);
+    if (typeof targetPath === "string") {
+    router.push(targetPath);
   } else {
     router.back();
   }

@@ -1,22 +1,18 @@
 import { ThemedText } from '@/components/ThemedText';
-import { Link, Stack } from 'expo-router';
+import { ThemedView } from '@/components/ThemedView';
+import { Link } from 'expo-router';
 import { StyleSheet } from 'react-native';
-import MainScreenContainer from "../components/MainScreenContainer";
 
 export default function NotFoundScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
-      <MainScreenContainer scrollable={false}
-        style={{
-          justifyContent: "center",
-          alignItems: "center",
-        }}>
-          <ThemedText type="title">This screen does not exist.</ThemedText>
+        <ThemedView style={styles.container}>
+          <ThemedText style={styles.title}>Jejda 🤯</ThemedText>
+          <ThemedText style={styles.title}>Stránka nebyla nalezena</ThemedText>
           <Link href="/" style={styles.link}>
-            <ThemedText type="link">Go to home screen!</ThemedText>
+            <ThemedText type="link" style={{fontSize: 23}}>Zpět na úvodní obrazovku</ThemedText>
           </Link>
-      </MainScreenContainer>
+      </ThemedView>
     </>
   );
 }
@@ -25,5 +21,21 @@ const styles = StyleSheet.create({
   link: {
     marginTop: 15,
     paddingVertical: 15,
+    fontSize: 20,
+    textAlign: "center",
+    color: "#bf5f82",
+  },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff0f5",
+  },
+  title: {
+    fontSize: 30,
+    textAlign: "center",
+    color: "#993769",
+    marginBottom: 30,
+    paddingTop: 10,
   },
 });
