@@ -22,5 +22,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: "#fff0f5",
     justifyContent: "center",
+    position: "relative",
   },
 });

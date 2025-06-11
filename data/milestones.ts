@@ -1,0 +1,15 @@
+export const MILESTONES = [
+  { id: "smile", label: "První úsměv" },
+  { id: "laugh", label: "První hlasitý smích" },
+  { id: "horses", label: "Pasení koníčků" },
+  { id: "roll", label: "Přetočení na bříško" },
+  { id: "grip", label: "Uchopení hračky" },
+  { id: "rollback", label: "Otočka ze zad na bříško" },
+  { id: "stand", label: "První samostatný stoj" },
+  { id: "sit", label: "První sed" },
+  { id: "crawl", label: "První lezení" },
+  { id: "knees", label: "Vyhoupnutí na kolínka" },
+  { id: "furniture", label: "Chůze kolem nábytku" },
+  { id: "step", label: "První krůčky" },
+  { id: "potty", label: "Chodí na nočník" },
+];

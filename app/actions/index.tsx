@@ -24,7 +24,7 @@ export default function Actions() {
   { title: "Spánek", route: "/actions/sleep", icon: <Moon color="white" size={20} /> },
   { title: "Kojení", route: "/actions/breastfeeding", icon: <Heart color="white" size={20} /> },
   { title: "Výška/váha", route: "/actions/weight-height", icon: <Ruler color="white" size={20} /> },
-  { title: "Pokroky", route: "/actions/progress", icon: <Star color="white" size={20} /> },
+  { title: "Milníky", route: "/actions/milestone", icon: <Star color="white" size={20} /> },
   { title: "Zoubky", route: "/actions/teeth", icon: <Baby color="white" size={20} /> },
   { title: "Mluvení", route: "/actions/speaking", icon: <MessageCircle color="white" size={20} /> },
   { title: "Potraviny", route: "/actions/food", icon: <Apple color="white" size={20} /> },
