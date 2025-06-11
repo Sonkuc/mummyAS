@@ -1,4 +1,5 @@
 import BackButton from "@/components/BackButton";
+import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import Title from "@/components/Title";
@@ -32,7 +33,9 @@ export default function Actions() {
 
   return (
     <MainScreenContainer contentContainerStyle={{position: "relative"}}>
-      <Pressable 
+      <CustomHeader>
+        <BackButton/>
+        <Pressable 
         style={styles.avatarContainer}
         hitSlop={20} 
         onPress={() => {
@@ -62,7 +65,7 @@ export default function Actions() {
           </View>
         )}
       </Pressable>
-      <BackButton/>
+      </CustomHeader>
       <Title>Vyber akci</Title>
       <View style={styles.buttonContainer}>
         {actions.map((action: Action, index) => (

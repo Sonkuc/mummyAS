@@ -1,5 +1,5 @@
-import BackButton from "@/components/BackButton";
 import CheckButton from "@/components/CheckButton";
+import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
@@ -47,7 +47,7 @@ export default function AddChild() {
 
   return (
     <MainScreenContainer>
-      <BackButton />
+      <CustomHeader/> 
       <Title>Zadej informace</Title>
       <Subtitle>Jméno dítěte</Subtitle>
 

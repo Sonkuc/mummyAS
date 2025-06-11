@@ -1,5 +1,5 @@
-import BackButton from "@/components/BackButton";
 import CheckButton from "@/components/CheckButton";
+import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
@@ -76,12 +76,12 @@ export default function ModifyChild() {
 
   return (
     <MainScreenContainer>
-      <BackButton/>
-      <Pressable onPress={handleDelete}
-        style={{ alignSelf: "flex-end", marginTop: 35, marginBottom: -70 }}>
-        <Text style={{ fontSize: 30 }}>🚮</Text>
-      </Pressable>
-
+      <CustomHeader>
+          <Pressable onPress={handleDelete} 
+            style={{ alignSelf: "flex-end", justifyContent: "center", marginBottom: -70 }}>
+            <Text style={{ fontSize: 30 }}>🚮</Text>
+          </Pressable>
+      </CustomHeader>
       <Title>Zadej informace</Title>
       <Subtitle>Jméno dítěte</Subtitle>
 
