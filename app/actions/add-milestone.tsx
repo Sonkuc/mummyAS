@@ -1,11 +1,12 @@
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
+import DateSelector from "@/components/DateSelector";
 import MainScreenContainer from "@/components/MainScreenContainer";
+import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { MILESTONES } from "@/data/milestones";
-import { Picker } from "@react-native-picker/picker";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -32,8 +33,7 @@ export default function Progress() {
     setNote(""); // vyčistí poznámku po odeslání
   };
 
-
-  return (
+   return (
     <MainScreenContainer>
       <View style={{ marginBottom: -25 }}>
         <CustomHeader />
@@ -47,30 +47,25 @@ export default function Progress() {
           setSelectedMilestone(""); // zruší výběr z pickeru, pokud píšu vlastní text
         }}
       />
-      <View style={styles.pickerWrapper}>
-        <Picker
-          selectedValue={selectedMilestone}
-          onValueChange={value => {
-            setSelectedMilestone(value);
-            const selectedLabel = MILESTONES.find(m => m.id === value)?.label;
-            if (selectedLabel) setName(selectedLabel); // vyplní input podle výběru
-          }}
-          style={styles.input}
-        >
-          <Picker.Item label="Vyber milník z nabídky..." value="" enabled={false} />
-          {MILESTONES.map(m => (
-            <Picker.Item key={m.id} label={m.label} value={m.id} />
-          ))}
-        </Picker>
-      </View>
-
-      <Subtitle>Datum</Subtitle>
-      <MyTextInput
-              placeholder="YYYY-MM-DD"
-              value={date}
-              onChangeText={setDate}
+      <MyPicker
+        selectedMilestone={selectedMilestone}
+        onChange={setSelectedMilestone}
+        setName={setName}
       />
-
+      <Subtitle>Datum</Subtitle>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+        <View style={{ width: "80%" }}>
+          <MyTextInput
+                  placeholder="YYYY-MM-DD"
+                  value={date}
+                  onChangeText={setDate}
+          />
+        </View>
+        <DateSelector
+          date={new Date(date)}
+          onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
+        />
+      </View>
       <Subtitle>Poznámka</Subtitle>
       <MyTextInput
               placeholder="Např. u babičky"
@@ -83,20 +78,7 @@ export default function Progress() {
 }
 
 const styles = StyleSheet.create({
-   input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 8,
-    borderRadius: 6,
-  },
   label: {
     fontWeight: "500",
-  },
-  pickerWrapper: {
-    borderWidth: 2,
-    borderColor: "#bf5f82", 
-    borderRadius: 10,
-    marginVertical: 10,
-    overflow: "hidden", // zaoblí rohy i uvnitř
   },
 });

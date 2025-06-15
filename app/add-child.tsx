@@ -1,14 +1,13 @@
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
+import DateSelector from "@/components/DateSelector";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
 import PhotoChooser from "@/components/PhotoChooser";
 import { saveChildren } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
@@ -17,7 +16,7 @@ export default function AddChild() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
-  const [birthDate, setbirthDate] = useState(new Date());
+  const [birthDate, setBirthDate] = useState(new Date());
   const [show, setShow] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const { saveAllChildren, allChildren } = useChild();
@@ -57,7 +56,28 @@ export default function AddChild() {
         onChangeText={setName}
       />
 
-      <View style={styles.genderContainer}>
+      <Subtitle>Datum narození</Subtitle>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+        <View style={{ width: "80%" }}>
+          <MyTextInput
+            placeholder="YYYY-MM-DD"
+            value={birthDate.toISOString().slice(0, 10)}
+            onChangeText={(text) => {
+              const parts = text.split("-");
+              if (parts.length === 3) {
+                const [year, month, day] = parts.map(Number);
+                setBirthDate(new Date(year, month - 1, day));
+              }
+            }}
+          />
+        </View>
+        <DateSelector
+          date={new Date(birthDate)}
+          onChange={(newDate) => setBirthDate(newDate)}
+        />
+      </View>
+
+        <View style={styles.genderContainer}>
         <Pressable
           style={[
             styles.genderButton,
@@ -78,30 +98,6 @@ export default function AddChild() {
           <Text style={styles.genderText}>Dívka</Text>
         </Pressable>
       </View>
-
-      <MyButton title="Vyber datum narození" onPress={() => setShow(true)} />
-      <Text style={{ 
-        textAlign: "center", 
-        fontSize: 16,
-        fontWeight: "500",
-        marginBottom: 50, 
-        marginTop: -20 }}>
-        {birthDate.toLocaleDateString()}
-      </Text>
-
-      {show && (
-        <DateTimePicker
-          value={birthDate}
-          mode="date"
-          display="spinner"
-          onChange={(event, selectedDate) => {
-            setShow(false);
-            if (selectedDate) {
-              setbirthDate(selectedDate);
-            }
-          }}
-        />
-      )}
 
       <PhotoChooser onSelect={(uri) => setPhotoUri(uri)} />
 
@@ -139,6 +135,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "rgb(164, 91, 143)",
+    width: 80,
+    justifyContent: "center",
+    alignItems: "center", 
   },
   genderSelected: {
     backgroundColor: "rgb(164, 91, 143)",
