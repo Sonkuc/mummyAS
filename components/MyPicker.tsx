@@ -1,7 +1,7 @@
 import { MILESTONES } from "@/data/milestones";
 import { Picker } from "@react-native-picker/picker";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, useColorScheme } from "react-native";
 
 type Props = {
   selectedMilestone: string;
@@ -10,8 +10,15 @@ type Props = {
 };
 
 export default function MyPicker({ selectedMilestone, onChange, setName }: Props) {
+  
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   return (
- <View style={styles.pickerWrapper}>
+ <View style={[
+        styles.pickerWrapper,
+        { backgroundColor: isDark ? "#222" : "#fff" },
+      ]}>
         <Picker
           selectedValue={selectedMilestone}
           onValueChange={value => {
@@ -19,6 +26,9 @@ export default function MyPicker({ selectedMilestone, onChange, setName }: Props
             const selectedLabel = MILESTONES.find(m => m.id === value)?.label;
             if (selectedLabel) setName(selectedLabel); // vyplní input podle výběru
           }}
+          dropdownIconColor={isDark ? "#fff" : "#000"} // Android ikonka
+          style={{ color: isDark ? "#fff" : "#000" }}   // Android text
+          themeVariant={isDark ? "dark" : "light"}      // iOS
         >
           <Picker.Item label="Vyber z nabídky..." value="" enabled={false} />
           {MILESTONES.map(m => (

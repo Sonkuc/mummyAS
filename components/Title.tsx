@@ -1,7 +1,12 @@
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet, Text, TextStyle, ViewStyle } from "react-native";
 
-export default function Title({ children }: { children: string }) {
-  return <Text style={styles.title}>{children}</Text>;
+type Props = {
+  children: React.ReactNode;
+  style?: TextStyle | ViewStyle;
+};
+
+export default function Subtitle({ children, style }: Props) {
+  return <Text style={[styles.title, style]}>{children}</Text>;
 }
 
 const styles = StyleSheet.create({

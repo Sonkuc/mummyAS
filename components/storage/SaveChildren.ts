@@ -1,10 +1,17 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+export interface Milestone {
+  name: string;
+  date: string; // ve formátu YYYY-MM-DD
+  note?: string;
+}
+
 export interface Child {
   name: string;
   sex: string;
   birthDate: string;
   photo: string;
+  milestones?: Milestone[];
 }
 
 const STORAGE_KEY = 'children';

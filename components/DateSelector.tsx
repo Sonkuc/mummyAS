@@ -1,7 +1,8 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Calendar } from "lucide-react-native";
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Platform, Pressable, StyleSheet, Text, View, useColorScheme } from "react-native";
+
 
 type Props = {
   date: Date;
@@ -11,29 +12,38 @@ type Props = {
 export default function DateSelector({ date, onChange }: Props) {
   const [show, setShow] = useState(false);
   const [tempDate, setTempDate] = useState(date);
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   return (
     <View style={styles.wrapper}>
-      
-      <Pressable style={styles.iconButton} onPress={() => setShow(true)}>
+      <Pressable style={styles.iconButton} 
+        onPress={() => setShow(true)}>
         <Calendar size={20} color="#fff" />
       </Pressable>
 
       <Modal visible={show} transparent={true} animationType="slide">
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? "#222" : "#fff" }]}>
             <DateTimePicker
               value={tempDate}
               mode="date"
-              display="spinner"
-              onChange={(event, selectedDate) => {
-                if (selectedDate) setTempDate(selectedDate);
-              }}
-              style={{ width: "100%" }}
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={(event, selectedDate) => {
+                  if (selectedDate) {
+                setShow(Platform.OS === "android" ? false : true);
+                setTempDate(selectedDate);
+                onChange(selectedDate);
+              } else {
+                setShow(false);
+              }
+            }}
+            themeVariant={isDark ? "dark" : "light"}
+            style={{ width: "100%" }}
             />
             <View style={styles.buttonRow}>
               <Pressable onPress={() => setShow(false)} style={styles.cancelButton}>
-                <Text style={styles.buttonText}>Zrušit</Text>
+                <Text style={[styles.buttonText, { color: isDark ? "#fff" : "#000" }]}>Zrušit</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -42,7 +52,7 @@ export default function DateSelector({ date, onChange }: Props) {
                 }}
                 style={styles.confirmButton}
               >
-                <Text style={styles.buttonText}>Potvrdit</Text>
+                <Text style={[styles.buttonText, { color: isDark ? "#fff" : "#000" }]}>Potvrdit</Text>
               </Pressable>
             </View>
           </View>
@@ -79,7 +89,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalContent: {
-    backgroundColor: "white",
     marginHorizontal: 30,
     borderRadius: 10,
     padding: 20,
@@ -101,13 +110,12 @@ const styles = StyleSheet.create({
   confirmButton: {
     padding: 10,
     borderRadius: 8,
-    backgroundColor: "rgb(164, 91, 143)",
+    backgroundColor: "#e489ca",
     flex: 1,
     marginLeft: 10,
   },
   buttonText: {
     textAlign: "center",
-    color: "#fff",
     fontWeight: "bold",
   },
 });

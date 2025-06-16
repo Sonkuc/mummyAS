@@ -4,8 +4,10 @@ import DateSelector from "@/components/DateSelector";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
+import { Milestone } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import { useChild } from "@/contexts/ChildContext";
 import { MILESTONES } from "@/data/milestones";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -15,19 +17,33 @@ export default function Progress() {
   const [selectedMilestone, setSelectedMilestone] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
+  const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
+  
+  const formatDate = (isoDate: string) => {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}.${month}.${year}`;
+};
 
   const handleAdd = () => {
-    const finalName =
-      name.trim() !== ""
-        ? name
-        : MILESTONES.find(m => m.id === selectedMilestone)?.label || "";
+  const finalName = name.trim() !== "" 
+    ? name 
+    : MILESTONES.find(m => m.id === selectedMilestone)?.label || "";
 
-    console.log("Přidávám pokrok:", {
-      name: finalName,
-      date,
-      note,
-    });
+  const newMilestone: Milestone = {
+    name: finalName,
+    date: formatDate(date),
+    note,
+  };
 
+  if (selectedChildIndex === null) return;
+
+  const updatedChildren = [...allChildren];
+  const child = updatedChildren[selectedChildIndex];
+  const existingMilestones = child.milestones || [];
+
+  child.milestones = [...existingMilestones, newMilestone];
+
+    saveAllChildren(updatedChildren);
     setName("");
     setSelectedMilestone("");
     setNote(""); // vyčistí poznámku po odeslání

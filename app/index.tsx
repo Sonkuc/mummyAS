@@ -1,6 +1,6 @@
+import EditPencil from "@/components/EditPencil";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import { useChild } from "@/contexts/ChildContext";
-import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -68,23 +68,7 @@ export default function Home() {
                     )}
                 <Text style={styles.name}>{kid.name}</Text>
                 </View>
-                <Pressable 
-                  onPress={() => 
-                    router.push({
-                      pathname: "/modify-child", 
-                      params: { index: idx.toString()},
-                    })
-                  }
-                >
-                  <FontAwesome
-                    name="pencil"
-                    size={24}
-                    style= {{
-                      marginRight: 10,
-                      color: getIconColor(kid.sex),
-                      }}/>
-
-                </Pressable>
+                <EditPencil targetPath="/modify-child" color = {getIconColor(kid.sex)} />
               </Pressable>
             ))
           )}
@@ -144,10 +128,6 @@ const styles = StyleSheet.create({
   name: {
     fontWeight: "bold",
     fontSize: 18,
-  },
-  editText: {
-    fontSize: 18,
-    marginLeft: 10,
   },
   childImage: {
     width: 40,

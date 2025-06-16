@@ -37,5 +37,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     backgroundColor: "#fff0f5",
+    position: "relative",
   },
 });
