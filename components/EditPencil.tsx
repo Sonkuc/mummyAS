@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, StyleSheet } from "react-native";
 
 type Props = {
-  targetPath?: string;
+  targetPath?: string | { pathname: string; params: Record<string, string> };
   color: string | (() => string);
   circle?: boolean;
   onPress?: () => void;
@@ -19,7 +19,9 @@ export default function EditPencil({ targetPath, color, circle = false, onPress,
         onPress();
       } else if (targetPath) {
         router.push(targetPath);
-      }
+        } else {
+          router.push(targetPath); // objekt s pathname + params
+        }
     };
     
     const iconName = editMode ? "times" : "pencil";

@@ -12,7 +12,7 @@ import { MILESTONES } from "@/data/milestones";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-export default function Progress() {
+export default function AddMilestone() {
   const [name, setName] = useState("");
   const [selectedMilestone, setSelectedMilestone] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
