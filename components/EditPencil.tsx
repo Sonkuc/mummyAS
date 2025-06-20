@@ -17,10 +17,8 @@ export default function EditPencil({ targetPath, color, circle = false, onPress,
     const handlePress = () => {
       if (onPress) {
         onPress();
-      } else if (targetPath) {
+      } if (targetPath) {
         router.push(targetPath);
-        } else {
-          router.push(targetPath); // objekt s pathname + params
         }
     };
     

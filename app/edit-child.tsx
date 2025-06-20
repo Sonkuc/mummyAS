@@ -8,16 +8,17 @@ import PhotoChooser from "@/components/PhotoChooser";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function EditChild() {
   const router = useRouter();
-  const { index } = useLocalSearchParams();
-  const idx = parseInt(index as string, 10);
-  const { allChildren, saveAllChildren } = useChild();
-  const isValidIndex = !isNaN(idx) && idx >= 0 && idx < allChildren.length;
+  
+  const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
+  const childIdx = selectedChildIndex;
+  const isValidIndex = childIdx !== null && childIdx >= 0 && childIdx < allChildren.length;
+
 
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
@@ -28,13 +29,13 @@ export default function EditChild() {
 
   useEffect(() => {
     if (isValidIndex) {
-      const kid = allChildren[idx];
+      const kid = allChildren[childIdx];
       setName(kid.name);
       setSex(kid.sex);
       setBirthDate(new Date(kid.birthDate));
       setPhotoUri(kid.photo);
     }
-  }, [idx, isValidIndex, allChildren]);
+  }, [childIdx, isValidIndex, allChildren]);
   
   const handleSave = async () => {
   if (!name || !sex || !birthDate) {
@@ -42,23 +43,24 @@ export default function EditChild() {
     return;
   }
 
+  if (childIdx !== null) {
   const updated = [...allChildren];
-    updated[parseInt(index as string, 10)] = {
-      name: name,
-      sex: sex,
-      birthDate: birthDate.toISOString(),
-      photo: photoUri || "",}
-
+  updated[childIdx] = {
+    name: name,
+    sex: sex,
+    birthDate: birthDate.toISOString(),
+    photo: photoUri || "",
+  };
     await saveAllChildren(updated);
     alert("Údaje byly uloženy.");
-    router.replace("/");
+    router.back();
   };
-
+}
   
   return (
     <MainScreenContainer>
       <CustomHeader>
-        {isValidIndex && <DeleteButton type="child" index={idx} />}
+        {childIdx !== null && <DeleteButton type="child" index={childIdx} />}
       </CustomHeader>
       <Title>Zadej informace</Title>
       <Subtitle>Jméno dítěte</Subtitle>

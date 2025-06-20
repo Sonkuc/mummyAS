@@ -1,5 +1,4 @@
 import AddButton from "@/components/AddButton";
-import BackButton from "@/components/BackButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import MainScreenContainer from "@/components/MainScreenContainer";
@@ -10,7 +9,7 @@ import { useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-export default function Progress() {
+export default function Milestone() {
   const { selectedChild } = useChild();
   const router = useRouter();
   const [isEditMode, setIsEditMode] = React.useState(false);
@@ -26,18 +25,17 @@ export default function Progress() {
 
   return (
     <MainScreenContainer>
-      <CustomHeader>
-        <BackButton/>
+      <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/add-milestone" />
       </CustomHeader>
       <Title style={{marginTop: 40}}>Milníky</Title>
       <View>
          {sortedMilestones.length > 0 ? (
-          sortedMilestones.map((m, idx) => (
-            <View key={idx} style={styles.milestoneRow}>
+          sortedMilestones.map((m, milIndex) => (
+            <View key={milIndex} style={styles.milestoneRow}>
               {isEditMode && (
                 <EditPencil 
-                  targetPath={`/actions/edit-milestone?index=${idx}`} 
+                  targetPath={`/actions/edit-milestone?milIndex=${milIndex}`} 
                   color="#bf5f82" 
                 />
               )}

@@ -1,4 +1,3 @@
-import BackButton from "@/components/BackButton";
 import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
@@ -33,19 +32,15 @@ export default function Actions() {
 
   return (
     <MainScreenContainer contentContainerStyle={{position: "relative"}}>
-      <CustomHeader>
-        <BackButton/>
+      <CustomHeader backTargetPath="/">
         <Pressable 
         style={styles.avatarContainer}
         hitSlop={20} 
         onPress={() => {
           if (selectedChildIndex !== null) {
-            router.push({ 
-              pathname: "../modify-child", 
-              params: { index: selectedChildIndex.toString()} 
-              });
-            }
-          }}>
+            router.push("../edit-child");
+          }
+        }}>
         {selectedChild?.photo ? (
           <>
             <Image source={{ uri: selectedChild.photo }} 

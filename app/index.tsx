@@ -69,13 +69,13 @@ export default function Home() {
                 <Text style={styles.name}>{kid.name}</Text>
                 </View>
                 <EditPencil
-                  targetPath={{ pathname: "/edit-child", params: { index: idx.toString() } }}
+                  targetPath="/edit-child"
                   color={getIconColor(kid.sex)}
+                  onPress={() => setSelectedChildIndex(idx)}
                 />
               </Pressable>
             ))
           )}
-
       </MainScreenContainer>
   );
 }
