@@ -1,51 +1,58 @@
-import { MILESTONES } from "@/data/milestones";
 import { Picker } from "@react-native-picker/picker";
 import React from "react";
 import { StyleSheet, View, useColorScheme } from "react-native";
 
-type Props = {
-  selectedMilestone: string;
-  onChange: (id: string) => void;
-  setName: (name: string) => void;
+type Option = {
+  id: string;
+  label: string;
 };
 
-export default function MyPicker({ selectedMilestone, onChange, setName }: Props) {
-  
+type Props = {
+  data: Option[];              // MILESTONES nebo WORDS
+  selectedValue: string;       // selectedMilestone nebo selectedWord
+  onChange: (id: string) => void;
+  setName: (name: string) => void;
+  placeholder?: string;        // Text pro první neaktivní položku
+};
+
+export default function MyPicker({ data, selectedValue, onChange, setName, placeholder = "Vyber z nabídky..." }: Props) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
   return (
- <View style={[
-        styles.pickerWrapper,
-        { backgroundColor: isDark ? "#222" : "#fff" },
-      ]}>
-        <Picker
-          selectedValue={selectedMilestone}
-          onValueChange={value => {
-            onChange(value);
-            const selectedLabel = MILESTONES.find(m => m.id === value)?.label;
-            if (selectedLabel) setName(selectedLabel); // vyplní input podle výběru
-          }}
-          dropdownIconColor={isDark ? "#fff" : "#000"} // Android ikonka
-          style={{ color: isDark ? "#fff" : "#000" }}   // Android text
-          themeVariant={isDark ? "dark" : "light"}      // iOS
-        >
-          <Picker.Item label="Vyber z nabídky..." value="" enabled={false} />
-          {MILESTONES.map(m => (
-            <Picker.Item key={m.id} label={m.label} value={m.id} />
-          ))}
-        </Picker>
-      </View>
+    <View style={[
+      styles.pickerWrapper,
+      { backgroundColor: isDark ? "#222" : "#fff" },
+    ]}>
+      <Picker
+        selectedValue={selectedValue}
+        onValueChange={value => {
+          onChange(value);
+          const selectedLabel = data.find(item => item.id === value)?.label;
+          if (selectedLabel) setName(selectedLabel);
+        }}
+        dropdownIconColor={isDark ? "#fff" : "#000"}
+        style={{ color: isDark ? "#fff" : "#000" }}
+        themeVariant={isDark ? "dark" : "light"}
+      >
+        <Picker.Item label={placeholder} value="" enabled={false} />
+        {[...data]
+          .sort((a, b) => a.label.localeCompare(b.label))
+          .map(item => (
+            <Picker.Item key={item.id} label={item.label} value={item.id} />
+))}
+      </Picker>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-    pickerWrapper: {
-      borderWidth: 2,
-      borderColor: "#bf5f82", 
-      borderRadius: 10,
-      marginVertical: 10,
-      marginBottom: 15,
-      overflow: "hidden", // zaoblí rohy i uvnitř
-    },
-})
+  pickerWrapper: {
+    borderWidth: 2,
+    borderColor: "#bf5f82",
+    borderRadius: 10,
+    marginVertical: 10,
+    marginBottom: 15,
+    overflow: "hidden",
+  },
+});

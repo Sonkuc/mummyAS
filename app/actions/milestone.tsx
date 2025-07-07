@@ -26,7 +26,7 @@ export default function Milestone() {
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions">
-        <AddButton targetPath="/actions/add-milestone" />
+        <AddButton targetPath="/actions/milestone-add" />
       </CustomHeader>
       <Title style={{marginTop: 40}}>Milníky</Title>
       <View>
@@ -35,7 +35,7 @@ export default function Milestone() {
             <View key={milIndex} style={styles.milestoneRow}>
               {isEditMode && (
                 <EditPencil 
-                  targetPath={`/actions/edit-milestone?milIndex=${milIndex}`} 
+                  targetPath={`/actions/milestone-edit?milIndex=${milIndex}`} 
                   color="#bf5f82" 
                 />
               )}

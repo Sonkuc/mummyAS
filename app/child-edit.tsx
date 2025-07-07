@@ -1,52 +1,67 @@
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
+import DeleteButton from "@/components/DeleteButton";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import PhotoChooser from "@/components/PhotoChooser";
-import { saveChildren } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-export default function AddChild() {
+export default function ChildEdit() {
   const router = useRouter();
+  
+  const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
+  const childIdx = selectedChildIndex;
+  const isValidIndex = childIdx !== null && childIdx >= 0 && childIdx < allChildren.length;
+
+
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
   const [birthDate, setBirthDate] = useState(new Date());
   const [show, setShow] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const { saveAllChildren, allChildren } = useChild();
 
+
+  useEffect(() => {
+    if (isValidIndex) {
+      const kid = allChildren[childIdx];
+      setName(kid.name);
+      setSex(kid.sex);
+      setBirthDate(new Date(kid.birthDate));
+      setPhotoUri(kid.photo);
+    }
+  }, [childIdx, isValidIndex, allChildren]);
+  
   const handleSave = async () => {
   if (!name || !sex || !birthDate) {
     alert("Vyplň všechna pole.");
     return;
   }
 
-  const newChild = {
-    name,
-    sex,
+  if (childIdx !== null) {
+  const updated = [...allChildren];
+  updated[childIdx] = {
+    name: name,
+    sex: sex,
     birthDate: birthDate.toISOString(),
     photo: photoUri || "",
   };
-
-  const saved = await saveChildren(newChild);
-
-  if (saved) {
-    await saveAllChildren([...allChildren, newChild]);
-    router.replace("/");
-  } else {
-    alert("Chyba při ukládání.");
-  }
-};
-
+    await saveAllChildren(updated);
+    alert("Údaje byly uloženy.");
+    router.back();
+  };
+}
+  
   return (
     <MainScreenContainer>
-      <CustomHeader/> 
+      <CustomHeader>
+        {childIdx !== null && <DeleteButton type="child" index={childIdx} />}
+      </CustomHeader>
       <Title>Zadej informace</Title>
       <Subtitle>Jméno dítěte</Subtitle>
 
@@ -66,7 +81,10 @@ export default function AddChild() {
               const parts = text.split("-");
               if (parts.length === 3) {
                 const [year, month, day] = parts.map(Number);
-                setBirthDate(new Date(year, month - 1, day));
+                const newDate = new Date(year, month - 1, day);
+                if (!isNaN(newDate.getTime())) {
+                  setBirthDate(newDate); 
+                }
               }
             }}
           />
@@ -77,7 +95,7 @@ export default function AddChild() {
         />
       </View>
 
-        <View style={styles.genderContainer}>
+      <View style={styles.genderContainer}>
         <Pressable
           style={[
             styles.genderButton,
@@ -100,23 +118,24 @@ export default function AddChild() {
       </View>
 
       <PhotoChooser onSelect={(uri) => setPhotoUri(uri)} />
+      
+            {photoUri && (
+              <Image
+                source={
+                  typeof photoUri === "string"
+                    ? { uri: photoUri }
+                    : photoUri // když je to asset (require)
+                }
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: 60,
+                  alignSelf: "center",
+                  marginVertical: 20,
+                }}
+              />
+            )}
 
-      {photoUri && (
-        <Image
-          source={
-            typeof photoUri === "string"
-              ? { uri: photoUri }
-              : photoUri // když je to asset (require)
-          }
-          style={{
-            width: 120,
-            height: 120,
-            borderRadius: 60,
-            alignSelf: "center",
-            marginVertical: 20,
-          }}
-        />
-      )}
       <CheckButton onPress = {handleSave} />
 
     </MainScreenContainer>

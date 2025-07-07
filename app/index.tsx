@@ -31,7 +31,7 @@ export default function Home() {
           <View style={styles.bottom}>
           <Pressable
             style={styles.button}
-            onPress={() => router.push("/add-child")}
+            onPress={() => router.push("/child-add")}
           >
             <Text style={styles.buttonText}>Přidat dítko</Text>
           </Pressable>
@@ -69,7 +69,7 @@ export default function Home() {
                 <Text style={styles.name}>{kid.name}</Text>
                 </View>
                 <EditPencil
-                  targetPath="/edit-child"
+                  targetPath="/child-edit"
                   color={getIconColor(kid.sex)}
                   onPress={() => setSelectedChildIndex(idx)}
                 />

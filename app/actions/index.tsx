@@ -38,7 +38,7 @@ export default function Actions() {
         hitSlop={20} 
         onPress={() => {
           if (selectedChildIndex !== null) {
-            router.push("../edit-child");
+            router.push("../child-edit");
           }
         }}>
         {selectedChild?.photo ? (

@@ -20,8 +20,8 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
 
   const handleDelete = async () => {
     Alert.alert(
-    "Smazat dítě",
-    "Opravdu chceš tento záznam smazat?",
+    "Smazat",
+    "Opravdu chceš tento záznam odstranit?",
     [
       { text: "Zrušit", style: "cancel" },
       {
@@ -53,7 +53,7 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
                 await saveAllChildren(updatedAll);
                 onDeleteSuccess?.();
               }
-              /*
+              
               if (type === "word" && selectedChildIndex !== null) {
                 const selected = allChildren[selectedChildIndex];
                 const updatedWords = (selected.words || []).filter((_, i) => i !== index);
@@ -66,7 +66,6 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
                 await saveAllChildren(updatedAll);
                 onDeleteSuccess?.();
               }
-              */
 
               alert("Záznam byl smazán.");
             } catch (err) {

@@ -5,6 +5,10 @@ export interface Milestone {
   date: string; // ve formátu YYYY-MM-DD
   note?: string;
 }
+export type Word = {
+  name: string;
+  entries: { date: string; note: string }[];
+};
 
 export interface Child {
   name: string;
@@ -12,6 +16,7 @@ export interface Child {
   birthDate: string;
   photo: string;
   milestones?: Milestone[];
+  words?: Word[];
 }
 
 const STORAGE_KEY = 'children';
