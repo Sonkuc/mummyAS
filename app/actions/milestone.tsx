@@ -28,7 +28,7 @@ export default function Milestone() {
       <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/milestone-add" />
       </CustomHeader>
-      <Title style={{marginTop: 40}}>Milníky</Title>
+      <Title style={{marginTop: 40}}>Už umím</Title>
       <View>
          {sortedMilestones.length > 0 ? (
           sortedMilestones.map((m, milIndex) => (

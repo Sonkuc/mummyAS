@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgb(164, 91, 143)",
     padding: 12,
     borderRadius: 10,
-    alignItems: "center",
+    justifyContent: "center",
     marginVertical: 10,
   },
   buttonText: {

@@ -8,7 +8,7 @@ type Props = {
   style?: ViewStyle;
 };
 
-export default function MainContainer({ 
+export default function MainScreenContainer({ 
     children, 
     scrollable = true,
     contentContainerStyle,

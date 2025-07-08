@@ -22,7 +22,7 @@ export default function DateSelector({ date, onChange }: Props) {
         <Calendar size={20} color="#fff" />
       </Pressable>
 
-      <Modal visible={show} transparent={true} animationType="slide">
+       <Modal visible={show} transparent={true} animationType="slide">
         <View style={styles.modalContainer}>
           <View style={[styles.modalContent, { backgroundColor: isDark ? "#222" : "#fff" }]}>
             <DateTimePicker

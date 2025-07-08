@@ -4,11 +4,20 @@ export interface Milestone {
   name: string;
   date: string; // ve formátu YYYY-MM-DD
   note?: string;
-}
+};
+
+export interface WeightHeight {
+  date: string;
+  weight?: string;
+  height?: string;
+};
+
 export type Word = {
   name: string;
   entries: { date: string; note: string }[];
 };
+
+export type ToothDates = Record<string, string>;
 
 export interface Child {
   name: string;
@@ -17,6 +26,8 @@ export interface Child {
   photo: string;
   milestones?: Milestone[];
   words?: Word[];
+  teethDates?: ToothDates;
+  wh?: WeightHeight[];
 }
 
 const STORAGE_KEY = 'children';

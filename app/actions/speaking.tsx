@@ -33,7 +33,7 @@ export default function Speaking() {
       <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/speaking-add" />
       </CustomHeader>
-      <Title style={{marginTop: 40}}>Mluvení</Title>
+      <Title style={{marginTop: 40}}>Už povídám</Title>
       <View>
          {sortedWords.length > 0 ? (
           sortedWords.map(({ word, originalIndex }) => (
@@ -46,11 +46,14 @@ export default function Speaking() {
               )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.item}>{word.name}</Text>
-                {word.entries?.map((entry, i) => (
-                  <Text key={i} style={styles.note}>
-                    {formatDate(entry.date)}
-                    {entry.note?.trim() ? `: ${entry.note}` : ""}
-                  </Text>
+                {word.entries
+                  ?.slice()
+                  .sort((a, b) => a.date.localeCompare(b.date))
+                  .map((entry, i) => (
+                    <Text key={i} style={styles.note}>
+                      {formatDate(entry.date)}
+                      {entry.note?.trim() ? `: ${entry.note}` : ""}
+                    </Text>
                 ))}
               </View>
             </View>
