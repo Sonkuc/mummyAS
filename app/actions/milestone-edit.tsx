@@ -24,9 +24,9 @@ export default function EditMilestone() {
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
   
   const formatDate = (isoDate: string) => {
-  const [year, month, day] = isoDate.split("-");
-  return `${day}.${month}.${year}`;
-};
+    const [year, month, day] = isoDate.split("-");
+    return `${day}.${month}.${year}`;
+  };
 
   const toIsoDate = (czDate: string) => {
     const [day, month, year] = czDate.split(".");
@@ -73,7 +73,7 @@ useEffect(() => {
     }
 
     saveAllChildren(updatedChildren);
-    router.back(); // vrátí zpět
+    router.back();
   };
 
    return (

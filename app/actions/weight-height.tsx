@@ -23,6 +23,59 @@ export default function WeightHeight() {
   (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
   );
 
+  function getLastValue(
+    arr: { date: string; weight?: string; height?: string }[],
+    currentDate: string,
+    field: "weight" | "height"
+  ) {
+    const currentTime = parseDate(currentDate).getTime();
+
+    return arr
+      .filter(
+        (item) =>
+          parseDate(item.date).getTime() < currentTime &&
+          item[field] &&
+          item[field].trim() !== ""
+      )
+      .sort(
+        (a, b) =>
+          parseDate(b.date).getTime() - parseDate(a.date).getTime()
+      )[0];
+}
+
+  function renderDifference(
+    arr: { date: string; weight?: string; height?: string }[],
+    currentDate: string,
+    field: "weight" | "height",
+    unit: string
+  ) {
+    const last = getLastValue(arr, currentDate, field);
+    if (!last) return null;
+
+    const prev = parseFloat((last[field] ?? "").replace(",", "."));
+    const current = parseFloat(
+      arr.find((item) => item.date === currentDate)?.[field]?.replace(",", ".") ?? ""
+    );
+
+    if (isNaN(prev) || isNaN(current)) return null;
+
+    const diff = current - prev;
+    const date1 = parseDate(last.date);
+    const date2 = parseDate(currentDate);
+    const timeDiff = date2.getTime() - date1.getTime();
+    const daysDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24));
+
+    if (diff === 0) return `nezměněna ${daysDiff} ${daysDiff === 1 ? "den" : "dní"}`;
+
+    return (
+      <Text style={{ color: diff > 0 ? "green" : "red" }}>
+        {diff > 0 ? "+" : ""}
+        {(diff.toFixed(1)).replace(".", ",")} {unit} 
+        {" za"} {daysDiff} {" "}{daysDiff === 1 ? "den" : "dní"} 
+      </Text>
+    );
+  }
+
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions">
@@ -31,26 +84,47 @@ export default function WeightHeight() {
       <Title style={{marginTop: 40}}>Jak rostu</Title>
       <View>
          {sortedNotes.length > 0 ? (
-          sortedNotes.map((wh, whIndex) => (
-            <View key={whIndex} style={styles.whRow}>
-              {isEditMode && (
-                <EditPencil 
-                  targetPath={`/actions/weight-height-edit?whIndex=${whIndex}`} 
-                  color="#bf5f82" 
-                />
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.item}>
-                  {wh.date} {wh.weight} {wh.height}
-                </Text>
+        sortedNotes
+          .filter((wh) => wh.weight?.trim() || wh.height?.trim())
+          .map((wh) => {
+            const originalIndex = selectedChild?.wh?.findIndex(
+              (item) =>
+                item.date === wh.date &&
+                item.weight === wh.weight &&
+                item.height === wh.height
+            );
+
+            return (
+              <View key={originalIndex} style={styles.whRow}>
+                {isEditMode && (
+                  <EditPencil
+                    targetPath={`/actions/weight-height-edit?whIndex=${originalIndex}`}
+                    color="#bf5f82"
+                  />
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.item}> {wh.date} </Text>
+                  {wh.weight ? (
+                    <Text style={styles.note}>
+                      ⚖️ {wh.weight} kg{" "}
+                      {renderDifference(sortedNotes, wh.date, "weight", "kg")}
+                    </Text>
+                  ) : null}
+                  {wh.height ? (
+                    <Text style={styles.note}>
+                      📏 {wh.height} cm{" "}
+                      {renderDifference(sortedNotes, wh.date, "height", "cm")}
+                    </Text>
+                  ) : null}
+                </View>
               </View>
-            </View>
-          ))
+            );
+          })
         ) : (
-          <Subtitle style={{ textAlign: "center" }}>
-            Žádné záznamy zatím nebyly uloženy.
-          </Subtitle>
-        )}
+      <Subtitle style={{ textAlign: "center" }}>
+        Žádné záznamy zatím nebyly uloženy.
+      </Subtitle>
+      )}
       </View>
       <EditPencil 
         onPress={() => setIsEditMode(!isEditMode)}
@@ -76,5 +150,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
+  },
+  note: {
+    fontSize: 18,
+    color: "#993769",
+    marginLeft: 20,
   },
 });

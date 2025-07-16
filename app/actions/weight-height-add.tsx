@@ -24,27 +24,23 @@ export default function WeightHeightAdd() {
   };
 
   const handleAdd = () => {
-    const finalName = name.trim() !== "" 
-      ? name 
-      : WH.find(wh => wh.id === selectedNotes)?.label || "";
+    if (selectedChildIndex === null) return;
 
-    const newNote: WeightHeight = {
+    const newWh: WeightHeight = {
       date: formatDate(date),
       weight,
       height,
     };
 
-    if (selectedChildIndex === null) return;
-
     const updatedChildren = [...allChildren];
     const child = updatedChildren[selectedChildIndex];
-    const existingMilestones = child.milestones || [];
+    const existingWh = child.wh || [];
 
-    child.wh = [...existingNotes, newNote];
+    child.wh = [...existingWh, newWh];
 
-      saveAllChildren(updatedChildren);
+    saveAllChildren(updatedChildren);
 
-      router.replace("/actions/weight-height");
+    router.replace("/actions/weight-height");
   };
 
   return (
@@ -57,16 +53,16 @@ export default function WeightHeightAdd() {
       <MyTextInput
         placeholder="Váha v kg"
         value={weight}
-        onChangeText={text => {
-          setWeight(text);
+        onChangeText={textW => {
+          setWeight(textW);
         }}
       />
       <Subtitle>Výška</Subtitle>
       <MyTextInput
         placeholder="Výška v cm"
         value={height}
-        onChangeText={text => {
-          setHeight(text);
+        onChangeText={textH => {
+          setHeight(textH);
         }}
       />
       <Subtitle>Datum</Subtitle>

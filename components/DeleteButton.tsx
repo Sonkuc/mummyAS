@@ -1,9 +1,10 @@
+import { Child } from "@/components/storage/SaveChildren";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import { Alert, Pressable, Text } from "react-native";
 
 type Props = {
-  type: "child" | "milestone" | "word"; // rozšiř podle potřeby
+  type: "child" | "milestone" | "word" | "wh"; // rozšiř podle potřeby
   index: number;
   onDeleteSuccess?: () => void;
 };
@@ -11,7 +12,6 @@ type Props = {
 export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
   const router = useRouter();
   const {
-    selectedChild,
     selectedChildIndex,
     setSelectedChildIndex,
     allChildren,
@@ -20,31 +20,51 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
 
   const handleDelete = async () => {
     Alert.alert(
-    "Smazat",
-    "Opravdu chceš tento záznam odstranit?",
-    [
-      { text: "Zrušit", style: "cancel" },
-      {
-        text: "Smazat",
-        style: "destructive",
-        onPress: async () => {
-           try {
+      "Smazat",
+      "Opravdu chceš tento záznam odstranit?",
+      [
+        { text: "Zrušit", style: "cancel" },
+        {
+          text: "Smazat",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Pokud mažu celé dítě
               if (type === "child") {
                 const updated = allChildren.filter((_, i) => i !== index);
                 await saveAllChildren(updated);
 
-                // Pokud se smazal právě vybraný index, změň výběr
                 if (selectedChildIndex === index) {
                   await setSelectedChildIndex(updated.length > 0 ? 0 : -1);
                 }
 
-                router.replace("/"); // přesměrování domů
+                router.replace("/");
+                alert("Dítě bylo smazáno.");
+                return;
               }
 
-              if (type === "milestone" && selectedChildIndex !== null) {
+              // Typy polí na dítěti
+              const fieldMap = {
+                milestone: "milestones",
+                word: "words",
+                wh: "whs",
+              } as const;
+
+              type FieldType = keyof typeof fieldMap; // "milestone" | "word" | "wh"
+              type FieldKey = typeof fieldMap[FieldType]; // "milestones" | "words" | "whs"
+
+              const fieldKey = fieldMap[type as FieldType] as FieldKey;
+
+              if (selectedChildIndex !== null && fieldKey) {
                 const selected = allChildren[selectedChildIndex];
-                const updatedMilestones = (selected.milestones || []).filter((_, i) => i !== index);
-                const updatedChild = { ...selected, milestones: updatedMilestones };
+                const currentArray = (selected[fieldKey] ?? []) as any[];
+
+                const updatedArray = currentArray.filter((_, i) => i !== index);
+
+                const updatedChild: Child = {
+                  ...selected,
+                  [fieldKey]: updatedArray,
+                };
 
                 const updatedAll = allChildren.map((child, i) =>
                   i === selectedChildIndex ? updatedChild : child
@@ -52,22 +72,8 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
 
                 await saveAllChildren(updatedAll);
                 onDeleteSuccess?.();
+                alert("Záznam byl smazán.");
               }
-              
-              if (type === "word" && selectedChildIndex !== null) {
-                const selected = allChildren[selectedChildIndex];
-                const updatedWords = (selected.words || []).filter((_, i) => i !== index);
-                const updatedChild = { ...selected, words: updatedWords };
-              
-                const updatedAll = allChildren.map((child, i) =>
-                  i === selectedChildIndex ? updatedChild : child
-                );
-             
-                await saveAllChildren(updatedAll);
-                onDeleteSuccess?.();
-              }
-
-              alert("Záznam byl smazán.");
             } catch (err) {
               console.error("Chyba při mazání:", err);
               alert("Chyba při mazání záznamu.");
@@ -80,7 +86,10 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
   };
 
   return (
-    <Pressable onPress={handleDelete}style={{ alignSelf: "flex-end", justifyContent: "center", marginBottom: -55 }}>
+    <Pressable
+      onPress={handleDelete}
+      style={{ alignSelf: "flex-end", justifyContent: "center", marginBottom: -55 }}
+    >
       <Text style={{ fontSize: 30 }}>🚮</Text>
     </Pressable>
   );
