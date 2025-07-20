@@ -9,13 +9,16 @@ import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 
 export default function WeightHeightAdd() {
   const router = useRouter();
-  const [weight, setWeight] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
+  const [head, setHead] = useState("");
+  const [foot, setFoot] = useState("");
+  const [clothes, setClothes] = useState("");
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
   
   const formatDate = (isoDate: string) => {
@@ -26,18 +29,30 @@ export default function WeightHeightAdd() {
   const handleAdd = () => {
     if (selectedChildIndex === null) return;
 
-    const newWh: WeightHeight = {
-      date: formatDate(date),
-      weight,
-      height,
-    };
-
     const updatedChildren = [...allChildren];
     const child = updatedChildren[selectedChildIndex];
     const existingWh = child.wh || [];
 
-    child.wh = [...existingWh, newWh];
+    const formattedDate = formatDate(date);
+      const dateExists = existingWh.some(
+        (wh) => wh.date === formattedDate
+      );
+        
+      if (dateExists) {
+        Alert.alert("Záznam pro toto datum už existuje.");
+        return;
+      }
 
+    const newWh: WeightHeight = {
+      date: formatDate(date),
+      weight,
+      height,
+      head,
+      foot,
+      clothes,
+    };
+  
+    child.wh = [...existingWh, newWh];
     saveAllChildren(updatedChildren);
 
     router.replace("/actions/weight-height");
@@ -49,6 +64,20 @@ export default function WeightHeightAdd() {
         <CustomHeader />
       </View>
       <Title>Přidat záznam</Title>
+      <Subtitle>Datum</Subtitle>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+        <View style={{ width: "80%" }}>
+          <MyTextInput
+                  placeholder="YYYY-MM-DD"
+                  value={date}
+                  onChangeText={setDate}
+          />
+        </View>
+        <DateSelector
+          date={new Date(date)}
+          onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
+        />
+      </View>
       <Subtitle>Váha</Subtitle>
       <MyTextInput
         placeholder="Váha v kg"
@@ -65,20 +94,30 @@ export default function WeightHeightAdd() {
           setHeight(textH);
         }}
       />
-      <Subtitle>Datum</Subtitle>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
-        <View style={{ width: "80%" }}>
-          <MyTextInput
-                  placeholder="YYYY-MM-DD"
-                  value={date}
-                  onChangeText={setDate}
-          />
-        </View>
-        <DateSelector
-          date={new Date(date)}
-          onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
-        />
-      </View>
+      <Subtitle>Obvod hlavy</Subtitle>
+      <MyTextInput
+        placeholder="Obvod v cm"
+        value={head}
+        onChangeText={textHead => {
+          setHead(textHead);
+        }}
+      />
+      <Subtitle>Velikost chodidla</Subtitle>
+      <MyTextInput
+        placeholder="Velikost nohy"
+        value={foot}
+        onChangeText={textF => {
+          setFoot(textF);
+        }}
+      />
+      <Subtitle>Velikost oblečení</Subtitle>
+      <MyTextInput
+        placeholder="Konfekční velikost"
+        value={clothes}
+        onChangeText={textC => {
+          setClothes(textC);
+        }}
+      />
       <CheckButton onPress = {handleAdd} />
     </MainScreenContainer>
   );

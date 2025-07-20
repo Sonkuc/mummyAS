@@ -10,7 +10,7 @@ import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 
 export default function WeightHeightEdit() {
   const { whIndex } = useLocalSearchParams();
@@ -18,6 +18,9 @@ export default function WeightHeightEdit() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
+  const [head, setHead] = useState("");
+  const [foot, setFoot] = useState("");
+    const [clothes, setClothes] = useState("");
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
 
   const formatDate = (isoDate: string) => {
@@ -42,23 +45,39 @@ export default function WeightHeightEdit() {
         setDate(toIsoDate(WeightHeight.date));
         setWeight(WeightHeight.weight || "");
         setHeight(WeightHeight.height || "");
+        setHead(WeightHeight.head || "");
+        setFoot(WeightHeight.foot || "");
+        setClothes(WeightHeight.clothes || "");
       }
     }
   }, [whIndex, selectedChildIndex, allChildren]);
 
   const handleSave = () => {
     if (selectedChildIndex === null || selectedChildIndex === undefined) return;
-
-    const updatedWh: WeightHeight = {
-      date: formatDate(date),
-      weight,
-      height,
-    };
     
     const idx = Number(whIndex);
     const updatedChildren = [...allChildren];
     const child = updatedChildren[selectedChildIndex];
     const existingWh = child.wh || [];
+    
+    const formattedDate = formatDate(date);
+      const dateExists = existingWh.some(
+        (wh, i) => i !== idx && wh.date === formattedDate
+      );
+            
+        if (dateExists) {
+          Alert.alert("Záznam pro toto datum už existuje.");
+          return;
+        }
+
+    const updatedWh: WeightHeight = {
+      date: formatDate(date),
+      weight,
+      height,
+      head,
+      foot,
+      clothes,
+    };
 
     existingWh[idx] = updatedWh;
     child.wh = existingWh;
@@ -79,6 +98,20 @@ export default function WeightHeightEdit() {
         </CustomHeader>
       </View>
       <Title>Upravit záznam</Title>
+      <Subtitle>Datum</Subtitle>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+        <View style={{ width: "80%" }}>
+          <MyTextInput
+                  placeholder="YYYY-MM-DD"
+                  value={date}
+                  onChangeText={setDate}
+          />
+        </View>
+        <DateSelector
+          date={new Date(date)}
+          onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
+        />
+      </View>
       <Subtitle>Váha</Subtitle>
       <MyTextInput
         placeholder="Váha v kg"
@@ -95,20 +128,30 @@ export default function WeightHeightEdit() {
           setHeight(textH);
         }}
       />
-      <Subtitle>Datum</Subtitle>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
-        <View style={{ width: "80%" }}>
-          <MyTextInput
-                  placeholder="YYYY-MM-DD"
-                  value={date}
-                  onChangeText={setDate}
-          />
-        </View>
-        <DateSelector
-          date={new Date(date)}
-          onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
+      <Subtitle>Obvod hlavy</Subtitle>
+      <MyTextInput
+        placeholder="Obvod v cm"
+        value={head}
+        onChangeText={textHead => {
+          setHead(textHead);
+        }}
+      />
+      <Subtitle>Velikost chodidla</Subtitle>
+        <MyTextInput
+          placeholder="Velikost nohy"
+          value={foot}
+          onChangeText={textF => {
+            setFoot(textF);
+          }}
         />
-      </View>
+        <Subtitle>Velikost oblečení</Subtitle>
+        <MyTextInput
+          placeholder="Konfekční velikost"
+          value={clothes}
+          onChangeText={textC => {
+            setClothes(textC);
+          }}
+        />    
       <CheckButton onPress = {handleSave} />
     </MainScreenContainer>
   );

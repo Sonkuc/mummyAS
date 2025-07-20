@@ -43,7 +43,7 @@ export default function SpeakingEdit() {
 
   const handleSave = () => {
     if (selectedChildIndex === null || wordIndex === undefined) return;
-
+    
     const updatedWord = {
       name: name.trim(),
       entries: entries.filter(e => e.date.trim() !== ""),
@@ -76,6 +76,9 @@ export default function SpeakingEdit() {
     setNewNote("");
   };
 
+  const sortedEntries = [...entries].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
   return (
     <MainScreenContainer>
       <View style={{ marginBottom: -25 }}>
@@ -87,8 +90,7 @@ export default function SpeakingEdit() {
         </CustomHeader>
       </View>
       <Title>Upravit: {name}</Title>
-
-       {entries.map((entry, index) => (
+      {sortedEntries.map((entry, index) => (
         <View key={index} style={styles.entryRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.entryText}>Datum: {formatDate(entry.date)}</Text>

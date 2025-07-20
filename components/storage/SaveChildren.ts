@@ -10,6 +10,9 @@ export interface WeightHeight {
   date: string;
   weight?: string;
   height?: string;
+  head?: string;
+  foot?: string;
+  clothes?: string;
 };
 
 export type Word = {

@@ -47,7 +47,7 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
               const fieldMap = {
                 milestone: "milestones",
                 word: "words",
-                wh: "whs",
+                wh: "wh",
               } as const;
 
               type FieldType = keyof typeof fieldMap; // "milestone" | "word" | "wh"
@@ -57,10 +57,11 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
 
               if (selectedChildIndex !== null && fieldKey) {
                 const selected = allChildren[selectedChildIndex];
+                
                 const currentArray = (selected[fieldKey] ?? []) as any[];
 
                 const updatedArray = currentArray.filter((_, i) => i !== index);
-
+                
                 const updatedChild: Child = {
                   ...selected,
                   [fieldKey]: updatedArray,
@@ -75,7 +76,6 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
                 alert("Záznam byl smazán.");
               }
             } catch (err) {
-              console.error("Chyba při mazání:", err);
               alert("Chyba při mazání záznamu.");
             }
           },

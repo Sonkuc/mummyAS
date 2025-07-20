@@ -20,13 +20,13 @@ export default function WeightHeight() {
   };
 
   const sortedNotes = [...(selectedChild?.wh || [])].sort(
-  (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
+    (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
   );
 
   function getLastValue(
-    arr: { date: string; weight?: string; height?: string }[],
+    arr: { date: string; weight?: string; height?: string; head?: string }[],
     currentDate: string,
-    field: "weight" | "height"
+    field: "weight" | "height" | "head"
   ) {
     const currentTime = parseDate(currentDate).getTime();
 
@@ -35,98 +35,105 @@ export default function WeightHeight() {
         (item) =>
           parseDate(item.date).getTime() < currentTime &&
           item[field] &&
-          item[field].trim() !== ""
+          item[field]?.trim() !== ""
       )
-      .sort(
-        (a, b) =>
-          parseDate(b.date).getTime() - parseDate(a.date).getTime()
-      )[0];
+      .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime())[0]; // ⬅️ RETURN výsledku
 }
 
   function renderDifference(
-    arr: { date: string; weight?: string; height?: string }[],
+    arr: { date: string; weight?: string; height?: string; head?: string }[],
     currentDate: string,
-    field: "weight" | "height",
+    field: "weight" | "height" | "head",
     unit: string
   ) {
+    const currentEntry = arr.find(
+      (item) =>
+        item.date === currentDate &&
+        item[field] &&
+        item[field].trim() !== ""
+    );
+    if (!currentEntry || !currentEntry[field] || currentEntry[field].trim() === "") {
+      return null;
+    }
+
     const last = getLastValue(arr, currentDate, field);
     if (!last) return null;
 
-    const prev = parseFloat((last[field] ?? "").replace(",", "."));
-    const current = parseFloat(
-      arr.find((item) => item.date === currentDate)?.[field]?.replace(",", ".") ?? ""
-    );
-
+    const prev = parseFloat(last[field]!.replace(",", "."));
+    const current = parseFloat(currentEntry[field]!.replace(",", "."));
     if (isNaN(prev) || isNaN(current)) return null;
 
     const diff = current - prev;
     const date1 = parseDate(last.date);
     const date2 = parseDate(currentDate);
-    const timeDiff = date2.getTime() - date1.getTime();
-    const daysDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.round((date2.getTime() - date1.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (diff === 0) return `nezměněna ${daysDiff} ${daysDiff === 1 ? "den" : "dní"}`;
+    if (diff === 0) return `nezměněna ${daysDiff} ${daysDiff === 1 ? "den" 
+        : daysDiff >= 2 && daysDiff <= 4 ? "dny"
+        : "dní"}`;
 
     return (
       <Text style={{ color: diff > 0 ? "green" : "red" }}>
         {diff > 0 ? "+" : ""}
-        {(diff.toFixed(1)).replace(".", ",")} {unit} 
-        {" za"} {daysDiff} {" "}{daysDiff === 1 ? "den" : "dní"} 
+        {(diff.toFixed(1)).replace(".", ",")} {unit} za {daysDiff}{" "}
+        {daysDiff === 1 ? "den" 
+        : daysDiff >= 2 && daysDiff <= 4 ? "dny"
+        : "dní"}
       </Text>
     );
   }
 
-  return (
+   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/weight-height-add" />
       </CustomHeader>
-      <Title style={{marginTop: 40}}>Jak rostu</Title>
+      <Title style={{ marginTop: 40 }}>Jak rostu</Title>
       <View>
-         {sortedNotes.length > 0 ? (
-        sortedNotes
-          .filter((wh) => wh.weight?.trim() || wh.height?.trim())
-          .map((wh) => {
-            const originalIndex = selectedChild?.wh?.findIndex(
-              (item) =>
-                item.date === wh.date &&
-                item.weight === wh.weight &&
-                item.height === wh.height
-            );
+        {sortedNotes.map((wh) => {
+          const originalIndex =
+            selectedChild?.wh?.findIndex((item) => item.date === wh.date) ?? -1;
 
-            return (
-              <View key={originalIndex} style={styles.whRow}>
-                {isEditMode && (
-                  <EditPencil
-                    targetPath={`/actions/weight-height-edit?whIndex=${originalIndex}`}
-                    color="#bf5f82"
-                  />
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.item}> {wh.date} </Text>
-                  {wh.weight ? (
-                    <Text style={styles.note}>
-                      ⚖️ {wh.weight} kg{" "}
-                      {renderDifference(sortedNotes, wh.date, "weight", "kg")}
-                    </Text>
-                  ) : null}
-                  {wh.height ? (
-                    <Text style={styles.note}>
-                      📏 {wh.height} cm{" "}
-                      {renderDifference(sortedNotes, wh.date, "height", "cm")}
-                    </Text>
-                  ) : null}
-                </View>
+          return (
+            <View key={wh.date} style={styles.whRow}>
+              {isEditMode && originalIndex !== -1 && (
+                <EditPencil
+                  targetPath={`/actions/weight-height-edit?whIndex=${originalIndex}`}
+                  color="#bf5f82"
+                />
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.item}> {wh.date} </Text>
+                {wh.weight ? (
+                  <Text style={styles.note}>
+                    ⚖️ {wh.weight} kg {renderDifference(sortedNotes, wh.date, "weight", "kg")}
+                  </Text>
+                ) : null}
+                {wh.height ? (
+                  <Text style={styles.note}>
+                    📏 {wh.height} cm {renderDifference(sortedNotes, wh.date, "height", "cm")}
+                  </Text>
+                ) : null}
+                {wh.head ? (
+                  <Text style={styles.note}>
+                    👶 {wh.head} cm {renderDifference(sortedNotes, wh.date, "head", "cm")}
+                  </Text>
+                ) : null}
+                {wh.clothes ? (
+                  <Text style={styles.note}>👕 {wh.clothes}</Text>
+                ) : null}
+                {wh.foot ? (
+                  <Text style={styles.note}>🦶 {wh.foot}</Text>
+                ) : null}
               </View>
-            );
-          })
-        ) : (
-      <Subtitle style={{ textAlign: "center" }}>
-        Žádné záznamy zatím nebyly uloženy.
-      </Subtitle>
-      )}
+            </View>
+          );
+        })}
+          <Subtitle style={{ textAlign: "center" }}>
+            Žádné záznamy zatím nebyly uloženy.
+          </Subtitle>
       </View>
-      <EditPencil 
+      <EditPencil
         onPress={() => setIsEditMode(!isEditMode)}
         color="white"
         circle
