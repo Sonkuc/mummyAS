@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { v4 as uuidv4 } from "uuid";
 
 export interface Milestone {
   name: string;
@@ -23,6 +24,7 @@ export type Word = {
 export type ToothDates = Record<string, string>;
 
 export interface Child {
+  id: string;
   name: string;
   sex: string;
   birthDate: string;
@@ -44,9 +46,14 @@ export const saveChildren = async (newChild: Child): Promise<boolean> => {
     // Načti existující záznamy (pokud žádné nejsou → prázdné pole)
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     const kids: Child[] = raw ? JSON.parse(raw) : [];
+    
+    const newChildWithId: Child = {
+      ...newChild,
+      id: uuidv4(),
+    };
 
     // Přidej nové dítě
-    kids.push(newChild);
+    kids.push(newChildWithId);
 
     // Ulož zpět
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(kids));

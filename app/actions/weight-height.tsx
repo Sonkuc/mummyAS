@@ -1,18 +1,28 @@
 import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
+import FilterButton from "@/components/filterButton";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 export default function WeightHeight() {
   const { selectedChild } = useChild();
   const router = useRouter();
-  const [isEditMode, setIsEditMode] = React.useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [filterMode, setFilterMode] = useState(false);
+  const [filters, setFilters] = useState<("weight" | "height" | "head" | "clothes" | "foot")[]>([
+  "weight",
+  "height",
+  "head",
+  "clothes",
+  "foot",
+]);
 
   const parseDate = (dateStr: string) => {
     const [day, month, year] = dateStr.split(".");
@@ -83,6 +93,48 @@ export default function WeightHeight() {
     );
   }
 
+  useEffect(() => {
+    if (!selectedChild) return;
+
+    const FILTERS_KEY = `filters-${selectedChild.id}`;
+    const FILTER_MODE_KEY = `filterMode-${selectedChild.id}`;
+
+    const loadFilterSettings  = async () => {
+      try {
+        const storedFilterMode  = await AsyncStorage.getItem(FILTER_MODE_KEY);
+        if (storedFilterMode  !== null) {
+          setFilterMode(JSON.parse(storedFilterMode ));
+        }
+
+        const storedFilters = await AsyncStorage.getItem(FILTERS_KEY);
+        if (storedFilters !== null) {
+          setFilters(JSON.parse(storedFilters));
+        }
+
+      } catch (e) {
+        console.error("Chyba při načítání filtrů:", e);
+      }
+    };
+
+    loadFilterSettings();
+  }, [selectedChild]);
+
+  useEffect(() => {
+    if (!selectedChild) return;
+
+    const FILTERS_KEY = `filters-${selectedChild.id}`;
+
+    const saveFilters = async () => {
+      try {
+        await AsyncStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+      } catch (e) {
+        console.error("Chyba při ukládání filtrů:", e);
+      }
+    };
+
+    saveFilters();
+  }, [filters]);
+
    return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions">
@@ -90,9 +142,21 @@ export default function WeightHeight() {
       </CustomHeader>
       <Title style={{ marginTop: 40 }}>Jak rostu</Title>
       <View>
-        {sortedNotes.map((wh) => {
+        <FilterButton selected={filters} onChange={setFilters} />
+      </View>
+      <View>
+        {sortedNotes.length > 0 ? (
+        sortedNotes.map((wh) => {
           const originalIndex =
             selectedChild?.wh?.findIndex((item) => item.date === wh.date) ?? -1;
+          
+          const isVisible =
+            (filters.includes("weight") && wh.weight) ||
+            (filters.includes("height") && wh.height) ||
+            (filters.includes("head") && wh.head) ||
+            (filters.includes("clothes") && wh.clothes) ||
+            (filters.includes("foot") && wh.foot);
+          if (!isVisible) return null;
 
           return (
             <View key={wh.date} style={styles.whRow}>
@@ -104,34 +168,36 @@ export default function WeightHeight() {
               )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.item}> {wh.date} </Text>
-                {wh.weight ? (
+                {filters.includes("weight") && wh.weight ? (
                   <Text style={styles.note}>
                     ⚖️ {wh.weight} kg {renderDifference(sortedNotes, wh.date, "weight", "kg")}
                   </Text>
                 ) : null}
-                {wh.height ? (
+                {filters.includes("height") && wh.height ? (
                   <Text style={styles.note}>
                     📏 {wh.height} cm {renderDifference(sortedNotes, wh.date, "height", "cm")}
                   </Text>
                 ) : null}
-                {wh.head ? (
+                {filters.includes("head") && wh.head ? (
                   <Text style={styles.note}>
                     👶 {wh.head} cm {renderDifference(sortedNotes, wh.date, "head", "cm")}
                   </Text>
                 ) : null}
-                {wh.clothes ? (
+                {filters.includes("clothes") && wh.clothes ? (
                   <Text style={styles.note}>👕 {wh.clothes}</Text>
                 ) : null}
-                {wh.foot ? (
+                {filters.includes("foot") && wh.foot ? (
                   <Text style={styles.note}>🦶 {wh.foot}</Text>
                 ) : null}
               </View>
             </View>
           );
-        })}
+        })
+      ) : (
           <Subtitle style={{ textAlign: "center" }}>
             Žádné záznamy zatím nebyly uloženy.
           </Subtitle>
+      )}
       </View>
       <EditPencil
         onPress={() => setIsEditMode(!isEditMode)}

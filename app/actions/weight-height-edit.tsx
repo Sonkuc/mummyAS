@@ -2,12 +2,14 @@ import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
+import HideButton from "@/components/HideButton";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import { WeightHeight } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
@@ -20,8 +22,10 @@ export default function WeightHeightEdit() {
   const [height, setHeight] = useState("");
   const [head, setHead] = useState("");
   const [foot, setFoot] = useState("");
-    const [clothes, setClothes] = useState("");
+  const [clothes, setClothes] = useState("");
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
+  const [hideMode, setHideMode] = useState(false);
+  const HIDE_MODE_KEY = "hideMode";
 
   const formatDate = (isoDate: string) => {
     const [year, month, day] = isoDate.split("-");
@@ -32,6 +36,31 @@ export default function WeightHeightEdit() {
     const [day, month, year] = czDate.split(".");
     return `${year}-${month}-${day}`;
   };
+
+    useEffect(() => {
+    const loadHideMode = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(HIDE_MODE_KEY);
+        if (stored !== null) {
+          setHideMode(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error("Chyba při načítání hideMode:", e);
+      }
+    };
+
+    loadHideMode();
+  }, []);
+
+    const toggleHideMode = async () => {
+      const newValue = !hideMode;
+      setHideMode(newValue);
+      try {
+        await AsyncStorage.setItem(HIDE_MODE_KEY, JSON.stringify(newValue));
+      } catch (e) {
+        console.error("Chyba při ukládání hideMode:", e);
+      }
+    };
 
   useEffect(() => {
     if (
@@ -128,31 +157,39 @@ export default function WeightHeightEdit() {
           setHeight(textH);
         }}
       />
-      <Subtitle>Obvod hlavy</Subtitle>
-      <MyTextInput
-        placeholder="Obvod v cm"
-        value={head}
-        onChangeText={textHead => {
-          setHead(textHead);
-        }}
-      />
-      <Subtitle>Velikost chodidla</Subtitle>
-        <MyTextInput
-          placeholder="Velikost nohy"
-          value={foot}
-          onChangeText={textF => {
-            setFoot(textF);
-          }}
-        />
-        <Subtitle>Velikost oblečení</Subtitle>
-        <MyTextInput
-          placeholder="Konfekční velikost"
-          value={clothes}
-          onChangeText={textC => {
-            setClothes(textC);
-          }}
-        />    
+      {!hideMode && (
+        <>
+          <Subtitle>Obvod hlavy</Subtitle>
+          <MyTextInput
+            placeholder="Obvod v cm"
+            value={head}
+            onChangeText={textHead => {
+              setHead(textHead);
+            }}
+          />
+          <Subtitle>Velikost chodidla</Subtitle>
+          <MyTextInput
+            placeholder="Velikost nohy"
+            value={foot}
+            onChangeText={textF => {
+              setFoot(textF);
+            }}
+          />
+          <Subtitle>Velikost oblečení</Subtitle>
+          <MyTextInput
+            placeholder="Konfekční velikost"
+            value={clothes}
+            onChangeText={textC => {
+              setClothes(textC);
+            }}
+          />
+        </>
+      )}    
       <CheckButton onPress = {handleSave} />
+      <HideButton 
+                  hideMode={hideMode}
+                  onPress={toggleHideMode}
+      />
     </MainScreenContainer>
   );
 }
