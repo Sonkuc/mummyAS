@@ -1,0 +1,16 @@
+export const OTHER = [
+  { month: 7, label: "Ovocný čaj" },
+  { month: 7, label: "Bylinný čaj" },
+  { month: 9, label: "Bílý jogurt" },
+  { month: 9, label: "Neslazené jogurtové nápoje" },
+  { month: 9, label: "Kefír" },
+  { month: 9, label: "Zakysaná smetana" },
+  { month: 11, label: "Ořechy" },
+  { month: 11, label: "Smetana" },
+  { month: 13, label: "Sýr" },
+  { month: 13, label: "Mléko" },
+  { month: 13, label: "Ovocný jogurt" },
+  { month: 13, label: "Tvaroh" },
+  { month: 13, label: "Neslazená minerální voda" },
+  { month: 13, label: "Džus" },
+]

@@ -75,9 +75,16 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 2,
     borderColor: "transparent",
+    width: 70,
+    height: 90,
   },
   avatarSelected: { borderColor: "#a45b8f" },
-  avatarImg: { width: 70, height: 70 },
+  avatarImg:  {
+    width: "100%",
+    height: "100%",
+    borderRadius: 50, 
+    resizeMode: "cover",
+  },
   subtitle: {
     fontSize: 16,
     fontWeight: "500",

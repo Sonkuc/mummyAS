@@ -1,7 +1,7 @@
 import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
-import FilterButton from "@/components/filterButton";
+import FilterButton from "@/components/FilterButton";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -15,7 +15,6 @@ export default function WeightHeight() {
   const { selectedChild } = useChild();
   const router = useRouter();
   const [isEditMode, setIsEditMode] = useState(false);
-  const [filterMode, setFilterMode] = useState(false);
   const [filters, setFilters] = useState<("weight" | "height" | "head" | "clothes" | "foot")[]>([
   "weight",
   "height",
@@ -97,24 +96,22 @@ export default function WeightHeight() {
     if (!selectedChild) return;
 
     const FILTERS_KEY = `filters-${selectedChild.id}`;
-    const FILTER_MODE_KEY = `filterMode-${selectedChild.id}`;
 
     const loadFilterSettings  = async () => {
       try {
-        const storedFilterMode  = await AsyncStorage.getItem(FILTER_MODE_KEY);
-        if (storedFilterMode  !== null) {
-          setFilterMode(JSON.parse(storedFilterMode ));
-        }
-
         const storedFilters = await AsyncStorage.getItem(FILTERS_KEY);
         if (storedFilters !== null) {
           setFilters(JSON.parse(storedFilters));
-        }
+
+      console.log("Načtené filters:", storedFilters);}
 
       } catch (e) {
         console.error("Chyba při načítání filtrů:", e);
       }
+      
+
     };
+
 
     loadFilterSettings();
   }, [selectedChild]);
@@ -127,6 +124,8 @@ export default function WeightHeight() {
     const saveFilters = async () => {
       try {
         await AsyncStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+      console.log("Ukládám filters:", filters);
+
       } catch (e) {
         console.error("Chyba při ukládání filtrů:", e);
       }

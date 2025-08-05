@@ -9,7 +9,6 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Teeth() {
   const [selectedTooth, setSelectedTooth] = useState<null | string>(null);
-  const [dates, setDates] = useState<Record<string, string>>({});
   const { selectedChild, selectedChildIndex, allChildren, saveAllChildren } = useChild();
 
   const teeth = [

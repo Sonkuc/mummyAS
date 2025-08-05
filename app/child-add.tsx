@@ -11,36 +11,64 @@ import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import uuid from "react-native-uuid";
 
 export default function ChildAdd() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
   const [birthDate, setBirthDate] = useState(new Date());
-  const [show, setShow] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const { saveAllChildren, allChildren } = useChild();
+  const { saveAllChildren, allChildren, setSelectedChildIndex } = useChild();
+  const anonymPicture = require("../assets/images/avatars/avatarN0.jpg");
 
   const handleSave = async () => {
-  if (!name || !sex || !birthDate) {
-    alert("Vyplň všechna pole.");
+    if (!name.trim() || !sex || !(birthDate instanceof Date) || isNaN(birthDate.getTime())) {
+      alert("Vyplň všechna pole.");
     return;
+    }
+
+    const newDate = birthDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const exists = allChildren.some(c => 
+      c.name.toLowerCase() === name.toLowerCase() && 
+      c.birthDate.slice(0, 10) === newDate
+    );
+    if (exists) {
+      alert("Toto dítě už je přidáno.");
+      return;
   }
 
   const newChild = {
+    id: uuid.v4() as string,
     name,
     sex,
     birthDate: birthDate.toISOString(),
-    photo: photoUri || "",
+    photo: photoUri || Image.resolveAssetSource(anonymPicture).uri,
+    milestones: [],
+    words: [],
+    teethDates: {},
+    wh: [],
   };
 
-  const saved = await saveChildren(newChild);
+   try {
+    const saved = await saveChildren(newChild);
+    
+    if (!saved) {
+      alert("Chyba při ukládání.");
+      return;
+    }
 
-  if (saved) {
-    await saveAllChildren([...allChildren, newChild]);
+    const updatedChildren = [...allChildren, newChild];
+    await saveAllChildren(updatedChildren);
+
+    const newIndex = updatedChildren.findIndex((child) => child.id === newChild.id);
+    if (newIndex !== -1) {
+      await setSelectedChildIndex(newIndex);
+    }
+
     router.replace("/");
-  } else {
-    alert("Chyba při ukládání.");
+  } catch (error) {
+    alert("Nastala neočekávaná chyba při ukládání.");
   }
 };
 
@@ -106,7 +134,7 @@ export default function ChildAdd() {
           source={
             typeof photoUri === "string"
               ? { uri: photoUri }
-              : photoUri // když je to asset (require)
+              : anonymPicture
           }
           style={{
             width: 120,
@@ -117,7 +145,7 @@ export default function ChildAdd() {
           }}
         />
       )}
-      <CheckButton onPress = {handleSave} />
+      <CheckButton onPress = {handleSave} /> 
 
     </MainScreenContainer>
   );

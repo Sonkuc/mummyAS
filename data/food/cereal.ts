@@ -1,0 +1,17 @@
+export const CEREAL = [
+  { month: 5, label: "Amarant" },
+  { month: 5, label: "Kukuřice" },
+  { month: 5, label: "Oves" },
+  { month: 5, label: "Pohanka" },
+  { month: 5, label: "Pšenice" },
+  { month: 5, label: "Quinoa" },
+  { month: 5, label: "Rýže" },
+  { month: 7, label: "Bulgur" },
+  { month: 7, label: "Čirok" },
+  { month: 7, label: "Jáhly" },
+  { month: 7, label: "Ječmen" },
+  { month: 7, label: "Kuskus" },
+  { month: 7, label: "Žito" },
+  { month: 7, label: "" },
+  { month: 7, label: "Kuskus" },
+]

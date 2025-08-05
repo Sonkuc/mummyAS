@@ -3,11 +3,11 @@ import MainScreenContainer from "@/components/MainScreenContainer";
 import Title from "@/components/Title";
 import React from "react";
 
-export default function Food() {
+export default function Sleep() {
   return (
     <MainScreenContainer>
-      <CustomHeader backTargetPath="/actions"/>
-      <Title>Jídlo</Title>
+      <CustomHeader backTargetPath="/actions/food"/>
+      <Title>Maso</Title>
     </MainScreenContainer>
   );
 }

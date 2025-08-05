@@ -1,14 +1,14 @@
 import { FontAwesome } from "@expo/vector-icons";
-import { GestureResponderEvent, StyleSheet, TouchableOpacity } from "react-native";
+import { StyleSheet, TouchableOpacity } from "react-native";
 
 type Props = {
-  onPress: (event: GestureResponderEvent) => void;
+  onPress: () => void;
 };
 
 export default function CheckButton({ onPress }: Props){ 
 
   return (
-    <TouchableOpacity onPress={onPress} style={styles.checkButton} activeOpacity={0.7}>
+    <TouchableOpacity onPress={() => onPress()} style={styles.checkButton} activeOpacity={0.7}>
        <FontAwesome name="check" size={40} color="#rgb(7, 208, 48)" />
     </TouchableOpacity>
   );

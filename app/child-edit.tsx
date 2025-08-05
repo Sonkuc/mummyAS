@@ -19,13 +19,12 @@ export default function ChildEdit() {
   const childIdx = selectedChildIndex;
   const isValidIndex = childIdx !== null && childIdx >= 0 && childIdx < allChildren.length;
 
-
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
   const [birthDate, setBirthDate] = useState(new Date());
   const [show, setShow] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-
+  const anonymPicture = require("../assets/images/avatars/avatarN0.jpg");
 
   useEffect(() => {
     if (isValidIndex) {
@@ -38,18 +37,31 @@ export default function ChildEdit() {
   }, [childIdx, isValidIndex, allChildren]);
   
   const handleSave = async () => {
-  if (!name || !sex || !birthDate) {
-    alert("Vyplň všechna pole.");
-    return;
+    if (!name.trim() || !sex || !(birthDate instanceof Date) || isNaN(birthDate.getTime())) {
+      alert("Vyplň všechna pole.");
+      return;
+  }
+
+  const newDate = birthDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const exists = allChildren.some(c => 
+      c.name.toLowerCase() === name.toLowerCase() && 
+      c.birthDate.slice(0, 10) === newDate
+    );
+    if (exists) {
+      alert("Toto dítě už je přidáno.");
+      return;
   }
 
   if (childIdx !== null) {
   const updated = [...allChildren];
+  const oldChild = updated[childIdx];
+
   updated[childIdx] = {
+    ...oldChild,
     name: name,
     sex: sex,
     birthDate: birthDate.toISOString(),
-    photo: photoUri || "",
+    photo: photoUri || Image.resolveAssetSource(anonymPicture).uri,
   };
     await saveAllChildren(updated);
     alert("Údaje byly uloženy.");
@@ -124,7 +136,7 @@ export default function ChildEdit() {
                 source={
                   typeof photoUri === "string"
                     ? { uri: photoUri }
-                    : photoUri // když je to asset (require)
+                    : anonymPicture
                 }
                 style={{
                   width: 120,

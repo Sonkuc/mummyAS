@@ -47,7 +47,7 @@ export default function AddMilestone() {
 
       saveAllChildren(updatedChildren);
 
-      router.replace("/actions/speaking");
+      router.replace("/actions/milestone");
   };
 
   return (
