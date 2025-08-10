@@ -1,4 +1,4 @@
-export const VEGETABLE = [
+export const HERBS = [
   { month: 0, label: "Fenykl" },
   { month: 0, label: "Heřmánek" },
   { month: 0, label: "Kmín" },

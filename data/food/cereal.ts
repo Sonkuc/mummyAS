@@ -12,6 +12,4 @@ export const CEREAL = [
   { month: 7, label: "Ječmen" },
   { month: 7, label: "Kuskus" },
   { month: 7, label: "Žito" },
-  { month: 7, label: "" },
-  { month: 7, label: "Kuskus" },
 ]

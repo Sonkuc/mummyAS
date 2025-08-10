@@ -2,14 +2,15 @@ import { Search } from "lucide-react-native";
 import React, { useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-type Item = string | { label: string };
+type Item = { label: string; buttonStyle?: any } | string;
 
 type Props = {
   list: Item[];
   onSelect?: (item: string) => void;
+  getButtonStyle?: (item: Item) => any;
 };
 
-export default function LookUp({ list = [], onSelect }: Props) {
+export default function LookUp({ list = [], onSelect, getButtonStyle }: Props) {
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [query, setQuery] = useState("");
   
@@ -41,20 +42,25 @@ export default function LookUp({ list = [], onSelect }: Props) {
             autoFocus
           />
           {query.length > 0 && (
-            <FlatList
+            <FlatList nestedScrollEnabled
               data={filteredList}
               keyExtractor={(item, index) => `${getLabel(item)}-${index}`}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => {
-                    onSelect?.(getLabel(item));
-                    setIsSearchVisible(false);
-                    setQuery("");
-                  }}
-                >
-                  <Text style={styles.resultItem}>{getLabel(item)}</Text>
-                </Pressable>
-              )}
+              renderItem={({ item }) => {
+                const label = getLabel(item);
+                const style = getButtonStyle ? getButtonStyle(item) : {};
+                return (
+                  <Pressable
+                    style={[styles.resultButton, style]}
+                    onPress={() => {
+                      onSelect?.(label);
+                      setIsSearchVisible(false);
+                      setQuery("");
+                    }}
+                  >
+                    <Text style={styles.resultButtonText}>{label}</Text>
+                  </Pressable>
+                );
+              }}
             />
           )}
         </View>
@@ -79,7 +85,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   searchContainer: {
-    marginTop: 10,
+    position: "absolute",
+    top: 60, // trochu níž pod tlačítko lupy
+    right: 0,
     backgroundColor: "#fff",
     padding: 10,
     borderRadius: 10,
@@ -102,5 +110,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 4,
     color: "#444",
+  },
+  resultButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 8,
+    alignItems: "center",
+  },
+  resultButtonText: {
+    color: "#333",
+    fontSize: 16,
   },
 });

@@ -5,7 +5,7 @@ import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import React, { useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Teeth() {
   const [selectedTooth, setSelectedTooth] = useState<null | string>(null);
@@ -54,6 +54,21 @@ export default function Teeth() {
 
     await saveAllChildren(updatedChildren);
   };
+
+  const handleDateDelete = async () => {
+    if (selectedChildIndex === null || !selectedTooth) return;
+
+    const updatedChildren = [...allChildren];
+    const child = updatedChildren[selectedChildIndex];
+
+    const { [selectedTooth]: _, ...remainingToothDates } = child.teethDates || {};
+    updatedChildren[selectedChildIndex] = {
+      ...child,
+      teethDates: remainingToothDates,
+    };
+
+    await saveAllChildren(updatedChildren);
+    };
 
   return (
     <MainScreenContainer>
@@ -114,9 +129,15 @@ export default function Teeth() {
             />
           </View>
           {selectedChild?.teethDates?.[selectedTooth] && (
-            <Text style={styles.dateText}>
-              Datum prořezání: {new Date(selectedChild.teethDates[selectedTooth]).toLocaleDateString("cs-CZ")}
-            </Text>
+            <View style={styles.row}>
+              <Pressable style={{ justifyContent: "center", marginRight: 8 }} onPress={handleDateDelete}>
+                <Text style={{ fontSize: 14 }}>🚮</Text>
+              </Pressable>
+              <Text style={styles.dateText}>
+                Datum prořezání:{" "}
+                {new Date(selectedChild.teethDates[selectedTooth]).toLocaleDateString("cs-CZ")}
+              </Text>
+            </View>
           )}
         </View>
       )}
@@ -167,8 +188,12 @@ const styles = StyleSheet.create({
     color: "#993769",
   },
   dateText: {
-    marginTop: 10,
     color: "#993769",
     fontWeight: "500",
+    flexShrink: 1,
   },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+  }
 });

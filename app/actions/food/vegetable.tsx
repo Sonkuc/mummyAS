@@ -7,12 +7,12 @@ import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { VEGETABLE } from "@/data/food/vegetable";
 import React, { useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function Vegetable() {
   const [selectedFood, setSelectedFood] = useState<null | string>(null);
   const { selectedChild, selectedChildIndex, allChildren, saveAllChildren } = useChild();
-
+  
   const handleDateChange = async (foodLabel: string, date: Date) => {
     if (selectedChildIndex === null) return;
 
@@ -65,11 +65,24 @@ export default function Vegetable() {
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions/food">
-        <LookUp list={VEGETABLE}/>
+          <LookUp
+            list={VEGETABLE.map(item => ({
+              ...item,
+              buttonStyle: !!selectedChild?.foodDates?.[item.label]
+                ? styles.buttonIntroduced
+                : getChildAgeInMonths() >= item.month
+                ? styles.buttonSuggested
+                : styles.buttonFuture
+            }))}
+            getButtonStyle={(item) =>
+              typeof item === "string" ? {} : item.buttonStyle
+            }
+            onSelect={(label) => setSelectedFood(label)}
+          />
       </CustomHeader>
       <Title style={{marginTop: 40}}>Zelenina</Title>
       <Text style={styles.sectionTitle}> Zavedeno </Text>
-      <ScrollView contentContainerStyle={styles.sectionContainer}>
+      <View style={styles.sectionContainer}>
         {VEGETABLE.map((item, index) => {
           const isIntroduced = !!selectedChild?.foodDates?.[item.label];
           return isIntroduced && (
@@ -82,52 +95,54 @@ export default function Vegetable() {
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
       <Modal
         visible={!!selectedFood}
         transparent={true}
         animationType="slide"
       >
-        <View style={{
-          flex: 1,
-          justifyContent: "center",
-          backgroundColor: "rgba(0,0,0,0.3)",
-        }}>
-          <View style={styles.dateSelectorBox}>
-            <View style={styles.titleRow}>
-              <Subtitle style={{color:"#993769", marginTop: -10}}>
-                {selectedFood}
-              </Subtitle>
-              <DateSelector
-                date={
-                  selectedChild?.foodDates?.[selectedFood]
-                    ? new Date(selectedChild.foodDates[selectedFood])
-                    : new Date()
-                }
-                onChange={(date) => handleDateChange(selectedFood, date)}
-              />
-            </View>
-            {selectedChild?.foodDates?.[selectedFood] && (
-              <View style={styles.row}>
-                <Pressable
-                  onPress={handleDateDelete}
-                >
-                  <Text style={{ fontSize: 14 }}>🚮</Text>
-                </Pressable>
-                <Text style={styles.dateText}>
-                  Datum zavedení:{" "}
-                  {new Date(selectedChild.foodDates[selectedFood]).toLocaleDateString("cs-CZ")}
-                </Text>
+        {selectedFood && (
+          <View style={{
+            flex: 1,
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.3)",
+          }}>
+            <View style={styles.dateSelectorBox}>
+              <View style={styles.titleRow}>
+                <Subtitle style={{color:"#993769", marginTop: -10}}>
+                  {selectedFood}
+                </Subtitle>
+                <DateSelector
+                  date={
+                    selectedChild?.foodDates?.[selectedFood]
+                      ? new Date(selectedChild.foodDates[selectedFood])
+                      : new Date()
+                  }
+                  onChange={(date) => handleDateChange(selectedFood, date)}
+                />
               </View>
-            )}
-            <Pressable onPress={() => setSelectedFood(null)}>
-              <Text style={styles.closeText}>Zavřít</Text>
-            </Pressable>
+              {selectedChild?.foodDates?.[selectedFood] && (
+                <View style={styles.row}>
+                  <Pressable
+                    onPress={handleDateDelete}
+                  >
+                    <Text style={{ fontSize: 14 }}>🚮</Text>
+                  </Pressable>
+                  <Text style={styles.dateText}>
+                    Datum zavedení:{" "}
+                    {new Date(selectedChild.foodDates[selectedFood]).toLocaleDateString("cs-CZ")}
+                  </Text>
+                </View>
+              )}
+              <Pressable onPress={() => setSelectedFood(null)}>
+                <Text style={styles.closeText}>Zavřít</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
+        )}
       </Modal>
       <Text style={styles.sectionTitle}> Navrženo dle věku </Text>
-      <ScrollView contentContainerStyle={styles.sectionContainer}>
+      <View style={styles.sectionContainer}>
         {VEGETABLE.filter((item) => {
           const ageInMonths = getChildAgeInMonths();
           const isIntroduced = !!selectedChild?.foodDates?.[item.label];
@@ -142,9 +157,9 @@ export default function Vegetable() {
             <Text style={styles.buttonText}>{item.label}</Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
       <Text style={styles.sectionTitle}> Ostatní </Text>
-      <ScrollView contentContainerStyle={styles.sectionContainer}>
+      <View style={styles.sectionContainer}>
         {VEGETABLE.filter((item) => {
           const ageInMonths = getChildAgeInMonths();
           const isIntroduced = !!selectedChild?.foodDates?.[item.label];
@@ -159,7 +174,7 @@ export default function Vegetable() {
             <Text style={styles.buttonText}>{item.label}</Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
     </MainScreenContainer>
   );
 }

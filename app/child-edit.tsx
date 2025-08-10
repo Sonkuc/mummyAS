@@ -40,34 +40,46 @@ export default function ChildEdit() {
     if (!name.trim() || !sex || !(birthDate instanceof Date) || isNaN(birthDate.getTime())) {
       alert("Vyplň všechna pole.");
       return;
-  }
+    }
 
   const newDate = birthDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
-    const exists = allChildren.some(c => 
-      c.name.toLowerCase() === name.toLowerCase() && 
-      c.birthDate.slice(0, 10) === newDate
-    );
-    if (exists) {
-      alert("Toto dítě už je přidáno.");
-      return;
+    const existingIndex = allChildren.findIndex(c =>
+    c.name.toLowerCase() === name.toLowerCase() &&
+    c.birthDate.slice(0, 10) === newDate
+  );
+
+  const updated = [...allChildren];
+  const photoToSave = photoUri || Image.resolveAssetSource(anonymPicture).uri;
+
+  if (existingIndex !== -1) {
+    // Existující dítě najdu
+    // Pokud je to stejné dítě jako to, které upravujeme (indexy se shodují), tak updateju tam
+    // Pokud ne, updateju dítě na existujícím indexu (duplikát) - tím "přepíšu" existující
+    updated[existingIndex] = {
+      ...updated[existingIndex],
+      name: name,
+      sex: sex,
+      birthDate: birthDate.toISOString(),
+      photo: photoToSave,
+    };
+  } else if (childIdx !== null && childIdx >= 0 && childIdx < updated.length) {
+    // Jinak aktualizuju dítě podle vybraného indexu
+    updated[childIdx] = {
+      ...updated[childIdx],
+      name: name,
+      sex: sex,
+      birthDate: birthDate.toISOString(),
+      photo: photoToSave,
+    };
+  } else {
+    alert("Neplatný index dítěte.");
+    return;
   }
 
-  if (childIdx !== null) {
-  const updated = [...allChildren];
-  const oldChild = updated[childIdx];
-
-  updated[childIdx] = {
-    ...oldChild,
-    name: name,
-    sex: sex,
-    birthDate: birthDate.toISOString(),
-    photo: photoUri || Image.resolveAssetSource(anonymPicture).uri,
-  };
     await saveAllChildren(updated);
     alert("Údaje byly uloženy.");
     router.back();
   };
-}
   
   return (
     <MainScreenContainer>
