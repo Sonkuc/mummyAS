@@ -22,7 +22,6 @@ export default function ChildEdit() {
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
   const [birthDate, setBirthDate] = useState(new Date());
-  const [show, setShow] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const anonymPicture = require("../assets/images/avatars/avatarN0.jpg");
 

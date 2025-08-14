@@ -15,6 +15,12 @@ export interface WeightHeight {
   clothes?: string;
 };
 
+export interface SleepRecords {
+  date: string;
+  time: string;
+  state: string;
+}
+
 export type Word = {
   name: string;
   entries: { date: string; note: string }[];
@@ -34,6 +40,7 @@ export interface Child {
   teethDates?: ToothDates;
   wh?: WeightHeight[];
   foodDates?: FoodDates;
+  sleepRecords?: SleepRecords[];
 }
 
 const STORAGE_KEY = 'children';
