@@ -6,6 +6,7 @@ type ChildContextType = {
   selectedChild: Child | null;
   selectedChildIndex: number | null;
   setSelectedChildIndex: (index: number) => void;
+  setSelectedChild: (child: Child | null) => void;
   allChildren: Child[];
   saveAllChildren: (children: Child[]) => Promise<void>;
 };
@@ -43,6 +44,23 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     await AsyncStorage.setItem("selectedChildIndex", index.toString());
   }, []);
 
+  const setSelectedChild = useCallback(
+    async (child: Child | null) => {
+      if (child === null) {
+        setSelectedChildIndexState(null);
+        await AsyncStorage.removeItem("selectedChildIndex");
+        return;
+      }
+      const index = allChildren.findIndex(c => c === child);
+      if (index !== -1) {
+        setSelectedChildIndex(index);
+      } else {
+        console.warn("Child not found in allChildren");
+      }
+    },
+    [allChildren, setSelectedChildIndex]
+  );
+
   const saveAllChildren = useCallback(async (children: Child[]) => {
     await AsyncStorage.setItem("children", JSON.stringify(children));
     setAllChildren(children);
@@ -52,6 +70,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     <ChildContext.Provider
       value={{
         selectedChild,
+        setSelectedChild,
         selectedChildIndex,
         setSelectedChildIndex,
         allChildren,

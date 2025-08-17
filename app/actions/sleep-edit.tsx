@@ -33,7 +33,7 @@ const renumberSleeps = (records: StoredSleepRecord[]): EditableRecord[] => {
 export default function SleepEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const router = useRouter();
-const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChildIndex } = useChild();
+const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } = useChild();
 
   const [records, setRecords] = useState<EditableRecord[]>([]);
 
@@ -104,9 +104,7 @@ const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSele
 
     saveAllChildren(updatedChildren);
 
-    if (selectedChildIndex !== null) {
-      setSelectedChildIndex(selectedChildIndex); // znovu nastavíme, aby se selectedChild aktualizoval
-    }
+    setSelectedChild(updatedChildren[selectedChildIndex]);
 
     router.back();
 };
