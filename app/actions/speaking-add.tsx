@@ -66,9 +66,7 @@ export default function SpeakingAdd() {
 
    return (
     <MainScreenContainer>
-      <View style={{ marginBottom: -25 }}>
-        <CustomHeader />
-      </View>
+      <CustomHeader/>
       <Title>Přidat slovo</Title>
       <MyTextInput
         placeholder="Např. Ahoj"

@@ -4,11 +4,12 @@ type Props = {
   title: string;
   onPress: (event: GestureResponderEvent) => void;
   icon?: React.ReactNode;
+  backgroundColor?: string;
 };
 
-export default function MyButton({ title, onPress, icon }: Props) {
+export default function MyButton({ title, onPress, icon, backgroundColor }: Props) {
   return (
-    <Pressable onPress={onPress} style={styles.button}>
+    <Pressable onPress={onPress} style={[styles.button, backgroundColor && { backgroundColor }]}>
       <View style={styles.content}>
         {icon && <View style={styles.icon}>{icon}</View>}
       <Text style={styles.text}>{title}</Text>
@@ -19,12 +20,12 @@ export default function MyButton({ title, onPress, icon }: Props) {
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: "rgb(164, 91, 143)",
+    backgroundColor: "#993769",
     padding: 12,
     borderRadius: 10,
     marginBottom: 40,
-    width: "80%", // <-- přidáno
-    alignSelf: "center", // pro zarovnání doprostřed
+    width: "80%", 
+    alignSelf: "center",
   },
   text: {
     color: "white",

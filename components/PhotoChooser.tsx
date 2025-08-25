@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     width: 70,
     height: 90,
   },
-  avatarSelected: { borderColor: "#a45b8f" },
+  avatarSelected: { borderColor: "#993769" },
   avatarImg:  {
     width: "100%",
     height: "100%",

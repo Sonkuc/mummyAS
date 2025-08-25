@@ -5,7 +5,8 @@ import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import {
-  Apple, Baby, Calendar, Heart, MessageCircle, Moon, Ruler, Star
+  Apple, Baby,
+  Heart, MessageCircle, Moon, Ruler, Star
 } from "lucide-react-native";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -18,6 +19,7 @@ type Action = {
 export default function Actions() {
   const router = useRouter();
   const { selectedChild, selectedChildIndex } = useChild();
+  const sex = selectedChild?.sex || "";
 
   const actions: Action[] = [
   { title: "Spánek", route: "/actions/sleep", icon: <Moon color="white" size={20} /> },
@@ -27,7 +29,6 @@ export default function Actions() {
   { title: "Zoubky", route: "/actions/teeth", icon: <Baby color="white" size={20} /> },
   { title: "Mluvení", route: "/actions/speaking", icon: <MessageCircle color="white" size={20} /> },
   { title: "Potraviny", route: "/actions/food", icon: <Apple color="white" size={20} /> },
-  { title: "Kalendář", route: "/actions/calendar", icon: <Calendar color="white" size={20} /> },
 ];
 
   return (
@@ -46,7 +47,10 @@ export default function Actions() {
             <Image source={{ uri: selectedChild.photo }} 
             style={styles.avatar} 
             resizeMode="cover"/>
-            <View style={styles.avatarInitialOverlay}>
+            <View style={[
+                      styles.avatarInitialOverlay,
+                      sex === "chlapec" && styles.avatarInitialOverlayBoy,
+                    ]}>
               <Text style={styles.avatarInitialText}>
                 {selectedChild?.name?.charAt(0) || "?"}
               </Text>
@@ -96,7 +100,6 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "rgb(164, 91, 143)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -108,12 +111,15 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: -4,
     right: -4,
-    backgroundColor: "#a45b8f",
+    backgroundColor: "#993769",
     borderRadius: 10,
     width: 20,
     height: 20,
     justifyContent: "center",
     alignItems: "center",
+  },
+  avatarInitialOverlayBoy: {
+    backgroundColor: "#00008b",
   },
   avatarInitialText: {
     color: "white",

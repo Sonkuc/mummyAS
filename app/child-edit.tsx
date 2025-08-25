@@ -86,7 +86,7 @@ export default function ChildEdit() {
         {childIdx !== null && <DeleteButton type="child" index={childIdx} />}
       </CustomHeader>
       <Title>Zadej informace</Title>
-      <Subtitle>Jméno dítěte</Subtitle>
+      <Subtitle>Jméno</Subtitle>
 
       <MyTextInput
         placeholder="Jméno"
@@ -94,7 +94,7 @@ export default function ChildEdit() {
         onChangeText={setName}
       />
 
-      <Subtitle>Datum narození</Subtitle>
+      <Subtitle style={{marginTop: 10}}>Datum narození</Subtitle>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
         <View style={{ width: "80%" }}>
           <MyTextInput
@@ -126,7 +126,10 @@ export default function ChildEdit() {
           ]}
           onPress={() => setSex("chlapec")}
         >
-          <Text style={styles.genderText}>Chlapec</Text>
+          <Text style={[
+            styles.genderText,
+            sex === "chlapec" && styles.genderTextSelected,
+          ]}>Chlapec</Text>
         </Pressable>
 
         <Pressable
@@ -136,7 +139,10 @@ export default function ChildEdit() {
           ]}
           onPress={() => setSex("divka")}
         >
-          <Text style={styles.genderText}>Dívka</Text>
+          <Text style={[
+            styles.genderText,
+            sex === "divka" && styles.genderTextSelected,
+          ]}>Dívka</Text>
         </Pressable>
       </View>
 
@@ -158,9 +164,7 @@ export default function ChildEdit() {
                 }}
               />
             )}
-
       <CheckButton onPress = {handleSave} />
-
     </MainScreenContainer>
   );
 }
@@ -169,22 +173,25 @@ const styles = StyleSheet.create({
   genderContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: 20,
-    marginBottom: 30,
+    marginTop: 30,
+    marginBottom: 40,
   },
   genderButton: {
     padding: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "rgb(164, 91, 143)",
+    borderColor: "#993769",
     width: 80,
     justifyContent: "center",
     alignItems: "center", 
   },
   genderSelected: {
-    backgroundColor: "rgb(164, 91, 143)",
+    backgroundColor: "#993769",
   },
   genderText: {
     color: "#333",
+  },
+  genderTextSelected: {
+    color: "white",
   },
 });

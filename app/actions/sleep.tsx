@@ -2,14 +2,13 @@ import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import { SleepRecord } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { ChartColumn, Eye, EyeClosed } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 type RecordType = {
   label: string;
@@ -25,17 +24,29 @@ export default function Sleep() {
   const [minutesSinceAwake, setMinutesSinceAwake] = useState<number | null>(null);
   const [minutesSinceSleep, setMinutesSinceSleep] = useState<number | null>(null);
   const [mode, setMode] = useState<"awake" | "sleep" | "">("");
+  const [modeStart, setModeStart] = useState<number | null>(null);
+  
   const router = useRouter();
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren } = useChild();
 
-  const clearState = () => {
+  /*const clearState = () => {
     setMode("");
     setMinutesSinceAwake(null);
     setMinutesSinceSleep(null);
-  };
+    setModeStart(null);
+
+    if (selectedChildIndex !== null) {
+      const updated = [...allChildren];
+      updated[selectedChildIndex].currentMode = null; // 🔑 smažeme uložený mód
+      saveAllChildren(updated);
+    }
+  };*/
 
   const addRecord = async (label: string, newMode: "awake" | "sleep") => {
     if (!selectedChild) return;
+
+    if (newMode === "sleep") setMinutesSinceAwake(null);
+    if (newMode === "awake") setMinutesSinceSleep(null);
 
     const now = new Date();
     const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
@@ -43,40 +54,32 @@ export default function Sleep() {
 
     const newRecord: RecordType = { date, time, state: newMode, label };
 
-    setRecords((prev) => {
-      const updatedRecords = [...prev, newRecord];
+    setRecords((prev) => [...prev, newRecord]);
 
-      const lastRecord = updatedRecords[updatedRecords.length - 1];
-      if (lastRecord?.time) {
-        const [h, m] = lastRecord.time.split(":").map(Number);
-        const lastTime = new Date();
-        lastTime.setHours(h, m, 0, 0);
-
-        if (lastRecord.state === "sleep") {
-          setMinutesSinceSleep(Math.floor((now.getTime() - lastTime.getTime()) / 60000));
-        } else {
-          setMinutesSinceAwake(Math.floor((now.getTime() - lastTime.getTime()) / 60000));
-        }
-      }
-
-      return updatedRecords;
-    });
+    const [day, month, year] = date.split(".").map((s) => parseInt(s, 10));
+    const [hour, minute] = time.split(":").map((s) => parseInt(s, 10));
+    const startDate = new Date(year, month - 1, day, hour, minute);
+    const startTimestamp = startDate.getTime();
 
     setMode(newMode);
-    handleSaveSleep({ date, time, state: newMode });
+    setModeStart(startTimestamp); // uložíme absolutní čas startu
+
+    // uložíme do dítěte i currentMode, aby zůstal zachován po zavření aplikace
+    if (selectedChildIndex !== null) {
+      const updated = [...allChildren];
+      updated[selectedChildIndex].sleepRecords = [
+        ...(updated[selectedChildIndex].sleepRecords || []),
+        { date, time, state: newMode },
+      ];
+      updated[selectedChildIndex].currentMode = {
+        mode: newMode,
+        start: startTimestamp,
+      };
+      saveAllChildren(updated);
+    }
   };
 
-  const handleSaveSleep = (newRecord: SleepRecord) => {
-    if (selectedChildIndex === null) return;
-
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-    child.sleepRecords = [...(child.sleepRecords || []), newRecord];
-
-    saveAllChildren(updatedChildren);
-  };
-
-  // Načtení existujících záznamů
+   // načtení records i currentMode po otevření stránky
   useFocusEffect(
     useCallback(() => {
       if (selectedChild?.sleepRecords) {
@@ -89,85 +92,111 @@ export default function Sleep() {
           }))
         );
       }
+
+      if (selectedChild?.currentMode) {
+        const { mode, start } = selectedChild.currentMode;
+        setMode(mode);
+        setModeStart(start);
+
+        const diff = Math.floor((Date.now() - start) / 60000);
+        if (mode === "sleep") setMinutesSinceSleep(diff);
+        if (mode === "awake") setMinutesSinceAwake(diff);
+      }
     }, [selectedChild])
   );
 
-  // Přepočet minut od posledního záznamu
+   // průběžně přepočítáváme rozdíl v minutách
   useEffect(() => {
-    const now = new Date();
+    let interval: ReturnType<typeof setInterval> | null = null;
 
-    const lastAwake = [...records].reverse().find((r) => r.label.startsWith("Vzhůru"));
-    const lastSleep = [...records].reverse().find((r) => r.label.startsWith("Spánek"));
+    if (mode && modeStart) {
+      const tick = () => {
+        const diffMinutes = Math.floor((Date.now() - modeStart) / 60000);
+        if (mode === "sleep") setMinutesSinceSleep(diffMinutes);
+        if (mode === "awake") setMinutesSinceAwake(diffMinutes);
+      };
 
-    if (lastAwake?.time) {
-      const [h, m] = lastAwake.time.split(":").map(Number);
-      const diff = Math.floor((now.getHours() * 60 + now.getMinutes()) - (h * 60 + m));
-      setMinutesSinceAwake(diff >= 0 ? diff : diff + 24 * 60);
-    } else {
-      setMinutesSinceAwake(null);
+      tick(); // spočítáme hned
+      interval = setInterval(tick, 60000); // pak každou minutu
     }
 
-    if (lastSleep?.time) {
-      const [h, m] = lastSleep.time.split(":").map(Number);
-      const diff = Math.floor((now.getHours() * 60 + now.getMinutes()) - (h * 60 + m));
-      setMinutesSinceSleep(diff >= 0 ? diff : diff + 24 * 60);
-    } else {
-      setMinutesSinceSleep(null);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [mode, modeStart]);
+
+  const formatDuration = (minutes: number) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0) {
+      return `${h} h ${m} min`;
     }
-  }, [records]);
+    return `${m} min`;
+  };
+
+  const toTimestamp = (dateStr: string, timeStr: string) => {
+    const parts = dateStr.split(".").map((s) => s.trim()).filter(Boolean);
+    const d = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const y = parts[2] ? parseInt(parts[2], 10) : new Date().getFullYear();
+
+    const [hh, mm] = timeStr.split(":").map((s) => parseInt(s, 10));
+    return new Date(y, m - 1, d, hh, mm).getTime();
+  };
+
+  const withTs = records.map((r) => ({ ...r, ts: toTimestamp(r.date, r.time) }));
+
+  const asc = [...withTs].sort((a, b) => a.ts - b.ts);
+
+  const extrasMap = new Map<number, string>();
+  const sleepSumByDate = new Map<string, number>();
+
+  for (let i = 0; i < asc.length - 1; i++) {
+    const curr = asc[i];
+    const next = asc[i + 1];
+
+    if (i === 0) continue;
+
+    const minutes = Math.floor((next.ts - curr.ts) / 60000);
+    if (minutes <= 0) continue;
+
+    if (curr.state === "sleep") {
+      extrasMap.set(curr.ts, ` → ${formatDuration(minutes)}`);
+      sleepSumByDate.set(curr.date, (sleepSumByDate.get(curr.date) || 0) + minutes);
+    } else {
+      extrasMap.set(curr.ts, ` → ${formatDuration(minutes)}`);
+    }
+  }
 
   const grouped = Object.entries(
-    records.reduce((acc, rec) => {
+    withTs.reduce((acc, rec) => {
       if (!acc[rec.date]) acc[rec.date] = [];
       acc[rec.date].push(rec);
       return acc;
-    }, {} as Record<string, RecordType[]>)
-  ).map(([date, recs]) => {
-    const sorted = [...recs].sort((a, b) => {
-      const [ha, ma] = a.time.split(":").map(Number);
-      const [hb, mb] = b.time.split(":").map(Number);
-      return ha * 60 + ma - (hb * 60 + mb);
+    }, {} as Record<string, (RecordType & { ts: number })[]>)
+  )
+    .map(([date, recs]) => {
+      const sortedDesc = [...recs].sort((a, b) => b.ts - a.ts);
+      const enhanced = sortedDesc.map((r) => ({ ...r, extra: extrasMap.get(r.ts) || "" }));
+      return {
+        date,
+        totalSleepMinutes: sleepSumByDate.get(date) || 0,
+        records: enhanced,
+      };
+    })
+    .sort((a, b) => {
+      const ta = toTimestamp(a.date, "23:59");
+      const tb = toTimestamp(b.date, "23:59");
+      return tb - ta;
     });
 
-    let totalSleepMinutes = 0;
-
-    const enhanced = sorted.map((r, idx) => {
-      let extra = "";
-
-      if (r.label.startsWith("Spánek")) {
-        const next = sorted[idx + 1];
-        if (next && next.label.startsWith("Vzhůru") && next.time) {
-          const [h1, m1] = r.time.split(":").map(Number);
-          const [h2, m2] = next.time.split(":").map(Number);
-          const minutes = (h2 * 60 + m2) - (h1 * 60 + m1);
-          if (minutes > 0) {
-            totalSleepMinutes += minutes;
-            extra = ` (Délka: ${Math.floor(minutes / 60)}h ${minutes % 60}m)`;
-          }
-        }
-      }
-
-      if (r.label.startsWith("Vzhůru")) {
-        const prev = sorted[idx - 1];
-        if (prev && prev.label.startsWith("Vzhůru") && prev.time) {
-          const [h1, m1] = prev.time.split(":").map(Number);
-          const [h2, m2] = r.time.split(":").map(Number);
-          const minutes = (h2 * 60 + m2) - (h1 * 60 + m1);
-          if (minutes > 0) {
-            extra = ` (bdění: ${Math.floor(minutes / 60)}h ${minutes % 60}m)`;
-          }
-        }
-      }
-
-      return { ...r, extra };
-    });
-
-    return {
-      date,
-      totalSleepMinutes,
-      records: enhanced,
-    };
-  });
+  const getLastMode = () => {
+    if (selectedChild?.currentMode?.mode) {
+      return selectedChild.currentMode.mode;
+    }
+    const last = selectedChild?.sleepRecords?.[selectedChild.sleepRecords.length - 1];
+    return last?.state ?? null;
+  };
 
   return (
     <MainScreenContainer>
@@ -175,88 +204,113 @@ export default function Sleep() {
         <AddButton targetPath="/actions/sleep-add" />
       </CustomHeader>
 
-      <Title style={{ marginTop: 40 }}>Spánek</Title>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <Title>Spánek</Title>
 
-      <View style={styles.buttonsRow}>
-        <Pressable
-          style={[
-            styles.button,
-            { backgroundColor: "#fff" },
-            mode === "awake" && styles.eyeButtonSelected,
-          ]}
-          onPress={() => addRecord("Vzhůru od:", "awake")}
-        >
-          <Eye color="black" size={28} />
-        </Pressable>
+        <View style={styles.buttonsRow}>
+          <Pressable
+            style={[
+              styles.button,
+              { backgroundColor: "#fff" },
+              mode === "awake" && styles.eyeButtonSelected,
+            ]}
+            onPress={() => {
+              if (getLastMode() === "awake") {
+                Alert.alert(`${selectedChild?.name} je už vzhůru.`);
+                return;
+              }
+              addRecord("Vzhůru od:", "awake");
+            }}
+          >
+            <Eye color="black" size={28} />
+          </Pressable>
 
-        <Pressable
-          style={[
-            styles.button,
-            { backgroundColor: "#000" },
-            mode === "sleep" && styles.eyeButtonSelected,
-          ]}
-          onPress={() => addRecord("Spánek od:", "sleep")}
-        >
-          <EyeClosed color="white" size={28} />
-        </Pressable>
-      </View>
-
-      {mode && (
-        <View style={{ marginBottom: 20 }}>
-          <Text style={styles.counterText}>
-            {mode === "sleep" && minutesSinceSleep !== null &&
-              `Spánek: ${minutesSinceSleep} min`}
-            {mode === "awake" && minutesSinceAwake !== null &&
-              `Bdění: ${minutesSinceAwake} min`}
-          </Text>
-
-          <Pressable style={styles.deleteModeButton} onPress={clearState}>
-            <Text style={styles.buttonText}>Vymazat stav</Text>
+          <Pressable
+            style={[
+              styles.button,
+              { backgroundColor: "#000" },
+              mode === "sleep" && styles.eyeButtonSelected,
+            ]}
+            onPress={() => {
+              if (getLastMode() === "sleep") {
+                Alert.alert(`${selectedChild?.name} už spí.`);
+                return;
+              }
+              addRecord("spánek od:", "sleep");
+            }}
+          >
+            <EyeClosed color="white" size={28} />
           </Pressable>
         </View>
-      )}
 
-      <View>
-        {grouped.map(({ date, totalSleepMinutes, records }, groupIdx) => {
-          let sleepCounter = 0;
-          return (
-            <View key={`group-${date}-${groupIdx}`} style={styles.dateGroup}>
-              <View style={styles.row}>
-                {isEditMode && (
-                  <EditPencil
-                    targetPath={`/actions/sleep-edit?date=${encodeURIComponent(date)}`}
-                    color="#bf5f82"
-                  />
-                )}
-                <Text style={styles.dateTitle}>{date}</Text>
-              </View>
-                {records.map((rec, recIdx) => {
-                  let displayText = "";
+        {mode && (
+          <View>
+            <Text style={styles.counterText}>
+              {mode === "sleep" && minutesSinceSleep !== null &&
+                `Spí ${formatDuration(minutesSinceSleep)}`}
+              {mode === "awake" && minutesSinceAwake !== null &&
+                `Vzhůru ${formatDuration(minutesSinceAwake)}`}
+            </Text>
 
-                  if (rec.state === "sleep") {
-                    sleepCounter++;
-                    displayText = `${sleepCounter}. spánek od: ${rec.time}${rec.extra ?? ""}`;
-                  } else {
-                    displayText = `Vzhůru od: ${rec.time}${rec.extra ?? ""}`;
-                  }
+            {/*
+            <Pressable style={styles.deleteModeButton} onPress={clearState}>
+              <Text style={styles.buttonText}>Vymazat stav</Text>
+            </Pressable> 
+            */}
 
-                  return (
-                    <Text
-                      key={`rec-${date}-${rec.time}-${recIdx}`}
-                      style={styles.recordText}
-                    >
-                      {displayText}
-                    </Text>
-                  );
-                })}
+          </View>
+        )}
 
-                <Text style={styles.totalText}>
-                  Celkem spánku: {Math.floor(totalSleepMinutes / 60)}h {totalSleepMinutes % 60}m
-                </Text>
-              </View>
-            );
-      })}
-      </View>
+        <View>
+          {grouped.map(({ date, totalSleepMinutes, records }, groupIdx) => {
+            const sortedAsc = [...records].sort((a, b) => a.ts - b.ts);
+            const sleepNumbers = new Map<number, number>();
+            let sleepCounter = 1;
+            sortedAsc.forEach((r) => {
+              if (r.state === "sleep") {
+                sleepNumbers.set(r.ts, sleepCounter++);
+              }
+            });
+            return (
+              <View key={`group-${date}-${groupIdx}`} style={styles.dateGroup}>
+                <View style={styles.row}>
+                  {isEditMode && (
+                    <EditPencil
+                      targetPath={`/actions/sleep-edit?date=${encodeURIComponent(date)}`}
+                      color="#993769"
+                    />
+                  )}
+                  <Text style={styles.dateTitle}>{date}</Text>
+                </View>
+                  {records.map((rec, recIdx) => {
+                    let displayText = "";
+
+                    if (rec.state === "sleep") {
+                      const number = sleepNumbers.get(rec.ts);
+                      displayText = `${number}. spánek od: ${rec.time}${rec.extra ?? ""}`;
+                    } else {
+                      displayText = `Vzhůru od: ${rec.time}${rec.extra ?? ""}`;
+                    }
+
+                    return (
+                      <Text
+                        key={`rec-${date}-${rec.time}-${recIdx}`}
+                        style={styles.recordText}
+                      >
+                        {displayText}
+                      </Text>
+                    );
+                  })}
+
+                  <Text style={styles.totalText}>
+                    Celkem spánku: {Math.floor(totalSleepMinutes / 60)} h {totalSleepMinutes % 60} m
+                  </Text>
+                </View>
+              );
+        })}
+        </View>
+      </ScrollView>
+
       <Pressable
           style={styles.statisticButton}
           onPress={() => router.push({ pathname: "/actions" })}
@@ -276,8 +330,10 @@ export default function Sleep() {
 const styles = StyleSheet.create({
   buttonsRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 15,
+    gap: 30,
   },
   button: {
     padding: 15,
@@ -288,20 +344,22 @@ const styles = StyleSheet.create({
     borderColor: "#bf5f82",
   },
   counterText: {
-    fontSize: 18,
+    fontSize: 22,
     textAlign: "center",
     marginBottom: 10,
+   
   },
-  deleteModeButton: {
+  /*deleteModeButton: {
     backgroundColor: "#bf5f82",
     padding: 10,
     borderRadius: 8,
     alignSelf: "center",
-  },
-  buttonText: {
+  }*/
+  /*buttonText: {
     color: "#fff",
     fontWeight: "bold",
-  },
+    fontSize: 15,
+  },*/
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -316,7 +374,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   dateGroup: {
-    marginVertical: 10,
+    marginVertical: 5,
     padding: 10,
     borderRadius: 12,
     backgroundColor: "#f9f9f9",
@@ -334,7 +392,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 30,
-    backgroundColor: "rgb(164, 91, 143)",
+    backgroundColor: "#993769",
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -342,5 +400,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 25,
     left: 30,
+    zIndex: 100,
   },
 });

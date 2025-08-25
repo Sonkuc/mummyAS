@@ -63,7 +63,7 @@ export default function Legume() {
   };  
 
   return (
-    <MainScreenContainer>
+    <MainScreenContainer scrollable>
       <CustomHeader backTargetPath="/actions/food">
           <LookUp
             list={LEGUME.map(item => ({
@@ -80,7 +80,7 @@ export default function Legume() {
             onSelect={(label) => setSelectedFood(label)}
           />
       </CustomHeader>
-      <Title style={{marginTop: 40}}>Luštěniny</Title>
+      <Title>Luštěniny</Title>
       <Text style={styles.sectionTitle}> Zavedeno </Text>
       <View style={styles.sectionContainer}>
         {LEGUME.map((item, index) => {
@@ -210,6 +210,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     width: "48%", // dvě tlačítka vedle sebe s mezerou
     alignItems: "center",
+    justifyContent: "center",
   },
   buttonIntroduced: {
     backgroundColor: "#d4f1d4",
@@ -223,6 +224,8 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#333",
     fontSize: 16,
+    textAlign: "center",
+    flexWrap: "wrap",
   },
   dateSelectorBox: {
     padding: 15,

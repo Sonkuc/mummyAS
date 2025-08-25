@@ -1,7 +1,9 @@
 import EditPencil from "@/components/EditPencil";
 import MainScreenContainer from "@/components/MainScreenContainer";
+import MyButton from "@/components/MyButton";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
+import { Heart } from "lucide-react-native";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function Home() {
@@ -20,21 +22,19 @@ export default function Home() {
 
   /* render */
   return (
-        <MainScreenContainer contentContainerStyle={{
+        <MainScreenContainer scrollable contentContainerStyle={{
           justifyContent: "center",
           alignItems: "center",
         }}>
           <Text style={styles.title}>Milá maminko, </Text>
-          <Text style={styles.subtitle}>vítej 🩷</Text>
+          <View style={styles.row}>
+            <Text style={styles.subtitle}>vítej </Text>
+            <Heart color="#993769" size={28} />
+          </View>
           <Image source={require("@/assets/images/logo2.png")} style={styles.logo} />
           
           <View style={styles.bottom}>
-          <Pressable
-            style={styles.button}
-            onPress={() => router.push("/child-add")}
-          >
-            <Text style={styles.buttonText}>Přidat dítko</Text>
-          </Pressable>
+          <MyButton title="Přidat dítko" onPress={() => router.push("/child-add")}/>
         
         </View>
           {allChildren.length === 0 ? (
@@ -58,7 +58,7 @@ export default function Home() {
               ]}>
                  {/* Fotka a jméno */}
                   <View
-                    style={{ flexDirection: "row", alignItems: "center" }}>
+                    style={styles.row}>
                     {kid.photo && (
                       <Image
                         source={{ uri: kid.photo }}
@@ -83,20 +83,19 @@ export default function Home() {
 const styles = StyleSheet.create({
   title: {
     fontSize: 35,
-    color: "#992769",
+    color: "#993769",
     fontWeight: "bold",
     textAlign: "center",
     marginTop: 20,
   },
   subtitle: {
     fontSize: 27,
-    color: "#bf5f82",
+    color: "#993769",
     textAlign: "center",
     marginBottom: 20,
     marginTop: 20,
   },
   bottom: {
-    marginBottom: 40, 
     padding: 30,
     backgroundColor: "#fff0f5",
   },
@@ -138,4 +137,8 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 10,
   },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+  }
 });

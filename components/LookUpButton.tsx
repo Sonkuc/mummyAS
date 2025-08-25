@@ -72,7 +72,7 @@ export default function LookUp({ list = [], onSelect, getButtonStyle }: Props) {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 25,
+    top: 30,
     right: 10,
     zIndex: 10,
   },
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 30,
-    backgroundColor: "rgb(164, 91, 143)",
+    backgroundColor: "#993769",
     alignItems: "center",
     justifyContent: "center",
   },

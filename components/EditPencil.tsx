@@ -25,7 +25,7 @@ export default function EditPencil({ targetPath, color, circle = false, onPress,
     const iconName = editMode ? "times" : "pencil";
     const circleStyle = {
       ...styles.circleButton,
-      backgroundColor: editMode ? "crimson" : "rgb(164, 91, 143)",
+      backgroundColor: editMode ? "crimson" : "#993769",
     };
 
 return (
@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 30,
-    backgroundColor: "rgb(164, 91, 143)",
+    backgroundColor: "#993769",
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -57,5 +57,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
+    zIndex: 100,
   },
 });

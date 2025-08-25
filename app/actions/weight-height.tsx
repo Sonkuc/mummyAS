@@ -102,8 +102,7 @@ export default function WeightHeight() {
         const storedFilters = await AsyncStorage.getItem(FILTERS_KEY);
         if (storedFilters !== null) {
           setFilters(JSON.parse(storedFilters));
-
-      console.log("Načtené filters:", storedFilters);}
+        ;}
 
       } catch (e) {
         console.error("Chyba při načítání filtrů:", e);
@@ -124,7 +123,6 @@ export default function WeightHeight() {
     const saveFilters = async () => {
       try {
         await AsyncStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
-      console.log("Ukládám filters:", filters);
 
       } catch (e) {
         console.error("Chyba při ukládání filtrů:", e);

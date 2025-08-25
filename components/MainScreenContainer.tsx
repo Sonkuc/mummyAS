@@ -4,39 +4,41 @@ import { ScrollView, StyleSheet, View, ViewStyle } from "react-native";
 type Props = {
   children: ReactNode;
   scrollable?: boolean;
-  contentContainerStyle?: ViewStyle;
   style?: ViewStyle;
+  contentContainerStyle?: ViewStyle;
 };
 
-export default function MainScreenContainer({ 
-    children, 
-    scrollable = true,
-    contentContainerStyle,
-    style
- }: Props) {
-    if (scrollable) {
-       return (
-      <ScrollView
-        contentContainerStyle={[styles.container, contentContainerStyle]}
-        style={style}
-      >
-        {children}
-      </ScrollView>
-    );
-  } else {
+export default function MainScreenContainer({
+  children,
+  scrollable = false,
+  style,
+  contentContainerStyle
+}: Props) {
+  if (scrollable) {
     return (
-      <View style={[styles.container, style]}>
-        {children}
+      <View style={[styles.wrapper, style]}>
+        <ScrollView contentContainerStyle={[styles.container, contentContainerStyle]}>
+          {children}
+        </ScrollView>
       </View>
     );
   }
+
+  return (
+    <View style={[styles.wrapper, styles.container, style]}>
+      {children}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: "#fff0f5",
+    position: "relative",
+  },
   container: {
     flexGrow: 1,
     padding: 20,
-    backgroundColor: "#fff0f5",
-    position: "relative",
   },
 });

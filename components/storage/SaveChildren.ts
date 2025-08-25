@@ -41,6 +41,10 @@ export interface Child {
   wh?: WeightHeight[];
   foodDates?: FoodDates;
   sleepRecords?: SleepRecord[];
+  currentMode?: {
+    mode: "awake" | "sleep";
+    start: number;
+  } | null;
 }
 
 const STORAGE_KEY = 'children';

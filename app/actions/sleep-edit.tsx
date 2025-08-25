@@ -1,6 +1,6 @@
-import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
+import MyButton from "@/components/MyButton";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
@@ -33,9 +33,11 @@ const renumberSleeps = (records: StoredSleepRecord[]): EditableRecord[] => {
 export default function SleepEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const router = useRouter();
-const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } = useChild();
+  const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } = useChild();
 
   const [records, setRecords] = useState<EditableRecord[]>([]);
+  const [newTime, setNewTime] = useState("");
+  const [newState, setNewState] = useState<"sleep" | "awake">("sleep");
 
   // Načtení záznamů pro dané datum
   useEffect(() => {
@@ -51,7 +53,7 @@ const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSele
           state = r.state;
         } else {
           // fallback pro starší data, kde se ukládalo "Spánek od:" / "Vzhůru od:"
-          const s = r.state.toLowerCase();
+          const s = String(r.state).toLowerCase();
           state = s.includes("spán") ? "sleep" : "awake";
         }
         return { date: r.date, time: r.time, state };
@@ -89,23 +91,49 @@ const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSele
     ]);
   };
 
+  const addRecord = () => {
+    if (!newTime) {
+      Alert.alert("Chybí čas", "Zadej čas ve formátu HH:MM");
+      return;
+    }
+
+    const newRec: StoredSleepRecord = {
+      date: date!,
+      time: newTime,
+      state: newState,
+    };
+
+    setRecords((prev) => {
+      const withoutLabels: StoredSleepRecord[] = prev.map(({ label, ...rest }) => rest);
+      return renumberSleeps([...withoutLabels, newRec]);
+    });
+
+    // vyčistit input
+    setNewTime("");
+  };
+
+
   // Uložení změn
   const saveChanges = () => {
     if (selectedChildIndex === null) return;
     
     const updatedChildren = [...allChildren];
+    const child = updatedChildren[selectedChildIndex];
+
+    // všechny ostatní dny necháme být
+    const otherDays = (child.sleepRecords || []).filter(r => r.date !== date);
     
     // Uložíme upravené záznamy
-    updatedChildren[selectedChildIndex].sleepRecords = records.map(r => ({
+    const newRecords = records.map(r => ({
       date: r.date,
       time: r.time,
       state: r.state,
     }));
+  
+    child.sleepRecords = [...otherDays, ...newRecords];
 
     saveAllChildren(updatedChildren);
-
     setSelectedChild(updatedChildren[selectedChildIndex]);
-
     router.back();
 };
 
@@ -127,8 +155,38 @@ const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSele
           </Pressable>
         </View>
       ))}
+      <View style={styles.row}>
+        <View style={[styles.switchRow, { flex: 1 }]}>
+          <Pressable
+            style={[styles.switchBtn, newState === "sleep" && styles.switchBtnActive]}
+            onPress={() => setNewState("sleep")}
+          >
+            <Text style={newState === "sleep" ? styles.switchTextActive : styles.switchText}>
+              Spánek od
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.switchBtn, newState === "awake" && styles.switchBtnActive]}
+            onPress={() => setNewState("awake")}
+          >
+            <Text style={newState === "awake" ? styles.switchTextActive : styles.switchText}>
+              Vzhůru od
+            </Text>
+          </Pressable>
+        </View>
+        <TextInput
+            placeholder="HH:MM"
+            style={styles.input}
+            value={newTime}
+            onChangeText={setNewTime}
+          />
+       
+        <Pressable onPress={addRecord}>
+          <Text style={styles.add}>✅</Text>
+        </Pressable>
+      </View>
       <View style={{ marginTop: 30 }}>
-        <CheckButton onPress={saveChanges}/>
+        <MyButton title="Uložit" onPress={saveChanges}/>
       </View>
     </MainScreenContainer>
   );
@@ -168,6 +226,32 @@ const styles = StyleSheet.create({
   },
   delete: {
     fontSize: 20,
-    color: "#bf5f82",
+  },
+  add: {
+    fontSize: 20,
+  },
+  switchRow: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: 12,
+    borderColor: "#ccc",
+    overflow: "hidden",
+    marginRight: 10,
+  },
+  switchBtn: {
+    flex: 1,
+    padding: 8,
+    alignItems: "center",
+  },
+  switchBtnActive: {
+    borderColor: "#993769",
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  switchText: {
+    color: "#333",
+  },
+  switchTextActive: {
+    fontWeight: "600",
   },
 });

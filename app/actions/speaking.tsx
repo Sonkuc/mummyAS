@@ -7,7 +7,7 @@ import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Speaking() {
   const { selectedChild } = useChild();
@@ -33,37 +33,39 @@ export default function Speaking() {
       <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/speaking-add" />
       </CustomHeader>
-      <Title style={{marginTop: 40}}>Už povídám</Title>
-      <View>
-         {sortedWords.length > 0 ? (
-          sortedWords.map(({ word, originalIndex }) => (
-            <View key={originalIndex} style={styles.wordRow}>
-              {isEditMode && (
-                <EditPencil 
-                  targetPath={`/actions/speaking-edit?wordIndex=${originalIndex}`} 
-                  color="#bf5f82" 
-                />
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.item}>{word.name}</Text>
-                {word.entries
-                  ?.slice()
-                  .sort((a, b) => a.date.localeCompare(b.date))
-                  .map((entry, i) => (
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <Title>Už povídám</Title>
+        <View>
+          {sortedWords.length > 0 ? (
+            sortedWords.map(({ word, originalIndex }) => (
+              <View key={originalIndex} style={styles.group}>
+                <View style={styles.row}>
+                  {isEditMode && (
+                    <EditPencil 
+                      targetPath={`/actions/speaking-edit?wordIndex=${originalIndex}`} 
+                      color="#993769" 
+                    />
+                  )}
+                  <Text style={styles.item}>{word.name}</Text>
+                </View>
+                  {word.entries
+                    ?.slice()
+                    .sort((a, b) => a.date.localeCompare(b.date))
+                    .map((entry, i) => (
                     <Text key={i} style={styles.note}>
                       {formatDate(entry.date)}
                       {entry.note?.trim() ? `: ${entry.note}` : ""}
                     </Text>
-                ))}
+                    ))}
               </View>
-            </View>
-          ))
-        ) : (
-          <Subtitle style={{ textAlign: "center" }}>
-            Žádná slova zatím nebyla uložena.
-          </Subtitle>
-        )}
-      </View>
+            ))
+          ) : (
+            <Subtitle style={{ textAlign: "center" }}>
+              Žádná slova zatím nebyla uložena.
+            </Subtitle>
+          )}
+        </View>
+      </ScrollView>
       <EditPencil 
         onPress={() => setIsEditMode(!isEditMode)}
         color="white"
@@ -75,23 +77,26 @@ export default function Speaking() {
 }
 
 const styles = StyleSheet.create({
-  subtitle: {
-    fontSize: 20,
-    color: "#bf5f82",
-    marginBottom: 5,
-  },
   item: {
-    fontSize: 20,
-    color: "#993769",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   note: {
     fontSize: 16,
-    color: "#993769",
     marginLeft: 10,
   },
-    wordRow: {
+    row: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+  },
+  group: {
+    marginVertical: 5,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: "#f9f9f9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
 });

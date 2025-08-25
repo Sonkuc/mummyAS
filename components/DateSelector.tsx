@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   iconButton: {
-    backgroundColor: "rgb(164, 91, 143)",
+    backgroundColor: "#993769",
     padding: 8,
     borderRadius: 10,
     justifyContent: "center",

@@ -29,10 +29,10 @@ export default function Food() {
     <MainScreenContainer contentContainerStyle={{position: "relative"}}>
       <CustomHeader backTargetPath="./">
       </CustomHeader>
-      <Title style={{marginTop: 40}}>Vyber kategorii</Title>
+      <Title>Vyber kategorii</Title>
       <View style={styles.buttonContainer}>
         {categories.map((category: Category, index) => (
-          <MyButton
+          <MyButton backgroundColor="#aa507fff"
             key={category.route}
             title={category.title}
             onPress={() => router.push(category.route)}
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#643043ff",
     textAlign: "center",
-    marginTop: 40,
+    marginTop: 25,
   },
   webline: {
     fontSize: 15,

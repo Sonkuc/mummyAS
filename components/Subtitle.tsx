@@ -13,7 +13,7 @@ export default function Subtitle({ children, style }: Props) {
 const styles = StyleSheet.create({
     subtitle: {
         fontSize: 20,
-        color: "#bf5f82",
-        marginBottom: 5,
+        color: "#993769",
+        marginBottom: 10,
       },
 });
