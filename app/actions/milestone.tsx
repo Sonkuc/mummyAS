@@ -1,13 +1,14 @@
 import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
+import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Milestone() {
   const { selectedChild } = useChild();
@@ -28,33 +29,40 @@ export default function Milestone() {
       <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/milestone-add" />
       </CustomHeader>
-      <Title style={{marginTop: 40}}>Už umím</Title>
-      <View>
-         {sortedMilestones.length > 0 ? (
-          sortedMilestones.map((m, milIndex) => (
-            <View key={milIndex} style={styles.milestoneRow}>
-              {isEditMode && (
-                <EditPencil 
-                  targetPath={`/actions/milestone-edit?milIndex=${milIndex}`} 
-                  color="#bf5f82" 
-                />
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.item}>
-                  {m.date} {m.name}
-                </Text>
-                {m.note?.trim() !== "" && (
-                <Text style={styles.note}>  {m.note}</Text>
-                )}
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <Title>Už umím</Title>
+        <View>
+          {sortedMilestones.length > 0 ? (
+            sortedMilestones.map((m, milIndex) => (
+              <View key={milIndex}>
+                <GroupSection>
+                    <View style={{ flexDirection: "row", alignItems: "center"}}>
+                        {isEditMode && (
+                          <EditPencil 
+                            targetPath={`/actions/milestone-edit?milIndex=${milIndex}`} 
+                            color="#993769" 
+                          />
+                        )}
+                        <Text style={styles.item}>
+                          {m.date}
+                        </Text>
+                        <Text style={{fontSize: 16, marginLeft: 10}}>
+                          {m.name}
+                        </Text>
+                    </View> 
+                    {m.note?.trim() !== "" && (
+                    <Text style={styles.note}>  {m.note}</Text>
+                    )}
+                </GroupSection> 
               </View>
-            </View>
-          ))
-        ) : (
-          <Subtitle style={{ textAlign: "center" }}>
-            Žádné milníky zatím nebyly uloženy.
-          </Subtitle>
-        )}
-      </View>
+            ))
+          ) : (
+            <Subtitle style={{ textAlign: "center" }}>
+              Žádné milníky zatím nebyly uloženy.
+            </Subtitle>
+          )}
+        </View>
+      </ScrollView>
       <EditPencil 
         onPress={() => setIsEditMode(!isEditMode)}
         color="white"
@@ -66,23 +74,12 @@ export default function Milestone() {
 }
 
 const styles = StyleSheet.create({
-  subtitle: {
-    fontSize: 20,
-    color: "#bf5f82",
-    marginBottom: 5,
-  },
   item: {
-    fontSize: 20,
-    color: "#993769",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   note: {
     fontSize: 16,
-    color: "#993769",
     marginLeft: 10,
-  },
-    milestoneRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
   },
 });

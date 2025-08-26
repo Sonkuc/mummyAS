@@ -90,9 +90,7 @@ export default function WeightHeightAdd() {
 
   return (
     <MainScreenContainer>
-      <View style={{ marginBottom: -25 }}>
-        <CustomHeader/> 
-      </View>
+      <CustomHeader/> 
       <Title>Přidat záznam</Title>
       <Subtitle>Datum</Subtitle>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
@@ -124,9 +122,15 @@ export default function WeightHeightAdd() {
           setHeight(textH);
         }}
       />
+      <View style={{alignSelf: "flex-end", right: 10}}>
+        <HideButton 
+          hideMode={hideMode}
+          onPress={toggleHideMode}
+        />
+      </View>
       {!hideMode && (
         <>
-          <Subtitle>Obvod hlavy</Subtitle>
+          <Subtitle style={{marginTop: -20}}>Obvod hlavy</Subtitle>
           <MyTextInput
             placeholder="Obvod v cm"
             value={head}
@@ -153,10 +157,6 @@ export default function WeightHeightAdd() {
         </>
       )}
       <CheckButton onPress = {handleAdd} />
-      <HideButton 
-            hideMode={hideMode}
-            onPress={toggleHideMode}
-      />
     </MainScreenContainer>
   );
 }

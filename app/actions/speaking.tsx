@@ -1,6 +1,7 @@
 import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
+import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -38,7 +39,7 @@ export default function Speaking() {
         <View>
           {sortedWords.length > 0 ? (
             sortedWords.map(({ word, originalIndex }) => (
-              <View key={originalIndex} style={styles.group}>
+              <GroupSection key={originalIndex}>
                 <View style={styles.row}>
                   {isEditMode && (
                     <EditPencil 
@@ -57,7 +58,7 @@ export default function Speaking() {
                       {entry.note?.trim() ? `: ${entry.note}` : ""}
                     </Text>
                     ))}
-              </View>
+              </GroupSection>
             ))
           ) : (
             <Subtitle style={{ textAlign: "center" }}>
@@ -88,15 +89,5 @@ const styles = StyleSheet.create({
     row: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  group: {
-    marginVertical: 5,
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: "#f9f9f9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
   },
 });

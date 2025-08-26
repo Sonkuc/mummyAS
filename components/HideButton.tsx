@@ -15,9 +15,9 @@ export default function HideButton({ onPress, hideMode = false }: Props) {
     return (
     <Pressable style={styles.button} onPress={handlePress}>
        {hideMode ? (
-        <Eye color="white" size={25} />
-      ) : (
         <EyeOff color="white" size={25} />
+      ) : (
+        <Eye color="white" size={25} />
       )}
     </Pressable>
   );
@@ -26,15 +26,11 @@ export default function HideButton({ onPress, hideMode = false }: Props) {
  
 const styles = StyleSheet.create({
   button: {
-    position: "absolute",      // <– důležité pro umístění
-    bottom: 20,                // <– vzdálenost od spodního okraje
-    right: 20,                 // <– vzdálenost od pravého okraje
-    width: 50,
-    height: 50,
+    width: 35,
+    height: 35,
     borderRadius: 25,
-    backgroundColor: "rgb(164, 91, 143)",
+    backgroundColor: "#993769",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 10,                // <– zajistí, že bude vidět nad ostatními
   },
 });

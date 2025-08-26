@@ -1,4 +1,5 @@
 import CustomHeader from "@/components/CustomHeader";
+import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import Subtitle from "@/components/Subtitle";
@@ -140,10 +141,10 @@ export default function SleepEdit() {
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions/sleep" />
-      <Title style={{ marginTop: 40 }}>Upravit záznam</Title>
+      <Title>Upravit záznam</Title>
       <Subtitle style={{ textAlign: "center" }}> {date} </Subtitle>
       {records.map((rec, idx) => (
-        <View key={idx} style={styles.row}>
+        <GroupSection key={idx} style={styles.row}>
           <Text style={styles.label}>{rec.label}</Text>
           <TextInput
             style={styles.input}
@@ -153,9 +154,9 @@ export default function SleepEdit() {
           <Pressable onPress={() => deleteRecord(idx)}>
             <Text style={styles.delete}>🚮</Text>
           </Pressable>
-        </View>
+        </GroupSection>
       ))}
-      <View style={styles.row}>
+      <GroupSection style={styles.row}>
         <View style={[styles.switchRow, { flex: 1 }]}>
           <Pressable
             style={[styles.switchBtn, newState === "sleep" && styles.switchBtnActive]}
@@ -184,7 +185,7 @@ export default function SleepEdit() {
         <Pressable onPress={addRecord}>
           <Text style={styles.add}>✅</Text>
         </Pressable>
-      </View>
+      </GroupSection>
       <View style={{ marginTop: 30 }}>
         <MyButton title="Uložit" onPress={saveChanges}/>
       </View>
@@ -196,14 +197,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 3,
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: "#f9f9f9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
   },
   label: {
     flex: 1,
@@ -214,12 +207,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderColor: "#ccc",
     padding: 5,
-    marginHorizontal: 10,
+    marginHorizontal: 30,
     textAlign: "center",
   },
   saveBtn: {
     backgroundColor: "rgb(164, 91, 143)",
-    padding: 12,
+    padding: 5,
     borderRadius: 8,
     alignItems: "center",
     marginTop: 20,
@@ -232,26 +225,30 @@ const styles = StyleSheet.create({
   },
   switchRow: {
     flexDirection: "row",
-    borderWidth: 1,
     borderRadius: 12,
-    borderColor: "#ccc",
     overflow: "hidden",
-    marginRight: 10,
+    backgroundColor: "#f2f2f2",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    maxWidth: 200,
+    width: "90%",
   },
   switchBtn: {
     flex: 1,
-    padding: 8,
+    paddingVertical: 5,
     alignItems: "center",
+    justifyContent: "center",
   },
   switchBtnActive: {
-    borderColor: "#993769",
-    borderWidth: 1,
-    borderRadius: 12,
+    backgroundColor: "#993769",
   },
   switchText: {
     color: "#333",
+    fontSize: 14,
   },
   switchTextActive: {
-    fontWeight: "600",
+    color: "white",
+    fontWeight: "700",
+    fontSize: 14,
   },
 });

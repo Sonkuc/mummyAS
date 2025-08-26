@@ -1,6 +1,7 @@
 import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
+import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
@@ -29,7 +30,7 @@ export default function Sleep() {
   const router = useRouter();
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren } = useChild();
 
-  /*const clearState = () => {
+  const clearState = () => {
     setMode("");
     setMinutesSinceAwake(null);
     setMinutesSinceSleep(null);
@@ -40,7 +41,7 @@ export default function Sleep() {
       updated[selectedChildIndex].currentMode = null; // 🔑 smažeme uložený mód
       saveAllChildren(updated);
     }
-  };*/
+  };
 
   const addRecord = async (label: string, newMode: "awake" | "sleep") => {
     if (!selectedChild) return;
@@ -251,17 +252,13 @@ export default function Sleep() {
               {mode === "awake" && minutesSinceAwake !== null &&
                 `Vzhůru ${formatDuration(minutesSinceAwake)}`}
             </Text>
-
-            {/*
             <Pressable style={styles.deleteModeButton} onPress={clearState}>
-              <Text style={styles.buttonText}>Vymazat stav</Text>
+              <Text style={styles.buttonText}>Reset</Text>
             </Pressable> 
-            */}
-
           </View>
         )}
 
-        <View>
+        <View style={{marginTop: 10}}>
           {grouped.map(({ date, totalSleepMinutes, records }, groupIdx) => {
             const sortedAsc = [...records].sort((a, b) => a.ts - b.ts);
             const sleepNumbers = new Map<number, number>();
@@ -272,26 +269,24 @@ export default function Sleep() {
               }
             });
             return (
-              <View key={`group-${date}-${groupIdx}`} style={styles.dateGroup}>
-                <View style={styles.row}>
-                  {isEditMode && (
-                    <EditPencil
-                      targetPath={`/actions/sleep-edit?date=${encodeURIComponent(date)}`}
-                      color="#993769"
-                    />
-                  )}
-                  <Text style={styles.dateTitle}>{date}</Text>
-                </View>
+                <GroupSection key={`group-${date}-${groupIdx}`}>
+                  <View style={styles.row}>
+                    {isEditMode && (
+                      <EditPencil
+                        targetPath={`/actions/sleep-edit?date=${encodeURIComponent(date)}`}
+                        color="#993769"
+                      />
+                    )}
+                    <Text style={styles.dateTitle}>{date}</Text>
+                  </View>
                   {records.map((rec, recIdx) => {
                     let displayText = "";
-
                     if (rec.state === "sleep") {
                       const number = sleepNumbers.get(rec.ts);
                       displayText = `${number}. spánek od: ${rec.time}${rec.extra ?? ""}`;
                     } else {
                       displayText = `Vzhůru od: ${rec.time}${rec.extra ?? ""}`;
                     }
-
                     return (
                       <Text
                         key={`rec-${date}-${rec.time}-${recIdx}`}
@@ -301,11 +296,10 @@ export default function Sleep() {
                       </Text>
                     );
                   })}
-
                   <Text style={styles.totalText}>
                     Celkem spánku: {Math.floor(totalSleepMinutes / 60)} h {totalSleepMinutes % 60} m
                   </Text>
-                </View>
+                </GroupSection>
               );
         })}
         </View>
@@ -341,7 +335,7 @@ const styles = StyleSheet.create({
   },
   eyeButtonSelected: {
     borderWidth: 2,
-    borderColor: "#bf5f82",
+    borderColor: "#993769",
   },
   counterText: {
     fontSize: 22,
@@ -349,17 +343,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
    
   },
-  /*deleteModeButton: {
-    backgroundColor: "#bf5f82",
+  deleteModeButton: {
+    backgroundColor: "#993769",
     padding: 10,
     borderRadius: 8,
     alignSelf: "center",
-  }*/
-  /*buttonText: {
+  },
+  buttonText: {
     color: "#fff",
     fontWeight: "bold",
     fontSize: 15,
-  },*/
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -372,16 +366,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 5,
     fontSize: 16,
-  },
-  dateGroup: {
-    marginVertical: 5,
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: "#f9f9f9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
   },
   dateTitle: {
     fontWeight: "bold",

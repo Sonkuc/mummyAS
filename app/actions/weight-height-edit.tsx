@@ -118,14 +118,12 @@ export default function WeightHeightEdit() {
 
   return (
     <MainScreenContainer>
-      <View style={{ marginBottom: -25 }}>
         <CustomHeader>
-            {selectedChildIndex !== null && whIndex !== undefined && (
-              <DeleteButton type="wh" index={Number(whIndex)} 
-              onDeleteSuccess={() => router.replace("/actions/weight-height")}/>
-            )}
+          {selectedChildIndex !== null && whIndex !== undefined && (
+            <DeleteButton type="wh" index={Number(whIndex)} 
+            onDeleteSuccess={() => router.replace("/actions/weight-height")}/>
+          )}
         </CustomHeader>
-      </View>
       <Title>Upravit záznam</Title>
       <Subtitle>Datum</Subtitle>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
@@ -157,9 +155,15 @@ export default function WeightHeightEdit() {
           setHeight(textH);
         }}
       />
+      <View style={{alignSelf: "flex-end", right: 10}}>
+        <HideButton 
+          hideMode={hideMode}
+          onPress={toggleHideMode}
+        />
+      </View>
       {!hideMode && (
         <>
-          <Subtitle>Obvod hlavy</Subtitle>
+          <Subtitle style={{marginTop: -20}}>Obvod hlavy</Subtitle>
           <MyTextInput
             placeholder="Obvod v cm"
             value={head}
@@ -186,10 +190,6 @@ export default function WeightHeightEdit() {
         </>
       )}    
       <CheckButton onPress = {handleSave} />
-      <HideButton 
-                  hideMode={hideMode}
-                  onPress={toggleHideMode}
-      />
     </MainScreenContainer>
   );
 }

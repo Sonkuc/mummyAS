@@ -2,6 +2,7 @@ import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import FilterButton from "@/components/FilterButton";
+import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -9,7 +10,7 @@ import { useChild } from "@/contexts/ChildContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function WeightHeight() {
   const { selectedChild } = useChild();
@@ -137,65 +138,67 @@ export default function WeightHeight() {
       <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/weight-height-add" />
       </CustomHeader>
-      <Title style={{ marginTop: 40 }}>Jak rostu</Title>
-      <View>
-        <FilterButton selected={filters} onChange={setFilters} />
-      </View>
-      <View>
-        {sortedNotes.length > 0 ? (
-        sortedNotes.map((wh) => {
-          const originalIndex =
-            selectedChild?.wh?.findIndex((item) => item.date === wh.date) ?? -1;
-          
-          const isVisible =
-            (filters.includes("weight") && wh.weight) ||
-            (filters.includes("height") && wh.height) ||
-            (filters.includes("head") && wh.head) ||
-            (filters.includes("clothes") && wh.clothes) ||
-            (filters.includes("foot") && wh.foot);
-          if (!isVisible) return null;
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <Title>Jak rostu</Title>
+        <View>
+          <FilterButton selected={filters} onChange={setFilters} />
+        </View>
+        <View>
+          {sortedNotes.length > 0 ? (
+          sortedNotes.map((wh) => {
+            const originalIndex =
+              selectedChild?.wh?.findIndex((item) => item.date === wh.date) ?? -1;
+            
+            const isVisible =
+              (filters.includes("weight") && wh.weight) ||
+              (filters.includes("height") && wh.height) ||
+              (filters.includes("head") && wh.head) ||
+              (filters.includes("clothes") && wh.clothes) ||
+              (filters.includes("foot") && wh.foot);
+            if (!isVisible) return null;
 
-          return (
-            <View key={wh.date} style={styles.whRow}>
-              {isEditMode && originalIndex !== -1 && (
-                <EditPencil
-                  targetPath={`/actions/weight-height-edit?whIndex=${originalIndex}`}
-                  color="#bf5f82"
-                />
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.item}> {wh.date} </Text>
-                {filters.includes("weight") && wh.weight ? (
-                  <Text style={styles.note}>
-                    ⚖️ {wh.weight} kg {renderDifference(sortedNotes, wh.date, "weight", "kg")}
-                  </Text>
-                ) : null}
-                {filters.includes("height") && wh.height ? (
-                  <Text style={styles.note}>
-                    📏 {wh.height} cm {renderDifference(sortedNotes, wh.date, "height", "cm")}
-                  </Text>
-                ) : null}
-                {filters.includes("head") && wh.head ? (
-                  <Text style={styles.note}>
-                    👶 {wh.head} cm {renderDifference(sortedNotes, wh.date, "head", "cm")}
-                  </Text>
-                ) : null}
-                {filters.includes("clothes") && wh.clothes ? (
-                  <Text style={styles.note}>👕 {wh.clothes}</Text>
-                ) : null}
-                {filters.includes("foot") && wh.foot ? (
-                  <Text style={styles.note}>🦶 {wh.foot}</Text>
-                ) : null}
-              </View>
-            </View>
-          );
-        })
-      ) : (
-          <Subtitle style={{ textAlign: "center" }}>
-            Žádné záznamy zatím nebyly uloženy.
-          </Subtitle>
-      )}
-      </View>
+            return (
+              <GroupSection key={wh.date} style={styles.whRow}>
+                {isEditMode && originalIndex !== -1 && (
+                  <EditPencil
+                    targetPath={`/actions/weight-height-edit?whIndex=${originalIndex}`}
+                    color="#993769"
+                  />
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.item}> {wh.date} </Text>
+                  {filters.includes("weight") && wh.weight ? (
+                    <Text style={styles.note}>
+                      ⚖️ {wh.weight} kg {renderDifference(sortedNotes, wh.date, "weight", "kg")}
+                    </Text>
+                  ) : null}
+                  {filters.includes("height") && wh.height ? (
+                    <Text style={styles.note}>
+                      📏 {wh.height} cm {renderDifference(sortedNotes, wh.date, "height", "cm")}
+                    </Text>
+                  ) : null}
+                  {filters.includes("head") && wh.head ? (
+                    <Text style={styles.note}>
+                      👶 {wh.head} cm {renderDifference(sortedNotes, wh.date, "head", "cm")}
+                    </Text>
+                  ) : null}
+                  {filters.includes("clothes") && wh.clothes ? (
+                    <Text style={styles.note}>👕 {wh.clothes}</Text>
+                  ) : null}
+                  {filters.includes("foot") && wh.foot ? (
+                    <Text style={styles.note}>🦶 {wh.foot}</Text>
+                  ) : null}
+                </View>
+              </GroupSection>
+            );
+          })
+        ) : (
+            <Subtitle style={{ textAlign: "center" }}>
+              Žádné záznamy zatím nebyly uloženy.
+            </Subtitle>
+        )}
+        </View>
+      </ScrollView>
       <EditPencil
         onPress={() => setIsEditMode(!isEditMode)}
         color="white"
@@ -207,23 +210,19 @@ export default function WeightHeight() {
 }
 
 const styles = StyleSheet.create({
-  subtitle: {
-    fontSize: 20,
-    color: "#bf5f82",
-    marginBottom: 5,
-  },
   item: {
-    fontSize: 20,
-    color: "#993769",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
   },
     whRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
   },
-  note: {
-    fontSize: 18,
-    color: "#993769",
-    marginLeft: 20,
+   note: {
+    fontSize: 16,
+    marginLeft: 10,
+    marginBottom: 3,
   },
 });

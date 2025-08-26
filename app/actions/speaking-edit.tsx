@@ -1,16 +1,16 @@
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
+import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
-import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function SpeakingEdit() {
   const { wordIndex } = useLocalSearchParams();
@@ -88,10 +88,10 @@ export default function SpeakingEdit() {
           onDeleteSuccess={() => router.replace("/actions/speaking")}/>
         )}
       </CustomHeader>
-      <Title>Upravit</Title>
-      <Subtitle style={{ textAlign: "center" }}> {name} </Subtitle>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <Title>{name}</Title>
       {sortedEntries.map((entry, index) => (
-        <View key={index} style={[styles.entryRow, { flexDirection: "row" }]}>
+        <GroupSection key={index} style={{ flexDirection: "row" }}>
           <View style={{ flex: 1 }}>
             <Text style={styles.entryText}>Datum: {formatDate(entry.date)}</Text>
             <Text style={styles.entryText}>Poznámka: {entry.note}</Text>
@@ -99,9 +99,9 @@ export default function SpeakingEdit() {
           <TouchableOpacity onPress={() => removeEntry(index)}>
             <Text style={styles.delete}>🚮</Text>
           </TouchableOpacity>
-        </View>
+        </GroupSection>
       ))}
-      <View style={styles.entryRow}>
+      <GroupSection>
         <Text style={styles.entryLabel}>Datum</Text>
         <View style={styles.inputRow}>
           <View style={{ flex: 1 }}>
@@ -130,10 +130,11 @@ export default function SpeakingEdit() {
         <Pressable style={styles.iconButton} onPress={addEntry}>
           <Plus size={24} color="#fff" />
         </Pressable>
-      </View>
+      </GroupSection>
       <View style={{ marginTop: 30 }}>
         <MyButton title="Uložit" onPress = {handleSave} />
       </View>
+      </ScrollView>
     </MainScreenContainer>
   );
 }
@@ -145,16 +146,6 @@ const styles = StyleSheet.create({
   delete: {
     fontSize: 20,
     color: "#bf5f82",
-  },
-  entryRow: {
-    padding: 12,
-    marginVertical: 8,
-    borderRadius: 12,
-    backgroundColor: "#f9f9f9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
   },
   entryLabel: {
     fontSize: 15,

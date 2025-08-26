@@ -1,5 +1,6 @@
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
+import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -12,27 +13,27 @@ export default function Teeth() {
   const { selectedChild, selectedChildIndex, allChildren, saveAllChildren } = useChild();
 
   const teeth = [
-    { id: "U1", name: "Levý prostřední řezák", x: "42.7%", y: "6.7%", jaw: "upper"},
-    { id: "U2", name: "Pravý prostřední řezák", x: "56.6%", y: "7.1%", jaw: "upper"},
-    { id: "U3", name: "Levý postranní řezák", x: "30.3%", y: "14.3%", jaw: "upper"},
-    { id: "U4", name: "Pravý postranní řezák", x: "69.9%", y: "15%", jaw: "upper"},
-    { id: "U5", name: "Levý špičák", x: "21.9%", y: "31.4%", jaw: "upper"},
-    { id: "U6", name: "Pravý špičák", x: "78.7%", y: "30.4%", jaw: "upper"},
-    { id: "U7", name: "Levá první stolička", x: "12.3%", y: "52.7%", jaw: "upper"},
-    { id: "U8", name: "Pravá první stolička", x: "86.3%", y: "54.6%", jaw: "upper"},
-    { id: "U9", name: "Levá druhá stolička", x: "7.9%", y: "84.8%", jaw: "upper"},
-    { id: "U10", name: "Pravá druhá stolička", x: "91.6%", y: "84.3%", jaw: "upper"},
+    { id: "U1", name: "Levý prostřední řezák", x: "36.7%", y: "8.7%", jaw: "upper"},
+    { id: "U2", name: "Pravý prostřední řezák", x: "50.6%", y: "9.1%", jaw: "upper"},
+    { id: "U3", name: "Levý postranní řezák", x: "24.3%", y: "14.3%", jaw: "upper"},
+    { id: "U4", name: "Pravý postranní řezák", x: "63.9%", y: "15%", jaw: "upper"},
+    { id: "U5", name: "Levý špičák", x: "15.9%", y: "31.4%", jaw: "upper"},
+    { id: "U6", name: "Pravý špičák", x: "72.7%", y: "30.4%", jaw: "upper"},
+    { id: "U7", name: "Levá první stolička", x: "8.3%", y: "52.7%", jaw: "upper"},
+    { id: "U8", name: "Pravá první stolička", x: "78.3%", y: "54.6%", jaw: "upper"},
+    { id: "U9", name: "Levá druhá stolička", x: "2.9%", y: "82.8%", jaw: "upper"},
+    { id: "U10", name: "Pravá druhá stolička", x: "83.6%", y: "84.3%", jaw: "upper"},
 
-    { id: "L1", name: "Levý prostřední řezák", x: "42.5%", y: "92.2%", jaw: "lower" },
-    { id: "L2", name: "Pravý prostřední řezák", x: "56.8%", y: "93.1%", jaw: "lower" },
-    { id: "L3", name: "Pravý postranní řezák", x: "70.1%", y: "84.3%", jaw: "lower" },
-    { id: "L4", name: "Levý postranní řezák", x: "30.1%", y: "86.0%", jaw: "lower" },
-    { id: "L5", name: "Pravý špičák", x: "77.9%", y: "69.8%", jaw: "lower" },
-    { id: "L6", name: "Levý špičák", x: "21.9%", y: "72.0%", jaw: "lower" },
-    { id: "L7", name: "Pravá první stolička", x: "86.1%", y: "46.6%", jaw: "lower" },
-    { id: "L8", name: "Levá první stolička", x: "12.6%", y: "48.5%", jaw: "lower" },
-    { id: "L9", name: "Pravá druhá stolička", x: "92.3%", y: "18.1%", jaw: "lower" },
-    { id: "L10", name: "Levá druhá stolička", x: "7.2%",  y: "16.9%", jaw: "lower" }
+    { id: "L1", name: "Levý prostřední řezák", x: "36.7%", y: "92.2%", jaw: "lower" },
+    { id: "L2", name: "Pravý prostřední řezák", x: "50.6%", y: "93.1%", jaw: "lower" },
+    { id: "L3", name: "Pravý postranní řezák", x: "63.9%", y: "84.3%", jaw: "lower" },
+    { id: "L4", name: "Levý postranní řezák", x: "24.3%", y: "86.0%", jaw: "lower" },
+    { id: "L5", name: "Pravý špičák", x: "72.7%", y: "69.8%", jaw: "lower" },
+    { id: "L6", name: "Levý špičák", x: "15.9%", y: "72.0%", jaw: "lower" },
+    { id: "L7", name: "Pravá první stolička", x: "78.3%", y: "46.6%", jaw: "lower" },
+    { id: "L8", name: "Levá první stolička", x: "8.3%", y: "48.5%", jaw: "lower" },
+    { id: "L9", name: "Pravá druhá stolička", x: "83.6%", y: "18.1%", jaw: "lower" },
+    { id: "L10", name: "Levá druhá stolička", x: "2.9%",  y: "16.9%", jaw: "lower" }
   ];
 
   const handleDateChange = async (toothId: string, date: Date) => {
@@ -73,48 +74,50 @@ export default function Teeth() {
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions" />
-      <Title style={{marginTop: 40}}>Moje zoubky</Title>
+      <Title>Moje zoubky</Title>
       
-      <Subtitle>Horní patro</Subtitle>
-      <View style={styles.imageWrapper}>  
-        <Image
-          source={require("@/assets/images/teethA.png")}
-          style={styles.teethImage}
-        />
-        {teeth.filter(t => t.jaw === "upper").map((tooth) => (
-          <TouchableOpacity
-            key={tooth.id}
-            style={[
-              styles.toothHotspot,
-              { left: tooth.x, top: tooth.y },
-            ]}
-            onPress={() =>
-              setSelectedTooth(tooth.id)}/>
-        ))}
-      </View>
-
-      <Subtitle>Dolní patro</Subtitle>
-      <View style={styles.imageWrapper}>
-        <Image
-          source={require("@/assets/images/teethB.png")}
-          style={styles.teethImage}
-        />
-        {teeth.filter(t => t.jaw === "lower").map((tooth) => (
-          <TouchableOpacity
-            key={tooth.id}
-            style={[
-              styles.toothHotspot,
-              { left: tooth.x, top: tooth.y },
-            ]}
-            onPress={() =>
-              setSelectedTooth(tooth.id)}/>
-        ))}
-      </View>
-
+      <GroupSection>
+        <Subtitle style={{marginLeft: 10, marginTop: 5, marginBottom: -5}}>Horní patro</Subtitle>
+        <View style={styles.imageWrapper}>  
+          <Image
+            source={require("@/assets/images/teethA.png")}
+            style={styles.teethImage}
+          />
+          {teeth.filter(t => t.jaw === "upper").map((tooth) => (
+            <TouchableOpacity
+              key={tooth.id}
+              style={[
+                styles.toothHotspot,
+                { left: tooth.x, top: tooth.y },
+              ]}
+              onPress={() =>
+                setSelectedTooth(tooth.id)}/>
+          ))}
+        </View>
+      </GroupSection>
+      <GroupSection>
+        <Subtitle style={{marginLeft: 10, marginTop: 5, marginBottom: -5}}>Dolní patro</Subtitle>
+        <View style={styles.imageWrapper}>
+          <Image
+            source={require("@/assets/images/teethB.png")}
+            style={styles.teethImage}
+          />
+          {teeth.filter(t => t.jaw === "lower").map((tooth) => (
+            <TouchableOpacity
+              key={tooth.id}
+              style={[
+                styles.toothHotspot,
+                { left: tooth.x, top: tooth.y },
+              ]}
+              onPress={() =>
+                setSelectedTooth(tooth.id)}/>
+          ))}
+        </View>
+      </GroupSection>
       {selectedTooth && (
-        <View style={styles.dateSelectorBox}>
+        <GroupSection style={styles.dateSelectorBox}>
           <View style={styles.titleRow}>
-            <Subtitle style={styles.modalTitle}>
+            <Subtitle style={{color: "#993769"}}>
               {teeth.find(t => t.id === selectedTooth)?.name}
             </Subtitle>
             <DateSelector
@@ -139,7 +142,7 @@ export default function Teeth() {
               </Text>
             </View>
           )}
-        </View>
+        </GroupSection>
       )}
     </MainScreenContainer>
   );
@@ -151,18 +154,18 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     width: 300,
     height: 200,
-    marginBottom: 50,
+    marginBottom: 30,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
+    justifyContent: "space-between", 
+    gap: 5,
   },
   toothHotspot: {
     position: "absolute",
-    width: 30,
-    height: 30,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -173,27 +176,18 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   dateSelectorBox: {
-    padding: 15,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    marginHorizontal: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  modalTitle: {
-    marginBottom: 10,
-    color: "#993769",
+    maxWidth: 280,
+    width: "90%",
+    alignSelf: "center"
   },
   dateText: {
     color: "#993769",
     fontWeight: "500",
     flexShrink: 1,
+    fontSize: 15,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-  }
+  },
 });

@@ -1,5 +1,6 @@
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
+import GroupSection from "@/components/GroupSection";
 import LookUp from "@/components/LookUpButton";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
@@ -7,7 +8,7 @@ import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { LEGUME } from "@/data/food/legume";
 import React, { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Legume() {
   const [selectedFood, setSelectedFood] = useState<null | string>(null);
@@ -63,7 +64,7 @@ export default function Legume() {
   };  
 
   return (
-    <MainScreenContainer scrollable>
+    <MainScreenContainer>
       <CustomHeader backTargetPath="/actions/food">
           <LookUp
             list={LEGUME.map(item => ({
@@ -80,118 +81,110 @@ export default function Legume() {
             onSelect={(label) => setSelectedFood(label)}
           />
       </CustomHeader>
-      <Title>Luštěniny</Title>
-      <Text style={styles.sectionTitle}> Zavedeno </Text>
-      <View style={styles.sectionContainer}>
-        {LEGUME.map((item, index) => {
-          const isIntroduced = !!selectedChild?.foodDates?.[item.label];
-          return isIntroduced && (
-            <Pressable 
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <Title>Luštěniny</Title>
+        <Text style={styles.sectionTitle}> Zavedeno </Text>
+        <GroupSection style={styles.sectionContainer}>
+          {LEGUME.map((item, index) => {
+            const isIntroduced = !!selectedChild?.foodDates?.[item.label];
+            return isIntroduced && (
+              <Pressable 
+                key={index}
+                style={[styles.button, styles.buttonIntroduced]}              
+                onPress={() => setSelectedFood(item.label)}
+              >
+                <Text style={styles.buttonText}>{item.label}</Text>
+              </Pressable>
+            );
+          })}
+        </GroupSection>
+        <Modal
+          visible={!!selectedFood}
+          transparent={true}
+          animationType="slide"
+        >
+          {selectedFood && (
+            <View style={{
+              flex: 1,
+              justifyContent: "center",
+              backgroundColor: "rgba(0,0,0,0.3)",
+              alignItems: "center",
+            }}>
+              <GroupSection style={styles.dateSelectorBox}>
+                <View style={styles.titleRow}>
+                  <Subtitle style={{color:"#993769", marginTop: -10, marginLeft: 10}}>
+                    {selectedFood}
+                  </Subtitle>
+                  <DateSelector
+                    date={
+                      selectedChild?.foodDates?.[selectedFood]
+                        ? new Date(selectedChild.foodDates[selectedFood])
+                        : new Date()
+                    }
+                    onChange={(date) => handleDateChange(selectedFood, date)}
+                  />
+                </View>
+                {selectedChild?.foodDates?.[selectedFood] && (
+                  <View style={styles.row}>
+                    <Pressable
+                      onPress={handleDateDelete}
+                    >
+                      <Text style={{ fontSize: 14 }}>🚮</Text>
+                    </Pressable>
+                    <Text style={styles.dateText}>
+                      Datum zavedení:{" "}
+                      {new Date(selectedChild.foodDates[selectedFood]).toLocaleDateString("cs-CZ")}
+                    </Text>
+                  </View>
+                )}
+                <Pressable onPress={() => setSelectedFood(null)}>
+                  <Text style={styles.closeText}>Zavřít</Text>
+                </Pressable>
+              </GroupSection>
+            </View>
+          )}
+        </Modal>
+        <Text style={styles.sectionTitle}> Navrženo dle věku </Text>
+        <GroupSection style={styles.sectionContainer}>
+          {LEGUME.filter((item) => {
+            const ageInMonths = getChildAgeInMonths();
+            const isIntroduced = !!selectedChild?.foodDates?.[item.label];
+
+            return !isIntroduced && item.month <= ageInMonths;
+          }).map((item, index) => (
+            <Pressable
               key={index}
-              style={[styles.button, styles.buttonIntroduced]}              
+              style={[styles.button, styles.buttonSuggested]}    
               onPress={() => setSelectedFood(item.label)}
             >
               <Text style={styles.buttonText}>{item.label}</Text>
             </Pressable>
-          );
-        })}
-      </View>
-      <Modal
-        visible={!!selectedFood}
-        transparent={true}
-        animationType="slide"
-      >
-        {selectedFood && (
-          <View style={{
-            flex: 1,
-            justifyContent: "center",
-            backgroundColor: "rgba(0,0,0,0.3)",
-          }}>
-            <View style={styles.dateSelectorBox}>
-              <View style={styles.titleRow}>
-                <Subtitle style={{color:"#993769", marginTop: -10}}>
-                  {selectedFood}
-                </Subtitle>
-                <DateSelector
-                  date={
-                    selectedChild?.foodDates?.[selectedFood]
-                      ? new Date(selectedChild.foodDates[selectedFood])
-                      : new Date()
-                  }
-                  onChange={(date) => handleDateChange(selectedFood, date)}
-                />
-              </View>
-              {selectedChild?.foodDates?.[selectedFood] && (
-                <View style={styles.row}>
-                  <Pressable
-                    onPress={handleDateDelete}
-                  >
-                    <Text style={{ fontSize: 14 }}>🚮</Text>
-                  </Pressable>
-                  <Text style={styles.dateText}>
-                    Datum zavedení:{" "}
-                    {new Date(selectedChild.foodDates[selectedFood]).toLocaleDateString("cs-CZ")}
-                  </Text>
-                </View>
-              )}
-              <Pressable onPress={() => setSelectedFood(null)}>
-                <Text style={styles.closeText}>Zavřít</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
-      </Modal>
-      <Text style={styles.sectionTitle}> Navrženo dle věku </Text>
-      <View style={styles.sectionContainer}>
-        {LEGUME.filter((item) => {
-          const ageInMonths = getChildAgeInMonths();
-          const isIntroduced = !!selectedChild?.foodDates?.[item.label];
+          ))}
+        </GroupSection>
+        <Text style={styles.sectionTitle}> Ostatní </Text>
+        <GroupSection style={styles.sectionContainer}>
+          {LEGUME.filter((item) => {
+            const ageInMonths = getChildAgeInMonths();
+            const isIntroduced = !!selectedChild?.foodDates?.[item.label];
 
-          return !isIntroduced && item.month <= ageInMonths;
-        }).map((item, index) => (
-          <Pressable
-            key={index}
-            style={[styles.button, styles.buttonSuggested]}    
-            onPress={() => setSelectedFood(item.label)}
-          >
-            <Text style={styles.buttonText}>{item.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={styles.sectionTitle}> Ostatní </Text>
-      <View style={styles.sectionContainer}>
-        {LEGUME.filter((item) => {
-          const ageInMonths = getChildAgeInMonths();
-          const isIntroduced = !!selectedChild?.foodDates?.[item.label];
-
-          return !isIntroduced && item.month > ageInMonths;
-        }).map((item, index) => (
-          <Pressable
-            key={index}
-            style={[styles.button, styles.buttonFuture]}
-            onPress={() => setSelectedFood(item.label)}
-          >
-            <Text style={styles.buttonText}>{item.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+            return !isIntroduced && item.month > ageInMonths;
+          }).map((item, index) => (
+            <Pressable
+              key={index}
+              style={[styles.button, styles.buttonFuture]}
+              onPress={() => setSelectedFood(item.label)}
+            >
+              <Text style={styles.buttonText}>{item.label}</Text>
+            </Pressable>
+          ))}
+        </GroupSection>
+      </ScrollView>
     </MainScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   sectionContainer: {
-    backgroundColor: "#f9f9f9",
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    marginBottom: 15,
-    marginHorizontal: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
@@ -228,17 +221,11 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   dateSelectorBox: {
-    padding: 15,
-    backgroundColor: "#fff",
-    borderRadius: 10,
     marginHorizontal: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
     marginTop: 10,
     marginBottom: 20,
+    width: "80%", 
+    maxWidth: 400,
   },
   modalTitle: {
     marginBottom: 10,

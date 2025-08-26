@@ -68,21 +68,23 @@ export default function SpeakingAdd() {
     <MainScreenContainer>
       <CustomHeader/>
       <Title>Přidat slovo</Title>
-      <MyTextInput
-        placeholder="Např. Ahoj"
-        value={name}
-        onChangeText={text => {
-          setName(text);
-          setSelectedWord(""); // zruší výběr z pickeru, pokud píšu vlastní text
-        }}
-      />
-      <MyPicker
-        data={WORDS.map((w, index) => ({ id: `${w.label}-${index}`, label: w.label }))}
-        selectedValue={selectedWord}
-        onChange={setSelectedWord}
-        setName={setName}
-      />
-      <Subtitle>Datum</Subtitle>
+        <View style={{marginTop: 10, gap: 10}}>
+        <MyTextInput
+          placeholder="Např. Ahoj"
+          value={name}
+          onChangeText={text => {
+            setName(text);
+            setSelectedWord(""); // zruší výběr z pickeru, pokud píšu vlastní text
+          }}
+        />
+        <MyPicker
+          data={WORDS.map((w, index) => ({ id: `${w.label}-${index}`, label: w.label }))}
+          selectedValue={selectedWord}
+          onChange={setSelectedWord}
+          setName={setName}
+        />
+        <Subtitle>Datum</Subtitle>
+      </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
         <View style={{ width: "80%" }}>
           <MyTextInput
@@ -96,7 +98,7 @@ export default function SpeakingAdd() {
           onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
         />
       </View>
-      <Subtitle>Výslovnost</Subtitle>
+      <Subtitle style={{marginTop: 10}}>Výslovnost</Subtitle>
       <MyTextInput
               placeholder="Např. Oj"
               value={note}

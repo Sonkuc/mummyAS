@@ -78,30 +78,30 @@ useEffect(() => {
 
    return (
     <MainScreenContainer>
-      <View style={{ marginBottom: -25 }}>
         <CustomHeader>
           {selectedChildIndex !== null && milIndex !== undefined && (
             <DeleteButton type="milestone" index={Number(milIndex)} 
             onDeleteSuccess={() => router.replace("/actions/milestone")}/>
           )}
         </CustomHeader>
-      </View>
       <Title>Upravit milník</Title>
-      <MyTextInput
-        placeholder="Např. První úsměv"
-        value={name}
-        onChangeText={text => {
-          setName(text);
-          setSelectedMilestone(""); // zruší výběr z pickeru, pokud píšu vlastní text
-        }}
-      />
-      <MyPicker
-        data={MILESTONES}
-        selectedValue={selectedMilestone}
-        onChange={setSelectedMilestone}
-        setName={setName}
-      />
-      <Subtitle>Datum</Subtitle>
+      <View style={{marginTop: 10, gap: 10}}>
+        <MyTextInput
+          placeholder="Např. První úsměv"
+          value={name}
+          onChangeText={text => {
+            setName(text);
+            setSelectedMilestone(""); // zruší výběr z pickeru, pokud píšu vlastní text
+          }}
+        />
+        <MyPicker
+          data={MILESTONES}
+          selectedValue={selectedMilestone}
+          onChange={setSelectedMilestone}
+          setName={setName}
+        />
+        <Subtitle>Datum</Subtitle>
+      </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
         <View style={{ width: "80%" }}>
           <MyTextInput
@@ -115,7 +115,7 @@ useEffect(() => {
           onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
         />
       </View>
-      <Subtitle>Poznámka</Subtitle>
+      <Subtitle style={{marginTop: 10}}>Poznámka</Subtitle>
       <MyTextInput
               placeholder="Např. u babičky"
               value={note}
