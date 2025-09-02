@@ -7,7 +7,7 @@ import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 type StoredSleepRecord = {
   date: string;
@@ -31,6 +31,40 @@ const renumberSleeps = (records: StoredSleepRecord[]): EditableRecord[] => {
   });
 };
 
+const formatDateToCzech = (dateStr: string) => {
+  if (!dateStr) return "";
+  if (dateStr.includes("-")) {
+    const [year, month, day] = dateStr.split("-");
+    return `${day}.${month}.${year}`;
+  }
+  return dateStr;
+};
+
+// povolíme jen čísla a 1 dvojtečku, max délka 5
+const handleTimeInput = (txt: string, set: (v: string) => void) => {
+  let t = txt.replace(/[^\d:]/g, ""); // jen čísla a :
+  // odstraníme případné další dvojtečky
+  const firstColon = t.indexOf(":");
+  if (firstColon !== -1) {
+    t = t.slice(0, firstColon + 1) + t.slice(firstColon + 1).replace(/:/g, "");
+  }
+  // omezíme délku
+  if (t.length > 5) t = t.slice(0, 5);
+  set(t);
+};
+
+// vrátí validní HH:MM nebo null
+const normalizeTime = (input: string): string | null => {
+  if (!input) return null;
+  const m = input.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const hh = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}`;
+};
+
 export default function SleepEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const router = useRouter();
@@ -38,14 +72,12 @@ export default function SleepEdit() {
 
   const [records, setRecords] = useState<EditableRecord[]>([]);
   const [newTime, setNewTime] = useState("");
-  const [newState, setNewState] = useState<"sleep" | "awake">("sleep");
+  const [newState, setNewState] = useState<"awake" | "sleep">("awake");
 
   // Načtení záznamů pro dané datum
   useEffect(() => {
     if (!selectedChild || !selectedChild.sleepRecords || typeof date !== "string") return;
 
-    // 1) Vytáhnout záznamy daného dne
-    // 2) Zkonvertovat případné staré hodnoty state (texty) na tokeny 'sleep' | 'awake'
     const dayRecords: StoredSleepRecord[] = selectedChild.sleepRecords
       .filter((r) => r.date === date)
       .map((r) => {
@@ -53,21 +85,31 @@ export default function SleepEdit() {
         if (r.state === "sleep" || r.state === "awake") {
           state = r.state;
         } else {
-          // fallback pro starší data, kde se ukládalo "Spánek od:" / "Vzhůru od:"
           const s = String(r.state).toLowerCase();
           state = s.includes("spán") ? "sleep" : "awake";
         }
         return { date: r.date, time: r.time, state };
       });
 
+    // Pozn.: nevnucujeme opravu uložených nevalidních časů automaticky,
+    // ale při editaci je uživatel bude muset opravit (onBlur / save zablokuje).
+    setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
     setRecords(renumberSleeps(dayRecords));
+
+    // Pokud existuje poslední záznam, nastavíme opačný stav
+    if (dayRecords.length > 0) {
+      const lastState = dayRecords[dayRecords.length - 1].state;
+      setNewState(lastState === "sleep" ? "awake" : "sleep");
+    } else {
+      setNewState("sleep");
+    }
   }, [selectedChild, date]);
 
   // Úprava času
-  const updateTime = (index: number, newTime: string) => {
+  const updateTime = (index: number, newTimeValue: string) => {
     setRecords((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], time: newTime };
+      updated[index] = { ...updated[index], time: newTimeValue };
       return updated;
     });
   };
@@ -81,7 +123,6 @@ export default function SleepEdit() {
         style: "destructive",
         onPress: () => {
           setRecords((prev) => {
-            // odstraníme z UI label a přepočteme číslování
             const withoutDeleted: StoredSleepRecord[] = prev
               .filter((_, i) => i !== index)
               .map(({ label, ...rest }) => rest);
@@ -93,102 +134,142 @@ export default function SleepEdit() {
   };
 
   const addRecord = () => {
-    if (!newTime) {
-      Alert.alert("Chybí čas", "Zadej čas ve formátu HH:MM");
+    // normalizace newTime před přidáním
+    const norm = normalizeTime(newTime);
+    if (!norm) {
+      Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
       return;
     }
 
     const newRec: StoredSleepRecord = {
       date: date!,
-      time: newTime,
+      time: norm,
       state: newState,
     };
 
     setRecords((prev) => {
       const withoutLabels: StoredSleepRecord[] = prev.map(({ label, ...rest }) => rest);
-      return renumberSleeps([...withoutLabels, newRec]);
+      const updated = [...withoutLabels, newRec].sort((a, b) => a.time.localeCompare(b.time));
+      const renumbered = renumberSleeps(updated);
+
+      // Najdeme poslední stav a přepneme opačný
+      const lastState = updated[updated.length - 1].state;
+      setNewState(lastState === "sleep" ? "awake" : "sleep");
+
+      // Předvyplníme aktuální čas
+      const now = new Date();
+      const currentTime = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+      setNewTime(currentTime);
+
+      return renumbered;
     });
-
-    // vyčistit input
-    setNewTime("");
   };
-
 
   // Uložení změn
   const saveChanges = () => {
     if (selectedChildIndex === null) return;
-    
+
+    // znormalizujeme a ověříme všechny časy; pokud některý nevalidní -> zablokujeme uložení
+    const normalized: StoredSleepRecord[] = [];
+    for (let i = 0; i < records.length; i++) {
+      const r = records[i];
+      const norm = normalizeTime(r.time);
+      if (!norm) {
+        Alert.alert("Chybný čas", `Záznam č. ${i + 1} obsahuje neplatný čas. Oprav ho prosím.`);
+        return;
+      }
+      normalized.push({ date: r.date, time: norm, state: r.state });
+    }
+
+    // uložíme normalized (správné) časy
     const updatedChildren = [...allChildren];
     const child = updatedChildren[selectedChildIndex];
 
-    // všechny ostatní dny necháme být
     const otherDays = (child.sleepRecords || []).filter(r => r.date !== date);
-    
-    // Uložíme upravené záznamy
-    const newRecords = records.map(r => ({
-      date: r.date,
-      time: r.time,
-      state: r.state,
-    }));
-  
-    child.sleepRecords = [...otherDays, ...newRecords];
+    child.sleepRecords = [...otherDays, ...normalized];
 
     saveAllChildren(updatedChildren);
     setSelectedChild(updatedChildren[selectedChildIndex]);
     router.back();
-};
+  };
 
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions/sleep" />
-      <Title>Upravit záznam</Title>
-      <Subtitle style={{ textAlign: "center" }}> {date} </Subtitle>
-      {records.map((rec, idx) => (
-        <GroupSection key={idx} style={styles.row}>
-          <Text style={styles.label}>{rec.label}</Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <Title>Upravit záznam</Title>
+        <Subtitle style={{ textAlign: "center" }}>{formatDateToCzech(String(date))}</Subtitle>
+
+        {records.map((rec, idx) => (
+          <GroupSection key={idx} style={styles.row}>
+            <Text style={{ flex: 1 }}>{rec.label}</Text>
+            <TextInput
+              style={styles.input}
+              value={rec.time}
+              // filtrujeme vstup už během psaní
+              onChangeText={(txt) => handleTimeInput(txt, (t) => updateTime(idx, t))}
+              onBlur={() => {
+                const current = records[idx]?.time ?? "";
+                const norm = normalizeTime(current);
+                if (norm) {
+                  updateTime(idx, norm);
+                } else {
+                  Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
+                  updateTime(idx, ""); // smažeme neplatný, uživatel musí opravit
+                }
+              }}
+            />
+            <Pressable onPress={() => deleteRecord(idx)}>
+              <Text style={styles.icon}>🚮</Text>
+            </Pressable>
+          </GroupSection>
+        ))}
+
+        <GroupSection style={styles.row}>
+          <View style={[styles.switchRow, { flex: 1 }]}>
+            <Pressable
+              style={[styles.switchBtn, newState === "awake" && styles.switchBtnActive]}
+              onPress={() => setNewState("awake")}
+            >
+              <Text style={newState === "awake" ? styles.switchTextActive : styles.switchText}>
+                Vzhůru od
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.switchBtn, newState === "sleep" && styles.switchBtnActive]}
+              onPress={() => setNewState("sleep")}
+            >
+              <Text style={newState === "sleep" ? styles.switchTextActive : styles.switchText}>
+                Spánek od
+              </Text>
+            </Pressable>
+          </View>
+
           <TextInput
-            style={styles.input}
-            value={rec.time}
-            onChangeText={(txt) => updateTime(idx, txt)}
-          />
-          <Pressable onPress={() => deleteRecord(idx)}>
-            <Text style={styles.delete}>🚮</Text>
-          </Pressable>
-        </GroupSection>
-      ))}
-      <GroupSection style={styles.row}>
-        <View style={[styles.switchRow, { flex: 1 }]}>
-          <Pressable
-            style={[styles.switchBtn, newState === "sleep" && styles.switchBtnActive]}
-            onPress={() => setNewState("sleep")}
-          >
-            <Text style={newState === "sleep" ? styles.switchTextActive : styles.switchText}>
-              Spánek od
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.switchBtn, newState === "awake" && styles.switchBtnActive]}
-            onPress={() => setNewState("awake")}
-          >
-            <Text style={newState === "awake" ? styles.switchTextActive : styles.switchText}>
-              Vzhůru od
-            </Text>
-          </Pressable>
-        </View>
-        <TextInput
             placeholder="HH:MM"
             style={styles.input}
             value={newTime}
-            onChangeText={setNewTime}
+            keyboardType="numeric"
+            onChangeText={(txt) => handleTimeInput(txt, setNewTime)}
+            onBlur={() => {
+              const norm = normalizeTime(newTime);
+              if (norm) setNewTime(norm);
+              else {
+                Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
+                setNewTime("");
+              }
+            }}
           />
-       
-        <Pressable onPress={addRecord}>
-          <Text style={styles.add}>✅</Text>
-        </Pressable>
-      </GroupSection>
-      <View style={{ marginTop: 30 }}>
-        <MyButton title="Uložit" onPress={saveChanges}/>
-      </View>
+
+          <Pressable onPress={addRecord}>
+            <Text style={styles.icon}>✅</Text>
+          </Pressable>
+        </GroupSection>
+
+        <View style={{ marginTop: 30 }}>
+          <MyButton title="Uložit" onPress={saveChanges} />
+        </View>
+      </ScrollView>
     </MainScreenContainer>
   );
 }
@@ -197,9 +278,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  label: {
-    flex: 1,
   },
   input: {
     width: 80,
@@ -217,10 +295,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 20,
   },
-  delete: {
-    fontSize: 20,
-  },
-  add: {
+  icon: {
     fontSize: 20,
   },
   switchRow: {
