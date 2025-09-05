@@ -4,9 +4,9 @@ import DateSelector from "@/components/DateSelector";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import PhotoChooser from "@/components/PhotoChooser";
-import { saveChildren } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import ValidatedDateInput from "@/components/ValidDate";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -17,21 +17,28 @@ export default function ChildAdd() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
-  const [birthDate, setBirthDate] = useState(new Date());
+  const today = new Date().toISOString().slice(0, 10);
+  const [birthDate, setBirthDate] = useState(today); 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const { saveAllChildren, allChildren, setSelectedChildIndex } = useChild();
   const anonymPicture = require("../assets/images/avatars/avatarN0.jpg");
 
   const handleSave = async () => {
-    if (!name.trim() || !sex || !(birthDate instanceof Date) || isNaN(birthDate.getTime())) {
+    if (!name.trim() || !sex || !birthDate) {
       alert("Vyplň všechna pole.");
-    return;
+      return;
     }
 
-    const newDate = birthDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const [y, m, d] = birthDate.split("-").map(Number);
+    const birthDateObj = new Date(y, m - 1, d);
+    if (isNaN(birthDateObj.getTime())) {
+      alert("Datum narození není platné.");
+      return;
+    }
+
     const exists = allChildren.some(c => 
       c.name.toLowerCase() === name.toLowerCase() && 
-      c.birthDate.slice(0, 10) === newDate
+      c.birthDate.slice(0, 10) === birthDate
     );
     if (exists) {
       alert("Toto dítě už je přidáno.");
@@ -42,7 +49,7 @@ export default function ChildAdd() {
     id: uuid.v4() as string,
     name,
     sex,
-    birthDate: birthDate.toISOString(),
+    birthDate: birthDateObj.toISOString(),
     photo: photoUri || Image.resolveAssetSource(anonymPicture).uri,
     milestones: [],
     words: [],
@@ -50,27 +57,22 @@ export default function ChildAdd() {
     wh: [],
   };
 
-   try {
-    const saved = await saveChildren(newChild);
-    
-    if (!saved) {
-      alert("Chyba při ukládání.");
-      return;
+  try {
+      const updatedChildren = [...allChildren, newChild];
+      await saveAllChildren(updatedChildren);
+
+      const newIndex = updatedChildren.findIndex(
+        (child) => child.id === newChild.id
+      );
+      if (newIndex !== -1) {
+        await setSelectedChildIndex(newIndex);
+      }
+
+      router.replace("/");
+    } catch (error) {
+      alert("Nastala neočekávaná chyba při ukládání.");
     }
-
-    const updatedChildren = [...allChildren, newChild];
-    await saveAllChildren(updatedChildren);
-
-    const newIndex = updatedChildren.findIndex((child) => child.id === newChild.id);
-    if (newIndex !== -1) {
-      await setSelectedChildIndex(newIndex);
-    }
-
-    router.replace("/");
-  } catch (error) {
-    alert("Nastala neočekávaná chyba při ukládání.");
-  }
-};
+  };
 
   return (
     <MainScreenContainer>
@@ -87,21 +89,15 @@ export default function ChildAdd() {
       <Subtitle style={{marginTop: 10}}>Datum narození</Subtitle>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
         <View style={{ width: "80%" }}>
-          <MyTextInput
-            placeholder="YYYY-MM-DD"
-            value={birthDate.toISOString().slice(0, 10)}
-            onChangeText={(text) => {
-              const parts = text.split("-");
-              if (parts.length === 3) {
-                const [year, month, day] = parts.map(Number);
-                setBirthDate(new Date(year, month - 1, day));
-              }
-            }}
+          <ValidatedDateInput
+            value={birthDate}
+            onChange={setBirthDate} 
+            allowPastDates
           />
         </View>
         <DateSelector
           date={new Date(birthDate)}
-          onChange={(newDate) => setBirthDate(newDate)}
+          onChange={(newDate) => setBirthDate(newDate.toISOString().slice(0, 10))}
         />
       </View>
 

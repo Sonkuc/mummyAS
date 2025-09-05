@@ -6,6 +6,7 @@ import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
 import Title from "@/components/Title";
+import ValidatedDateInput from "@/components/ValidDate";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
@@ -16,6 +17,8 @@ export default function SpeakingEdit() {
   const { wordIndex } = useLocalSearchParams();
   const router = useRouter();
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
+  const selectedChild =
+    selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
 
   const [name, setName] = useState("");
   const [entries, setEntries] = useState<{ date: string; note: string }[]>([]);
@@ -105,10 +108,10 @@ export default function SpeakingEdit() {
         <Text style={styles.entryLabel}>Datum</Text>
         <View style={styles.inputRow}>
           <View style={{ flex: 1 }}>
-            <MyTextInput
-              placeholder="YYYY-MM-DD"
+            <ValidatedDateInput
               value={newDate}
-              onChangeText={setDate}
+              onChange={setDate}
+              birthISO={selectedChild ? selectedChild.birthDate : null}
             />
           </View>
           <DateSelector

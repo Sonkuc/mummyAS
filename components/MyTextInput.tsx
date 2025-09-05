@@ -1,18 +1,20 @@
-import { StyleSheet, TextInput } from "react-native";
+import { KeyboardTypeOptions, StyleSheet, TextInput } from "react-native";
 
 type Props = {
   placeholder: string;
   value: string;
   onChangeText: (text: string) => void;
+  keyboardType?: KeyboardTypeOptions;
 };
 
-export default function MyTextInput({ placeholder, value, onChangeText }: Props) {
+export default function MyTextInput({ placeholder, value, onChangeText, keyboardType }: Props) {
   return (
     <TextInput
       style={styles.input}
       placeholder={placeholder}
       value={value}
       onChangeText={onChangeText}
+      keyboardType={keyboardType}
     />
   );
 }

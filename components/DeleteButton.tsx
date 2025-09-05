@@ -88,7 +88,13 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
   return (
     <Pressable
       onPress={handleDelete}
-      style={{ alignSelf: "flex-end", justifyContent: "center", marginBottom: -55 }}
+      style={{
+        position: "absolute",
+        right: 10,
+        top: 35,
+        padding: 5,
+        zIndex: 10,
+      }}
     >
       <Text style={{ fontSize: 30 }}>🚮</Text>
     </Pressable>

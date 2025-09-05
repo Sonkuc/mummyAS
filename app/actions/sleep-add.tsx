@@ -3,9 +3,9 @@ import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
-import MyTextInput from "@/components/MyTextInput";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import ValidatedDateInput from "@/components/ValidDate";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -44,20 +44,9 @@ export default function SleepAdd() {
   const [newState, setNewState] = useState<"sleep" | "awake">("sleep");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // vezme datum narození z objektu dítěte 
-  const getBirthISO = (child: any): string | null => {
-    const v = child.birthDate;
-    return typeof v === "string" ? v : null;
-  };
 
-  const validateDate = (date: string) => {
+  const checkDuplicateDate = (date: string) => {
     if (!selectedChild) return false;
-
-    const todayISO = new Date().toISOString().slice(0, 10);
-    if (date > todayISO) {
-      setErrorMessage("Nelze přidat záznam s budoucím datem.");
-      return true;
-    }
 
     const exists = (selectedChild.sleepRecords || []).some(r => r.date === date);
     if (exists) {
@@ -68,38 +57,6 @@ export default function SleepAdd() {
 
     setErrorMessage("");
     return false;
-  };
-
-  const isFutureDateTime = (date: string, time: string) => {
-    const [hh, mm] = time.split(":").map((x) => parseInt(x, 10));
-    const [y, m, d] = date.split("-").map((x) => parseInt(x, 10));
-    const dt = new Date(y, m - 1, d, hh, mm);
-    return dt.getTime() > Date.now();
-  };
-
-  const isValidDate = (dateStr: string, birthISO: string | null): boolean => {
-    // Regex – přesně 4 čísla, pomlčka, 2 čísla, pomlčka, 2 čísla
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
-
-    const [y, m, d] = dateStr.split("-").map(Number);
-
-    // základní rozsahy
-    if (m < 1 || m > 12) return false;
-    if (d < 1 || d > 31) return false;
-
-    // vytvoříme datum – JS opravuje nevalidní (např. 2025-02-30 -> 2025-03-02),
-    // proto to musíme porovnat zpětně
-    const dt = new Date(y, m - 1, d);
-    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
-      return false;
-    }
-
-    // dnes + narození
-    const todayISO = new Date().toISOString().slice(0, 10);
-    if (dateStr > todayISO) return false;
-    if (birthISO && dateStr < birthISO) return false;
-
-    return true;
   };
 
   // povolíme jen čísla a 1 dvojtečku, max délka 5
@@ -115,25 +72,6 @@ export default function SleepAdd() {
     set(t);
   };
 
-  // jen čísla a pomlčky, max 10 znaků (YYYY-MM-DD)
-  const handleDateInput = (txt: string, set: (v: string) => void) => {
-  // odstraníme všechno kromě číslic
-  let t = txt.replace(/[^\d]/g, "");
-
-  // max délka 8 číslic (YYYYMMDD)
-  if (t.length > 8) t = t.slice(0, 8);
-
-  // vložíme pomlčky na pevné pozice
-  if (t.length > 4) {
-    t = t.slice(0, 4) + "-" + t.slice(4);
-  }
-  if (t.length > 7) {
-    t = t.slice(0, 7) + "-" + t.slice(7);
-  }
-
-  set(t);
-};
-
   const normalizeTime = (input: string): string | null => {
     if (!input) return null;
     const m = input.trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -148,14 +86,14 @@ export default function SleepAdd() {
 
   // Při načtení stránky zkontrolujeme dnešní datum
   useEffect(() => {
-    validateDate(today);
+    checkDuplicateDate(today);
   }, [selectedChild]);
 
   // Při změně data
   const handleDateChange = (d: Date) => {
     const formatted = d.toISOString().slice(0, 10);
     setNewDate(formatted);
-    const isInvalid = validateDate(formatted);
+    const isInvalid = checkDuplicateDate(formatted);
 
     if (isInvalid || !selectedChild) return;
 
@@ -202,11 +140,6 @@ export default function SleepAdd() {
       return;
     }
 
-    if (isFutureDateTime(newDate, norm)) {
-      Alert.alert("Chyba", "Nelze přidat záznam s budoucím datem.");
-      return;
-    }
-
     const newRec: StoredSleepRecord = { date: newDate, time: norm, state: newState };
 
     const withoutLabels: StoredSleepRecord[] = records.map(({ label, ...rest }) => rest);
@@ -222,15 +155,6 @@ export default function SleepAdd() {
   const saveChanges = () => {
     if (selectedChildIndex === null) return;
 
-    const birthISO = selectedChild ? getBirthISO(selectedChild) : null;
-    if (!isValidDate(newDate, birthISO)) {
-      Alert.alert(
-        "Chybné datum",
-        "Zadej platné datum ve formátu YYYY-MM-DD."
-      );
-      return;
-    }
-
     if (errorMessage) {
       Alert.alert("Chyba", errorMessage);
       return;
@@ -242,10 +166,6 @@ export default function SleepAdd() {
       const norm = normalizeTime(rec.time);
       if (!norm) {
         Alert.alert("Chybný čas", "Některý z časů není ve formátu HH:MM nebo je mimo rozsah.");
-        return;
-      }
-      if (isFutureDateTime(rec.date, norm)) {
-        Alert.alert("Chyba", "Záznamy obsahují budoucí čas.");
         return;
       }
       normalized.push({ date: rec.date, time: norm, state: rec.state });
@@ -277,20 +197,10 @@ export default function SleepAdd() {
         <Subtitle>Datum</Subtitle>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
           <View style={{ width: "80%" }}>
-            <MyTextInput
-              placeholder="YYYY-MM-DD"
+            <ValidatedDateInput
               value={newDate}
-              onChangeText={(txt) => handleDateInput(txt, setNewDate)}
-              onBlur={() => {
-                const birthISO = selectedChild ? getBirthISO(selectedChild) : null;
-                if (!isValidDate(newDate, birthISO)) {
-                  Alert.alert(
-                    "Chybný datum",
-                    "Zadej platné datum ve formátu YYYY-MM-DD, které není budoucí ani před narozením dítěte."
-                  );
-                  setNewDate(today);
-                }
-              }}
+              onChange={setNewDate}
+              birthISO={selectedChild ? selectedChild.birthDate : null}
             />
           </View>
           <DateSelector

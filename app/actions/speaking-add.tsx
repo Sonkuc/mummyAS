@@ -7,11 +7,12 @@ import MyTextInput from "@/components/MyTextInput";
 import { Word } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import ValidatedDateInput from "@/components/ValidDate";
 import { useChild } from "@/contexts/ChildContext";
 import { WORDS } from "@/data/words";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
 
 export default function SpeakingAdd() {
   const router = useRouter();
@@ -20,6 +21,9 @@ export default function SpeakingAdd() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
+
+  const selectedChild =
+  selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
   
   const handleAdd = () => {
     const finalName = name.trim() !== "" 
@@ -67,44 +71,46 @@ export default function SpeakingAdd() {
    return (
     <MainScreenContainer>
       <CustomHeader/>
-      <Title>Přidat slovo</Title>
-        <View style={{marginTop: 10, gap: 10}}>
-        <MyTextInput
-          placeholder="Např. Ahoj"
-          value={name}
-          onChangeText={text => {
-            setName(text);
-            setSelectedWord(""); // zruší výběr z pickeru, pokud píšu vlastní text
-          }}
-        />
-        <MyPicker
-          data={WORDS.map((w, index) => ({ id: `${w.label}-${index}`, label: w.label }))}
-          selectedValue={selectedWord}
-          onChange={setSelectedWord}
-          setName={setName}
-        />
-        <Subtitle>Datum</Subtitle>
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
-        <View style={{ width: "80%" }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <Title>Přidat slovo</Title>
+          <View style={{marginTop: 10, gap: 10}}>
           <MyTextInput
-                  placeholder="YYYY-MM-DD"
-                  value={date}
-                  onChangeText={setDate}
+            placeholder="Např. Ahoj"
+            value={name}
+            onChangeText={text => {
+              setName(text);
+              setSelectedWord(""); // zruší výběr z pickeru, pokud píšu vlastní text
+            }}
+          />
+          <MyPicker
+            data={WORDS.map((w, index) => ({ id: `${w.label}-${index}`, label: w.label }))}
+            selectedValue={selectedWord}
+            onChange={setSelectedWord}
+            setName={setName}
+          />
+          <Subtitle>Datum</Subtitle>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+          <View style={{ width: "80%" }}>
+            <ValidatedDateInput
+              value={date}
+              onChange={setDate}
+              birthISO={selectedChild ? selectedChild.birthDate : null}
+            />
+          </View>
+          <DateSelector
+            date={new Date(date)}
+            onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
           />
         </View>
-        <DateSelector
-          date={new Date(date)}
-          onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
+        <Subtitle style={{marginTop: 10}}>Výslovnost</Subtitle>
+        <MyTextInput
+                placeholder="Např. Oj"
+                value={note}
+                onChangeText={setNote}
         />
-      </View>
-      <Subtitle style={{marginTop: 10}}>Výslovnost</Subtitle>
-      <MyTextInput
-              placeholder="Např. Oj"
-              value={note}
-              onChangeText={setNote}
-      />
-      <CheckButton onPress = {handleAdd} />
+        <CheckButton onPress = {handleAdd} />
+      </ScrollView>
     </MainScreenContainer>
   );
 }

@@ -46,6 +46,7 @@
     "react-native-uuid": "^2.0.3",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
+    "recharts": "^3.1.2",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

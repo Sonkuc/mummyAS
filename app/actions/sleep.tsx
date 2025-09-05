@@ -291,7 +291,7 @@ export default function Sleep() {
 
       <Pressable
         style={styles.statisticButton}
-        onPress={() => router.push({ pathname: "/actions" })}
+        onPress={() => router.push({ pathname: "/actions/sleep-statistic" })}
       >
         <ChartColumn color="white" size={28} />
       </Pressable>

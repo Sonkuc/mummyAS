@@ -7,6 +7,7 @@ import MyTextInput from "@/components/MyTextInput";
 import PhotoChooser from "@/components/PhotoChooser";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import ValidatedDateInput from "@/components/ValidDate";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -21,7 +22,7 @@ export default function ChildEdit() {
 
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
-  const [birthDate, setBirthDate] = useState(new Date());
+  const [birthDate, setBirthDate] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const anonymPicture = require("../assets/images/avatars/avatarN0.jpg");
 
@@ -30,18 +31,25 @@ export default function ChildEdit() {
       const kid = allChildren[childIdx];
       setName(kid.name);
       setSex(kid.sex);
-      setBirthDate(new Date(kid.birthDate));
+      setBirthDate(kid.birthDate.slice(0, 10));
       setPhotoUri(kid.photo);
     }
   }, [childIdx, isValidIndex, allChildren]);
   
   const handleSave = async () => {
-    if (!name.trim() || !sex || !(birthDate instanceof Date) || isNaN(birthDate.getTime())) {
+    if (!name.trim() || !sex || !birthDate) {
       alert("Vyplň všechna pole.");
       return;
     }
 
-  const newDate = birthDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const [y, m, d] = birthDate.split("-").map(Number);
+    const birthDateObj = new Date(y, m - 1, d);
+    if (isNaN(birthDateObj.getTime())) {
+      alert("Datum narození není platné.");
+      return;
+    }
+
+  const newDate = birthDate;
     const existingIndex = allChildren.findIndex(c =>
     c.name.toLowerCase() === name.toLowerCase() &&
     c.birthDate.slice(0, 10) === newDate
@@ -58,7 +66,7 @@ export default function ChildEdit() {
       ...updated[existingIndex],
       name: name,
       sex: sex,
-      birthDate: birthDate.toISOString(),
+      birthDate: birthDateObj.toISOString(),
       photo: photoToSave,
     };
   } else if (childIdx !== null && childIdx >= 0 && childIdx < updated.length) {
@@ -67,7 +75,7 @@ export default function ChildEdit() {
       ...updated[childIdx],
       name: name,
       sex: sex,
-      birthDate: birthDate.toISOString(),
+      birthDate: birthDateObj.toISOString(),
       photo: photoToSave,
     };
   } else {
@@ -97,24 +105,18 @@ export default function ChildEdit() {
       <Subtitle style={{marginTop: 10}}>Datum narození</Subtitle>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
         <View style={{ width: "80%" }}>
-          <MyTextInput
-            placeholder="YYYY-MM-DD"
-            value={birthDate.toISOString().slice(0, 10)}
-            onChangeText={(text) => {
-              const parts = text.split("-");
-              if (parts.length === 3) {
-                const [year, month, day] = parts.map(Number);
-                const newDate = new Date(year, month - 1, day);
-                if (!isNaN(newDate.getTime())) {
-                  setBirthDate(newDate); 
-                }
-              }
-            }}
+          <ValidatedDateInput
+            value={birthDate}
+            onChange={setBirthDate} 
+            birthISO={isValidIndex ? allChildren[childIdx].birthDate : null} 
+            allowPastDates
+            fallbackOnError="original"
           />
         </View>
         <DateSelector
           date={new Date(birthDate)}
-          onChange={(newDate) => setBirthDate(newDate)}
+          onChange={(newDate) => setBirthDate(newDate.toISOString().slice(0, 10))
+          }
         />
       </View>
 
