@@ -19,7 +19,22 @@ export interface SleepRecord {
   date: string;
   time: string;
   state: "awake" | "sleep";
-}
+};
+
+export interface GroupedRecord {
+  date: string;
+  totalSleepMinutes: number;
+  records: (RecordType & { ts: number })[];
+  nightSleepMinutes?: number;
+};
+
+export interface RecordType {
+  label: string;
+  time: string; // HH:MM
+  date: string; // YYYY-MM-DD
+  state: "awake" | "sleep";
+  extra?: string;
+};
 
 export type Word = {
   name: string;
@@ -45,6 +60,7 @@ export interface Child {
     mode: "awake" | "sleep";
     start: number;
   } | null;
+  groupedSleep?: GroupedRecord[];
 }
 
 const STORAGE_KEY = 'children';

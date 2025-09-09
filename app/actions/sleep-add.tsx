@@ -41,7 +41,7 @@ export default function SleepAdd() {
   const [newDate, setNewDate] = useState(today);
   const [records, setRecords] = useState<EditableRecord[]>([]);
   const [newTime, setNewTime] = useState("");
-  const [newState, setNewState] = useState<"sleep" | "awake">("sleep");
+  const [newState, setNewState] = useState<"sleep" | "awake">("awake");
   const [errorMessage, setErrorMessage] = useState("");
 
 

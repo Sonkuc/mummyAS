@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Alert, StyleSheet, TextInput, View } from "react-native";
-import { validateDate } from "./dateUtils";
+import { validateDate } from "./DateUtils";
 
 type Props = {
   value: string;

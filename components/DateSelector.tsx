@@ -40,6 +40,7 @@ export default function DateSelector({ date, onChange }: Props) {
             }}
             themeVariant={isDark ? "dark" : "light"}
             style={{ width: "100%" }}
+            maximumDate={new Date()}
             />
             <View style={styles.buttonRow}>
               <Pressable onPress={() => setShow(false)} style={styles.cancelButton}>

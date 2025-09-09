@@ -249,7 +249,6 @@ export default function SleepEdit() {
             placeholder="HH:MM"
             style={styles.input}
             value={newTime}
-            keyboardType="numeric"
             onChangeText={(txt) => handleTimeInput(txt, setNewTime)}
             onBlur={() => {
               const norm = normalizeTime(newTime);

@@ -3,6 +3,7 @@ import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
+import type { GroupedRecord, RecordType } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useFocusEffect } from "@react-navigation/native";
@@ -10,14 +11,6 @@ import { useRouter } from "expo-router";
 import { ChartColumn, Eye, EyeClosed } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-
-type RecordType = {
-  label: string;
-  time: string; // HH:MM
-  date: string; // YYYY-MM-DD
-  state: "awake" | "sleep";
-  extra?: string;
-};
 
 export default function Sleep() {
   const [records, setRecords] = useState<RecordType[]>([]);
@@ -29,7 +22,7 @@ export default function Sleep() {
 
   const router = useRouter();
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren } = useChild();
-
+  
   // převod ISO → český formát
   const formatDateToCzech = (dateStr: string) => {
     if (!dateStr) return "";
@@ -83,6 +76,7 @@ export default function Sleep() {
       };
       saveAllChildren(updated);
     }
+
   };
 
   useFocusEffect(
@@ -145,7 +139,7 @@ export default function Sleep() {
   };
 
   // seskupení a výpočty per den
-  const grouped = Object.entries(
+  const grouped: GroupedRecord[] = Object.entries(
     records.reduce((acc, rec) => {
       if (!acc[rec.date]) acc[rec.date] = [];
       acc[rec.date].push({ ...rec, ts: toTimestamp(rec.date, rec.time) });
@@ -193,6 +187,43 @@ export default function Sleep() {
       const tb = toTimestamp(b.date, "23:59");
       return tb - ta;
     });
+
+    //dopočítání nočního spánku
+    for (let i = 0; i < grouped.length - 1; i++) {
+      const today = grouped[i];
+      const yesterday = grouped[i + 1];
+
+      // poslední usnutí včera
+      const lastSleep = [...yesterday.records]
+        .sort((a, b) => a.ts - b.ts)
+        .findLast(r => r.state === "sleep");
+
+      // první probuzení dnes
+      const firstAwake = [...today.records]
+        .sort((a, b) => a.ts - b.ts)
+        .find(r => r.state === "awake");
+
+      if (lastSleep && firstAwake) {
+        const nightMinutes = Math.floor((firstAwake.ts - lastSleep.ts) / 60000);
+        if (nightMinutes > 0) {
+          yesterday.totalSleepMinutes += nightMinutes;
+          (yesterday as any).nightSleepMinutes = nightMinutes;
+
+          const idx = yesterday.records.findIndex(r => r.ts === lastSleep.ts);
+          if (idx !== -1) {
+            yesterday.records[idx].extra = ` → ${formatDuration(nightMinutes)}`;
+          }
+        }
+      }
+    }
+
+  useEffect(() => {
+    if (selectedChildIndex !== null) {
+      const updated = [...allChildren];
+      updated[selectedChildIndex].groupedSleep = grouped;
+      saveAllChildren(updated);
+    }
+  }, [records]);
 
   const getLastMode = () => {
     if (selectedChild?.currentMode?.mode) {
@@ -262,36 +293,43 @@ export default function Sleep() {
         )}
 
         <View style={{ marginTop: 10 }}>
-          {grouped.map(({ date, totalSleepMinutes, records }, groupIdx) => (
-            <GroupSection key={`group-${date}-${groupIdx}`}>
-              <View style={styles.row}>
-                {isEditMode && (
-                  <EditPencil
-                    targetPath={`/actions/sleep-edit?date=${encodeURIComponent(date)}`}
-                    color="#993769"
-                  />
-                )}
-                <Text style={styles.dateTitle}>{formatDateToCzech(date)}</Text>
-              </View>
-              {records.map((rec, recIdx) => (
-                <Text
-                  key={`rec-${date}-${rec.time}-${recIdx}`}
-                  style={styles.recordText}
-                >
-                  {rec.label}{rec.extra ?? ""}
-                </Text>
-              ))}
-              <Text style={styles.totalText}>
-                Celkem spánku: {Math.floor(totalSleepMinutes / 60)} h {totalSleepMinutes % 60} m
-              </Text>
-            </GroupSection>
-          ))}
-        </View>
+  {grouped.map(({ date, totalSleepMinutes, records, nightSleepMinutes }, groupIdx) => (
+    <GroupSection key={`group-${date}-${groupIdx}`}>
+      <View style={styles.row}>
+        {isEditMode && (
+          <EditPencil
+            targetPath={`/actions/sleep-edit?date=${encodeURIComponent(date)}`}
+            color="#993769"
+          />
+        )}
+        <Text style={styles.dateTitle}>{formatDateToCzech(date)}</Text>
+      </View>
+      {records.map((rec, recIdx) => (
+        <Text
+          key={`rec-${date}-${rec.time}-${recIdx}`}
+          style={styles.recordText}
+        >
+          {rec.label}{rec.extra ?? ""}
+        </Text>
+      ))}
+      {nightSleepMinutes !== undefined && (
+        <Text style={styles.totalText}>
+          Denní spánek: {Math.floor((totalSleepMinutes-nightSleepMinutes) / 60)} h {(totalSleepMinutes-nightSleepMinutes) % 60} m
+        </Text>
+      )}
+      <Text style={styles.totalText}>
+        Celkem spánku: {Math.floor(totalSleepMinutes / 60)} h {totalSleepMinutes % 60} m
+      </Text>
+    </GroupSection>
+  ))}
+</View>
       </ScrollView>
 
       <Pressable
         style={styles.statisticButton}
-        onPress={() => router.push({ pathname: "/actions/sleep-statistic" })}
+        onPress={() => 
+          router.push({pathname: "/actions/sleep-statistic"})
+        }
       >
         <ChartColumn color="white" size={28} />
       </Pressable>
