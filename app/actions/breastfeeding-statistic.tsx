@@ -1,31 +1,34 @@
 import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import { MyBarChart } from "@/components/MyBarChart";
-import type { GroupedSleepRecord } from "@/components/storage/SaveChildren";
+import type { GroupedBreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-export default function SleepStats() {
+const formatDateToCzech = (dateStr: string) => {
+    if (!dateStr) return "";
+    if (dateStr.includes("-")) {
+      const [year, month, day] = dateStr.split("-");
+      return `${day}.${month}.`;
+    }
+    return dateStr;
+  };
+
+export default function BreastfeedingStats() {
   const { selectedChild } = useChild();
   const [periodMode, setPeriodMode] = useState<"week" | "month" | "halfYear" > ("week");
-  const grouped = selectedChild?.groupedSleep ?? [];
-  const [dayMode, setDayMode] = useState <"day" | "plusNight"> ("plusNight")
+  const grouped = selectedChild?.groupedFeed ?? [];
 
-  const computeDailyStatsFromGrouped = (records: GroupedSleepRecord[], dayMode: "day" | "plusNight") =>
+  const computeDailyStatsFromGrouped = (records: GroupedBreastfeedingRecord[]) =>
     records.map(r => {
-      const totalMinutes =
-        dayMode === "day" && r.nightSleepMinutes
-          ? r.totalSleepMinutes - r.nightSleepMinutes
-          : r.totalSleepMinutes;
-
-      const h = Math.floor(totalMinutes / 60);
-      const m = totalMinutes % 60;
+      const h = Math.floor(r.totalFeedMinutes / 60);
+      const m = r.totalFeedMinutes % 60;
 
       return {
         date: r.date,
-        hours: totalMinutes / 60, // čistá hodnota v hodinách
+        hours: r.totalFeedMinutes / 60, // čistá hodnota v hodinách
         label: `${h} h ${m} m`,
       };
     });
@@ -35,7 +38,7 @@ export default function SleepStats() {
 
       const sorted = [...grouped].sort((a, b) => a.date.localeCompare(b.date));
 
-      const stats = computeDailyStatsFromGrouped(sorted, dayMode);
+      const stats = computeDailyStatsFromGrouped(sorted);
 
       // vyhodíme dnešní datum
       const today = new Date();
@@ -50,24 +53,20 @@ export default function SleepStats() {
       });
 
       if (periodMode === "week") {
-        return filtered.slice(-7).map(d => ({
-          ...d,
-          label: formatLabel(d.date, "week"),
-        }));
+        return filtered.slice(-7); 
       }
 
       if (periodMode === "month") {
-        const last30 = filtered.slice(-30);
-        const groups: { date: string; hours: number; label: string }[] = [];
+        const last30 = filtered.slice(-30); 
+        const groups: { date: string; hours: number; from: string }[] = [];
         for (let i = 0; i < last30.length; i += 5) {
           const chunk = last30.slice(i, i + 5);
           if (chunk.length > 0) {
             const avg = chunk.reduce((sum, d) => sum + d.hours, 0) / chunk.length;
-            const firstDate = chunk[0].date;
             groups.push({
-              date: firstDate,
+              date: chunk[0].date,
+              from: formatDateToCzech(chunk[0].date),
               hours: avg,
-              label: formatLabel(firstDate, "month"),
             });
           }
         }
@@ -89,16 +88,15 @@ export default function SleepStats() {
         return Object.entries(monthMap).map(([key, val]) => ({
           date: key,
           hours: val.sum / val.count,
-          label: formatLabel(key, "halfYear"),
         }));
       }
 
       return filtered;
-  }, [grouped, periodMode, dayMode]);
+  }, [grouped, periodMode]);
   
   return (
     <MainScreenContainer>
-    <CustomHeader backTargetPath="/actions/sleep" />
+    <CustomHeader backTargetPath="/actions/breastfeeding" />
     <Title>Statistika</Title>
 
     <View style={styles.row}>
@@ -124,35 +122,25 @@ export default function SleepStats() {
 
     {periodMode === "week" && (
       <MyBarChart
-        title="Doba spánku denně za poslední týden"
+        title="Doba kojení denně za poslední týden"
         data={dailyData}
         mode="week"
       />
     )}
     {periodMode === "month" && (
       <MyBarChart
-        title="Průměrná doba spánku za 5 dní v posledním měsíci"
+        title="Průměrná doba kojení za 5 dní v posledním měsíci"
         data={dailyData}
         mode="month"
       />
     )}
     {periodMode === "halfYear" && (
       <MyBarChart
-        title="Měsíční průměr doby spánku za poslední půlrok"
+        title="Měsíční průměr doby kojení za poslední půlrok"
         data={dailyData}
         mode="halfYear"
       />
     )}
-
-    <Pressable 
-      style={[styles.periodButton, { marginTop: 30 }]}
-      onPress={() => setDayMode(dayMode === "plusNight" ? "day" : "plusNight")}
-    >
-      <Text style={styles.buttonText}>
-        {dayMode === "plusNight" ? "Bez nočního spánku" : "Včetně nočního spánku"}
-      </Text>
-    </Pressable>
-
   </MainScreenContainer>
   );
 }

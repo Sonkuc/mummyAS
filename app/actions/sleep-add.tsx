@@ -37,10 +37,11 @@ export default function SleepAdd() {
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } =
     useChild();
 
+  const now = new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });  
   const today = new Date().toISOString().slice(0, 10);
   const [newDate, setNewDate] = useState(today);
   const [records, setRecords] = useState<EditableRecord[]>([]);
-  const [newTime, setNewTime] = useState("");
+  const [newTime, setNewTime] = useState(now);
   const [newState, setNewState] = useState<"sleep" | "awake">("awake");
   const [errorMessage, setErrorMessage] = useState("");
 

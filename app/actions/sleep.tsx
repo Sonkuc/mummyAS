@@ -3,7 +3,7 @@ import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import type { GroupedRecord, RecordType } from "@/components/storage/SaveChildren";
+import type { GroupedSleepRecord, RecordTypeSleep } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
 import { useChild } from "@/contexts/ChildContext";
 import { useFocusEffect } from "@react-navigation/native";
@@ -13,7 +13,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Sleep() {
-  const [records, setRecords] = useState<RecordType[]>([]);
+  const [records, setRecords] = useState<RecordTypeSleep[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [minutesSinceAwake, setMinutesSinceAwake] = useState<number | null>(null);
   const [minutesSinceSleep, setMinutesSinceSleep] = useState<number | null>(null);
@@ -41,7 +41,7 @@ export default function Sleep() {
 
     if (selectedChildIndex !== null) {
       const updated = [...allChildren];
-      updated[selectedChildIndex].currentMode = null;
+      updated[selectedChildIndex].currentModeSleep = null;
       saveAllChildren(updated);
     }
   };
@@ -56,7 +56,7 @@ export default function Sleep() {
     const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
     const date = now.toISOString().slice(0, 10); // vždy ISO YYYY-MM-DD
 
-    const newRecord: RecordType = { date, time, state: newMode, label };
+    const newRecord: RecordTypeSleep = { date, time, state: newMode, label };
 
     setRecords((prev) => [...prev, newRecord]);
 
@@ -70,7 +70,7 @@ export default function Sleep() {
         ...(updated[selectedChildIndex].sleepRecords || []),
         { date, time, state: newMode },
       ];
-      updated[selectedChildIndex].currentMode = {
+      updated[selectedChildIndex].currentModeSleep = {
         mode: newMode,
         start: startTimestamp,
       };
@@ -92,8 +92,8 @@ export default function Sleep() {
         );
       }
 
-      if (selectedChild?.currentMode) {
-        const { mode, start } = selectedChild.currentMode;
+      if (selectedChild?.currentModeSleep) {
+        const { mode, start } = selectedChild.currentModeSleep;
         setMode(mode);
         setModeStart(start);
 
@@ -139,18 +139,18 @@ export default function Sleep() {
   };
 
   // seskupení a výpočty per den
-  const grouped: GroupedRecord[] = Object.entries(
+  const grouped: GroupedSleepRecord[] = Object.entries(
     records.reduce((acc, rec) => {
       if (!acc[rec.date]) acc[rec.date] = [];
       acc[rec.date].push({ ...rec, ts: toTimestamp(rec.date, rec.time) });
       return acc;
-    }, {} as Record<string, (RecordType & { ts: number })[]>)
+    }, {} as Record<string, (RecordTypeSleep & { ts: number })[]>)
   )
     .map(([date, recs]) => {
       const sortedAsc = [...recs].sort((a, b) => a.ts - b.ts);
 
       let totalSleepMinutes = 0;
-      const enhanced: (RecordType & { ts: number })[] = [];
+      const enhanced: (RecordTypeSleep & { ts: number })[] = [];
       let sleepCounter = 1;
 
       for (let i = 0; i < sortedAsc.length; i++) {
@@ -226,8 +226,8 @@ export default function Sleep() {
   }, [records]);
 
   const getLastMode = () => {
-    if (selectedChild?.currentMode?.mode) {
-      return selectedChild.currentMode.mode;
+    if (selectedChild?.currentModeSleep?.mode) {
+      return selectedChild.currentModeSleep.mode;
     }
     const last = selectedChild?.sleepRecords?.[selectedChild.sleepRecords.length - 1];
     return last?.state ?? null;

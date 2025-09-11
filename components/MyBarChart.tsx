@@ -11,18 +11,28 @@ export function MyBarChart({ title, data, mode }: Props) {
   const screenWidth = Dimensions.get("window").width;
 
   const formatLabel = (dateStr: string) => {
-    if (mode === "week") {
-      const [y, m, d] = dateStr.split("-").map(Number);
-      return `${d}.${m}.`;
+    if (!dateStr) return "";
+
+    const parts = dateStr.split("-");
+
+    if (mode === "week" && parts.length === 3) {
+      // YYYY-MM-DD -> DD/MM
+      const [y, m, d] = parts.map(Number);
+      return `${d}/${m}`;
     }
-    if (mode === "month") {
-      const [y, m, d] = dateStr.split("-").map(Number);
-      return `od ${d}.${m}.`;
+
+    if (mode === "month" && parts.length === 3) {
+      // YYYY-MM-DD -> "od DD/MM"
+      const [y, m, d] = parts.map(Number);
+      return `od ${d}/${m}`;
     }
-    if (mode === "halfYear") {
-      const [y, m] = dateStr.split("-");
+
+    if (mode === "halfYear" && parts.length >= 2) {
+      // YYYY-MM -> MM/YYYY
+      const [y, m] = parts;
       return `${m}/${y}`;
     }
+
     return dateStr;
   };
 

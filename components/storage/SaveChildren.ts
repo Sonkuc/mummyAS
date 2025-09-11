@@ -15,20 +15,39 @@ export interface WeightHeight {
   clothes?: string;
 };
 
+export interface BreastfeedingRecord {
+  date: string;
+  time: string;
+  state: "start" | "stop";
+};
+
+export interface GroupedBreastfeedingRecord {
+  date: string;
+  totalFeedMinutes: number;
+  records: RecordTypeFeed[];
+}
+
+export interface RecordTypeFeed {
+  time: string; // HH:MM
+  date: string; // YYYY-MM-DD
+  state: "start" | "stop";
+  ts?: number;
+};
+
 export interface SleepRecord {
   date: string;
   time: string;
   state: "awake" | "sleep";
 };
 
-export interface GroupedRecord {
+export interface GroupedSleepRecord {
   date: string;
   totalSleepMinutes: number;
-  records: (RecordType & { ts: number })[];
+  records: (RecordTypeSleep & { ts: number })[];
   nightSleepMinutes?: number;
 };
 
-export interface RecordType {
+export interface RecordTypeSleep {
   label: string;
   time: string; // HH:MM
   date: string; // YYYY-MM-DD
@@ -56,11 +75,17 @@ export interface Child {
   wh?: WeightHeight[];
   foodDates?: FoodDates;
   sleepRecords?: SleepRecord[];
-  currentMode?: {
+  currentModeSleep?: {
     mode: "awake" | "sleep";
     start: number;
   } | null;
-  groupedSleep?: GroupedRecord[];
+  groupedSleep?: GroupedSleepRecord[];
+  breastfeedingRecords?: BreastfeedingRecord[];
+  groupedFeed?: GroupedBreastfeedingRecord[];
+  currentModeFeed?: {
+    mode: "start" | "stop";
+    start: number;
+  } | null;
 }
 
 const STORAGE_KEY = 'children';
