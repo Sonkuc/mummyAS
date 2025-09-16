@@ -1,6 +1,7 @@
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
+import { IsoFormatDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
@@ -19,15 +20,12 @@ export default function AddMilestone() {
   const [name, setName] = useState("");
   const [selectedMilestone, setSelectedMilestone] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const { formatDateToCzech } = IsoFormatDate();
   const [note, setNote] = useState("");
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
   const selectedChild =
     selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
   
-  const formatDate = (isoDate: string) => {
-    const [year, month, day] = isoDate.split("-");
-    return `${day}.${month}.${year}`;
-  };
 
   const handleAdd = () => {
     const finalName = name.trim() !== "" 
@@ -36,7 +34,7 @@ export default function AddMilestone() {
 
     const newMilestone: Milestone = {
       name: finalName,
-      date: formatDate(date),
+      date: formatDateToCzech(date),
       note,
     };
 

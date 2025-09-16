@@ -7,15 +7,6 @@ import { useChild } from "@/contexts/ChildContext";
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-const formatDateToCzech = (dateStr: string) => {
-    if (!dateStr) return "";
-    if (dateStr.includes("-")) {
-      const [year, month, day] = dateStr.split("-");
-      return `${day}.${month}.`;
-    }
-    return dateStr;
-  };
-
 export default function BreastfeedingStats() {
   const { selectedChild } = useChild();
   const [periodMode, setPeriodMode] = useState<"week" | "month" | "halfYear" > ("week");
@@ -57,19 +48,30 @@ export default function BreastfeedingStats() {
       }
 
       if (periodMode === "month") {
-        const last30 = filtered.slice(-30); 
-        const groups: { date: string; hours: number; from: string }[] = [];
+        const last30 = filtered.slice(-30);
+        const groups: { hours: number; label: string }[] = [];
+
         for (let i = 0; i < last30.length; i += 5) {
           const chunk = last30.slice(i, i + 5);
           if (chunk.length > 0) {
             const avg = chunk.reduce((sum, d) => sum + d.hours, 0) / chunk.length;
-            groups.push({
-              date: chunk[0].date,
-              from: formatDateToCzech(chunk[0].date),
-              hours: avg,
-            });
+            
+            const first = chunk[0];
+            if (first?.date) {
+              const [y, m, dd] = first.date.split("-");
+              groups.push({
+                hours: avg,
+                label: `od ${dd}/${m}`, // od DD/MM
+              });
+            } else {
+              groups.push({
+                hours: avg,
+                label: "neznámé",
+              });
+            }
           }
         }
+
         return groups;
       }
 
@@ -78,7 +80,7 @@ export default function BreastfeedingStats() {
         const monthMap: Record<string, { sum: number; count: number }> = {};
         last180.forEach((d) => {
           const [y, m] = d.date.split("-");
-          const key = `${y}-${m}`;
+          const key = `${m}/${y}`;
           if (!monthMap[key]) {
             monthMap[key] = { sum: 0, count: 0 };
           }
@@ -86,13 +88,16 @@ export default function BreastfeedingStats() {
           monthMap[key].count += 1;
         });
         return Object.entries(monthMap).map(([key, val]) => ({
-          date: key,
+          label: key,
           hours: val.sum / val.count,
         }));
       }
 
-      return filtered;
-  }, [grouped, periodMode]);
+      return filtered.map(d => ({
+          hours: d.hours,
+          label: d.date, // fallback
+        }));
+      }, [grouped, periodMode]);
   
   return (
     <MainScreenContainer>

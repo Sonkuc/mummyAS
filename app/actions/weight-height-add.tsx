@@ -2,6 +2,7 @@ import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import HideButton from "@/components/HideButton";
+import { IsoFormatDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import { WeightHeight } from "@/components/storage/SaveChildren";
@@ -17,6 +18,7 @@ import { Alert, ScrollView, StyleSheet, View } from "react-native";
 export default function WeightHeightAdd() {
   const router = useRouter();
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const { formatDateToCzech, toIsoDate } = IsoFormatDate();
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [head, setHead] = useState("");
@@ -29,12 +31,6 @@ export default function WeightHeightAdd() {
   const [hideMode, setHideMode] = useState(false);
   const HIDE_MODE_KEY = "hideMode";
   
-
-  const formatDate = (isoDate: string) => {
-    const [year, month, day] = isoDate.split("-");
-    return `${day}.${month}.${year}`;
-  };
-
   const validateNumberInput = (text: string) => {
     // povolíme čísla + jeden oddělovač (tečka nebo čárka)
     let cleaned = text.replace(/[^0-9.,]/g, "");
@@ -85,7 +81,7 @@ export default function WeightHeightAdd() {
     const child = updatedChildren[selectedChildIndex];
     const existingWh = child.wh || [];
 
-    const formattedDate = formatDate(date);
+    const formattedDate = formatDateToCzech(date);
       const dateExists = existingWh.some(
         (wh) => wh.date === formattedDate
       );
@@ -96,7 +92,7 @@ export default function WeightHeightAdd() {
       }
 
     const newWh: WeightHeight = {
-      date: formatDate(date),
+      date: formatDateToCzech(date),
       weight,
       height,
       head,

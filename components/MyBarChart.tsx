@@ -3,38 +3,12 @@ import { BarChart } from "react-native-chart-kit";
 
 type Props = {
   title: string;
-  data: { date: string; hours: number }[];
+  data: { label: string; hours: number }[];
   mode: "week" | "month" | "halfYear";
 };
 
-export function MyBarChart({ title, data, mode }: Props) {
+export function MyBarChart({ title, data }: Props) {
   const screenWidth = Dimensions.get("window").width;
-
-  const formatLabel = (dateStr: string) => {
-    if (!dateStr) return "";
-
-    const parts = dateStr.split("-");
-
-    if (mode === "week" && parts.length === 3) {
-      // YYYY-MM-DD -> DD/MM
-      const [y, m, d] = parts.map(Number);
-      return `${d}/${m}`;
-    }
-
-    if (mode === "month" && parts.length === 3) {
-      // YYYY-MM-DD -> "od DD/MM"
-      const [y, m, d] = parts.map(Number);
-      return `od ${d}/${m}`;
-    }
-
-    if (mode === "halfYear" && parts.length >= 2) {
-      // YYYY-MM -> MM/YYYY
-      const [y, m] = parts;
-      return `${m}/${y}`;
-    }
-
-    return dateStr;
-  };
 
   return (
     <>
@@ -43,7 +17,7 @@ export function MyBarChart({ title, data, mode }: Props) {
       </Text>
       <BarChart
         data={{
-          labels: data.map((d) => formatLabel(d.date)),
+          labels: data.map((d) => d.label),
           datasets: [{ data: data.map((d) => d.hours) }],
         }}
         width={screenWidth - 20}
@@ -73,3 +47,4 @@ export function MyBarChart({ title, data, mode }: Props) {
     </>
   );
 }
+

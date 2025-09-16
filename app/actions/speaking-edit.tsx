@@ -2,6 +2,7 @@ import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
 import GroupSection from "@/components/GroupSection";
+import { IsoFormatDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
@@ -24,11 +25,7 @@ export default function SpeakingEdit() {
   const [entries, setEntries] = useState<{ date: string; note: string }[]>([]);
   const [newDate, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [newNote, setNewNote] = useState("");
-
-  const formatDate = (isoDate: string) => {
-    const [year, month, day] = isoDate.split("-");
-    return `${day}.${month}.${year}`;
-  };
+  const { formatDateToCzech } = IsoFormatDate();
 
   useEffect(() => {
     if (
@@ -96,7 +93,7 @@ export default function SpeakingEdit() {
       {sortedEntries.map((entry, index) => (
         <GroupSection key={index} style={{ flexDirection: "row" }}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.entryText}>Datum: {formatDate(entry.date)}</Text>
+            <Text style={styles.entryText}>Datum: {formatDateToCzech(entry.date)}</Text>
             <Text style={styles.entryText}>Poznámka: {entry.note}</Text>
           </View>
           <TouchableOpacity onPress={() => removeEntry(index)}>

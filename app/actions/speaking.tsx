@@ -2,6 +2,7 @@ import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
+import { IsoFormatDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -14,11 +15,7 @@ export default function Speaking() {
   const { selectedChild } = useChild();
   const router = useRouter();
   const [isEditMode, setIsEditMode] = React.useState(false);
-
-  const formatDate = (isoDate: string) => {
-    const [year, month, day] = isoDate.split("-");
-    return `${day}.${month}.${year}`;
-  };
+  const { formatDateToCzech } = IsoFormatDate();
 
   const sortedWords = [...(selectedChild?.words || [])]
   .map((word) => ({
@@ -54,7 +51,7 @@ export default function Speaking() {
                     .sort((a, b) => a.date.localeCompare(b.date))
                     .map((entry, i) => (
                     <Text key={i} style={styles.note}>
-                      {formatDate(entry.date)}
+                      {formatDateToCzech(entry.date)}
                       {entry.note?.trim() ? `: ${entry.note}` : ""}
                     </Text>
                     ))}

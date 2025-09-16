@@ -34,10 +34,9 @@ export default function SleepStats() {
       if (grouped.length === 0) return [];
 
       const sorted = [...grouped].sort((a, b) => a.date.localeCompare(b.date));
-
       const stats = computeDailyStatsFromGrouped(sorted, dayMode);
 
-      // vyhodíme dnešní datum
+      // vyhoď dnešek
       const today = new Date();
       const filtered = stats.filter((d) => {
         const [y, m, dd] = d.date.split("-").map(Number);
@@ -51,50 +50,64 @@ export default function SleepStats() {
 
       if (periodMode === "week") {
         return filtered.slice(-7).map(d => ({
-          ...d,
-          label: formatLabel(d.date, "week"),
+          hours: d.hours,
+          label: `${d.date.split("-")[2]}/${d.date.split("-")[1]}`, // DD/MM
         }));
       }
 
       if (periodMode === "month") {
         const last30 = filtered.slice(-30);
-        const groups: { date: string; hours: number; label: string }[] = [];
+        const groups: { hours: number; label: string }[] = [];
+
         for (let i = 0; i < last30.length; i += 5) {
           const chunk = last30.slice(i, i + 5);
           if (chunk.length > 0) {
             const avg = chunk.reduce((sum, d) => sum + d.hours, 0) / chunk.length;
-            const firstDate = chunk[0].date;
-            groups.push({
-              date: firstDate,
-              hours: avg,
-              label: formatLabel(firstDate, "month"),
-            });
+            
+            const first = chunk[0];
+            if (first?.date) {
+              const [y, m, dd] = first.date.split("-");
+              groups.push({
+                hours: avg,
+                label: `od ${dd}/${m}`, // od DD/MM
+              });
+            } else {
+              groups.push({
+                hours: avg,
+                label: "neznámé",
+              });
+            }
           }
         }
+
         return groups;
       }
 
-      if (periodMode === "halfYear") {
-        const last180 = filtered.slice(-180);
-        const monthMap: Record<string, { sum: number; count: number }> = {};
-        last180.forEach((d) => {
-          const [y, m] = d.date.split("-");
-          const key = `${y}-${m}`;
-          if (!monthMap[key]) {
-            monthMap[key] = { sum: 0, count: 0 };
-          }
-          monthMap[key].sum += d.hours;
-          monthMap[key].count += 1;
-        });
-        return Object.entries(monthMap).map(([key, val]) => ({
-          date: key,
-          hours: val.sum / val.count,
-          label: formatLabel(key, "halfYear"),
-        }));
-      }
 
-      return filtered;
-  }, [grouped, periodMode, dayMode]);
+  if (periodMode === "halfYear") {
+    const last180 = filtered.slice(-180);
+    const monthMap: Record<string, { sum: number; count: number }> = {};
+    last180.forEach((d) => {
+      const [y, m] = d.date.split("-");
+      const key = `${m}/${y}`; // MM/YYYY
+      if (!monthMap[key]) {
+        monthMap[key] = { sum: 0, count: 0 };
+      }
+      monthMap[key].sum += d.hours;
+      monthMap[key].count += 1;
+    });
+    return Object.entries(monthMap).map(([label, val]) => ({
+      hours: val.sum / val.count,
+      label,
+    }));
+  }
+
+  return filtered.map(d => ({
+    hours: d.hours,
+    label: d.date, // fallback
+  }));
+}, [grouped, periodMode, dayMode]);
+
   
   return (
     <MainScreenContainer>

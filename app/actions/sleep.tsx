@@ -2,6 +2,7 @@ import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
+import { IsoFormatDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import type { GroupedSleepRecord, RecordTypeSleep } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
@@ -22,17 +23,8 @@ export default function Sleep() {
 
   const router = useRouter();
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren } = useChild();
+  const { formatDateToCzech } = IsoFormatDate();
   
-  // převod ISO → český formát
-  const formatDateToCzech = (dateStr: string) => {
-    if (!dateStr) return "";
-    if (dateStr.includes("-")) {
-      const [year, month, day] = dateStr.split("-");
-      return `${day}.${month}.${year}`;
-    }
-    return dateStr;
-  };
-
   const clearState = () => {
     setMode("");
     setMinutesSinceAwake(null);

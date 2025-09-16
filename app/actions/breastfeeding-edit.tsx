@@ -1,5 +1,6 @@
 import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
+import { IsoFormatDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
@@ -24,14 +25,6 @@ const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecor
   });
 };
 
-const formatDateToCzech = (dateStr: string) => {
-  if (!dateStr) return "";
-  if (dateStr.includes("-")) {
-    const [year, month, day] = dateStr.split("-");
-    return `${day}.${month}.${year}`;
-  }
-  return dateStr;
-};
 
 // povolíme jen čísla a 1 dvojtečku, max délka 5
 const handleTimeInput = (txt: string, set: (v: string) => void) => {
@@ -60,6 +53,7 @@ const normalizeTime = (input: string): string | null => {
 
 export default function BreastfeedingEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
+  const { formatDateToCzech } = IsoFormatDate();
   const router = useRouter();
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } = useChild();
 

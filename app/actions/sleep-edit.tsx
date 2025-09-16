@@ -1,5 +1,6 @@
 import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
+import { IsoFormatDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import Subtitle from "@/components/Subtitle";
@@ -31,15 +32,6 @@ const renumberSleeps = (records: StoredSleepRecord[]): EditableRecord[] => {
   });
 };
 
-const formatDateToCzech = (dateStr: string) => {
-  if (!dateStr) return "";
-  if (dateStr.includes("-")) {
-    const [year, month, day] = dateStr.split("-");
-    return `${day}.${month}.${year}`;
-  }
-  return dateStr;
-};
-
 // povolíme jen čísla a 1 dvojtečku, max délka 5
 const handleTimeInput = (txt: string, set: (v: string) => void) => {
   let t = txt.replace(/[^\d:]/g, ""); // jen čísla a :
@@ -67,6 +59,7 @@ const normalizeTime = (input: string): string | null => {
 
 export default function SleepEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
+  const { formatDateToCzech } = IsoFormatDate();
   const router = useRouter();
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } = useChild();
 
