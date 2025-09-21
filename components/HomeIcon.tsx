@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { GestureResponderEvent, Pressable, StyleSheet } from "react-native";
@@ -11,7 +12,7 @@ export default function HomeIcon(){
 
   return (
     <Pressable onPress={() => router.push("/")} style={styles.homeButton}>
-      <FontAwesome name="home" size={40} color="rgb(164, 91, 143)" />
+      <FontAwesome name="home" size={40} color={COLORS.primary} />
     </Pressable>
   );
 }

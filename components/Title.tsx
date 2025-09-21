@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import { StyleSheet, Text, TextStyle, ViewStyle } from "react-native";
 
 type Props = {
@@ -13,7 +14,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     textAlign: "center",
-    color: "#993769",
+    color: COLORS.primary,
     marginTop: 50,
     marginBottom: 20,
   },

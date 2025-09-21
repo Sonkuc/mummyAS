@@ -7,6 +7,7 @@ import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDate";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -53,7 +54,7 @@ export default function BreastfeedingAdd() {
     return false;
   };
 
-  // povolíme jen čísla a 1 dvojtečku, max délka 5
+  // povolit jen čísla a 1 dvojtečku, max délka 5
   const handleTimeInput = (txt: string, set: (v: string) => void) => {
     let t = txt.replace(/[^\d:]/g, "");               // jen 0-9 a :
     const firstColon = t.indexOf(":");                 // jen první dvojtečka
@@ -77,8 +78,7 @@ export default function BreastfeedingAdd() {
     return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}`;
   };
 
-
-  // Při načtení stránky zkontrolujeme dnešní datum
+  // Při načtení stránky zkontrolovat dnešní datum
   useEffect(() => {
     checkDuplicateDate(today);
   }, [selectedChild]);
@@ -154,7 +154,7 @@ export default function BreastfeedingAdd() {
       return;
     }
 
-    // znormalizujeme a ověříme všechny časy
+    // znormalizovat a ověřit všechny časy
     const normalized: BreastfeedingRecord[] = [];
     for (const rec of records) {
       const norm = normalizeTime(rec.time);
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#f2f2f2",
+    backgroundColor: COLORS.switchNonActive,
     borderWidth: 1,
     borderColor: "#ccc",
     maxWidth: 200,
@@ -311,10 +311,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   switchBtnActive: {
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
   },
   switchText: {
-    color: "#333",
     fontSize: 14,
   },
   switchTextActive: {

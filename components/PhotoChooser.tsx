@@ -1,4 +1,5 @@
 import { avatars } from "@/assets/images/avatars";
+import { COLORS } from "@/constants/MyColors";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
@@ -47,7 +48,7 @@ export default function PhotoChooser({ onSelect }: Props) {
   return (
     <View>
       {/* tlačítko pro vlastní fotku */}
-      <MyButton title="Vyber obrázek" onPress={pickFromLibrary} />
+      <MyButton style={{marginBottom: 15 }} title="Vyber obrázek" onPress={pickFromLibrary} />
 
       {/* titulek */}
       <Text style={styles.subtitle}>Nebo avatar:</Text>
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     width: 70,
     height: 90,
   },
-  avatarSelected: { borderColor: "#993769" },
+  avatarSelected: { borderColor: COLORS.primary},
   avatarImg:  {
     width: "100%",
     height: "100%",
@@ -89,6 +90,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     textAlign: "center",
-    color: "#333",
   },
 });

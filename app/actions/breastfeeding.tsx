@@ -6,6 +6,7 @@ import { IsoFormatDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -160,24 +161,23 @@ export default function Breastfeeding() {
           const minutes = Math.floor((next.ts - curr.ts) / 60000);
 
           if (minutes > 0) {
-            // pokud začátek -> stop, započítáme do času kojení
+            // pokud začátek -> stop, započítat do času kojení
             if (curr.state === "start" && next.state === "stop") {
               totalFeedMinutes += minutes;
               extra = ` → ${formatDuration(minutes)}`;
             }
-            // pokud je to stop -> start, zobrazíme jen pauzu
+            // pokud je to stop -> start, zobrazit jen pauzu
             /*else if (curr.state === "stop" && next.state === "start") {
               extra = ` (pauza ${formatDuration(minutes)})`;
             }*/
           }
         }
 
-          let label =
-            curr.state === "stop"
-              ? `Konec kojení: ${curr.time}`
-              : `Začátek ${feedCounter++}. kojení: ${curr.time}`;
-
-          enhanced.push({ ...curr, label, extra });
+        let label =
+          curr.state === "stop"
+            ? `Konec kojení: ${curr.time}`
+            : `Začátek ${feedCounter++}. kojení: ${curr.time}`;
+        enhanced.push({ ...curr, label, extra });
       }
 
       const sortedDesc = [...enhanced].sort((a, b) => b.ts - a.ts);
@@ -197,15 +197,15 @@ export default function Breastfeeding() {
     if (selectedChildIndex !== null) {
       const updated = [...allChildren];
       updated[selectedChildIndex].groupedFeed = grouped.map(g => ({
-      date: g.date,
-      totalFeedMinutes: g.totalFeedMinutes,
-      records: g.records.map(r => ({
-        date: r.date,
-        time: r.time,
-        state: r.state,
-      }))
-    }));
-    saveAllChildren(updated);
+        date: g.date,
+        totalFeedMinutes: g.totalFeedMinutes,
+        records: g.records.map(r => ({
+          date: r.date,
+          time: r.time,
+          state: r.state,
+        }))
+      }));
+      saveAllChildren(updated);
     }
   }, [records]);
 
@@ -222,10 +222,8 @@ export default function Breastfeeding() {
       <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/breastfeeding-add" />
       </CustomHeader>
-
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Kojení</Title>
-
         <View style={styles.buttonsRow}>
           <Pressable
             style={[
@@ -241,7 +239,7 @@ export default function Breastfeeding() {
               addRecord("Začátek kojení:", "start");
             }}
           >
-            <Milk color="black" size={28} />
+            <Milk size={28} />
           </Pressable>
 
           <Pressable
@@ -275,8 +273,6 @@ export default function Breastfeeding() {
             </Pressable>
           </View>
         )}
-
-
         <View style={[styles.buttonsRow, {marginTop: 20 }]}>
           <Text style={styles.counterText}>
             Teď je na řadě
@@ -300,7 +296,7 @@ export default function Breastfeeding() {
               {isEditMode && (
                 <EditPencil
                   targetPath={`/actions/breastfeeding-edit?date=${encodeURIComponent(date)}`}
-                  color="#993769"
+                  color={COLORS.primary}
                 />
               )}
               <Text style={styles.dateTitle}>{formatDateToCzech(date)}</Text>
@@ -318,7 +314,6 @@ export default function Breastfeeding() {
             </Text>
           </GroupSection>
         ))}
-
       </ScrollView>
 
       <Pressable
@@ -353,7 +348,7 @@ const styles = StyleSheet.create({
   },
   milkButtonSelected: {
     borderWidth: 2,
-    borderColor: "#993769",
+    borderColor: COLORS.primary,
   },
   counterText: {
     fontSize: 22,
@@ -361,7 +356,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   deleteModeButton: {
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     padding: 10,
     borderRadius: 8,
     alignSelf: "center",
@@ -393,7 +388,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 30,
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
@@ -407,7 +402,7 @@ const styles = StyleSheet.create({
     width: 35,
     height: 35,
     borderRadius: 25,
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
   },

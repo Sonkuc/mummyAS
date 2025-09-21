@@ -12,7 +12,7 @@ import { useChild } from "@/contexts/ChildContext";
 import { WORDS } from "@/data/words";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, ScrollView, View } from "react-native";
 
 export default function SpeakingAdd() {
   const router = useRouter();
@@ -68,18 +68,18 @@ export default function SpeakingAdd() {
     router.replace("/actions/speaking");
   };
 
-   return (
+  return (
     <MainScreenContainer>
       <CustomHeader/>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Přidat slovo</Title>
-          <View style={{marginTop: 10, gap: 10}}>
+        <View style={{marginTop: 10, gap: 10}}>
           <MyTextInput
             placeholder="Např. Ahoj"
             value={name}
-            onChangeText={text => {
+            onChangeText={text => {                
               setName(text);
-              setSelectedWord(""); // zruší výběr z pickeru, pokud píšu vlastní text
+              setSelectedWord(""); // zruší výběr z pickeru v případě vlastního textu
             }}
           />
           <MyPicker
@@ -105,18 +105,12 @@ export default function SpeakingAdd() {
         </View>
         <Subtitle style={{marginTop: 10}}>Výslovnost</Subtitle>
         <MyTextInput
-                placeholder="Např. Oj"
-                value={note}
-                onChangeText={setNote}
+          placeholder="Např. Oj"
+          value={note}
+          onChangeText={setNote}
         />
         <CheckButton onPress = {handleAdd} />
       </ScrollView>
     </MainScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontWeight: "500",
-  },
-});

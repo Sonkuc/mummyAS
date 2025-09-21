@@ -6,6 +6,7 @@ import { IsoFormatDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import type { GroupedSleepRecord, RecordTypeSleep } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -46,8 +47,7 @@ export default function Sleep() {
 
     const now = new Date();
     const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
-    const date = now.toISOString().slice(0, 10); // vždy ISO YYYY-MM-DD
-
+    const date = now.toISOString().slice(0, 10);
     const newRecord: RecordTypeSleep = { date, time, state: newMode, label };
 
     setRecords((prev) => [...prev, newRecord]);
@@ -83,7 +83,6 @@ export default function Sleep() {
           }))
         );
       }
-
       if (selectedChild?.currentModeSleep) {
         const { mode, start } = selectedChild.currentModeSleep;
         setMode(mode);
@@ -230,15 +229,13 @@ export default function Sleep() {
       <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/sleep-add" />
       </CustomHeader>
-
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Spánek</Title>
-
         <View style={styles.buttonsRow}>
           <Pressable
             style={[
               styles.button,
-              { backgroundColor: "#fff" },
+              { backgroundColor: "white" },
               mode === "awake" && styles.eyeButtonSelected,
             ]}
             onPress={() => {
@@ -249,7 +246,7 @@ export default function Sleep() {
               addRecord("Vzhůru od:", "awake");
             }}
           >
-            <Eye color="black" size={28} />
+            <Eye size={28} />
           </Pressable>
 
           <Pressable
@@ -285,43 +282,41 @@ export default function Sleep() {
         )}
 
         <View style={{ marginTop: 10 }}>
-  {grouped.map(({ date, totalSleepMinutes, records, nightSleepMinutes }, groupIdx) => (
-    <GroupSection key={`group-${date}-${groupIdx}`}>
-      <View style={styles.row}>
-        {isEditMode && (
-          <EditPencil
-            targetPath={`/actions/sleep-edit?date=${encodeURIComponent(date)}`}
-            color="#993769"
-          />
-        )}
-        <Text style={styles.dateTitle}>{formatDateToCzech(date)}</Text>
-      </View>
-      {records.map((rec, recIdx) => (
-        <Text
-          key={`rec-${date}-${rec.time}-${recIdx}`}
-          style={styles.recordText}
-        >
-          {rec.label}{rec.extra ?? ""}
-        </Text>
-      ))}
-      {nightSleepMinutes !== undefined && (
-        <Text style={styles.totalText}>
-          Denní spánek: {Math.floor((totalSleepMinutes-nightSleepMinutes) / 60)} h {(totalSleepMinutes-nightSleepMinutes) % 60} m
-        </Text>
-      )}
-      <Text style={styles.totalText}>
-        Celkem spánku: {Math.floor(totalSleepMinutes / 60)} h {totalSleepMinutes % 60} m
-      </Text>
-    </GroupSection>
-  ))}
-</View>
+          {grouped.map(({ date, totalSleepMinutes, records, nightSleepMinutes }, groupIdx) => (
+            <GroupSection key={`group-${date}-${groupIdx}`}>
+              <View style={styles.row}>
+                {isEditMode && (
+                  <EditPencil
+                    targetPath={`/actions/sleep-edit?date=${encodeURIComponent(date)}`}
+                    color={COLORS.primary}
+                  />
+                )}
+                <Text style={styles.dateTitle}>{formatDateToCzech(date)}</Text>
+              </View>
+              {records.map((rec, recIdx) => (
+                <Text
+                  key={`rec-${date}-${rec.time}-${recIdx}`}
+                  style={styles.recordText}
+                >
+                  {rec.label}{rec.extra ?? ""}
+                </Text>
+              ))}
+              {nightSleepMinutes !== undefined && (
+                <Text style={styles.totalText}>
+                  Denní spánek: {Math.floor((totalSleepMinutes-nightSleepMinutes) / 60)} h {(totalSleepMinutes-nightSleepMinutes) % 60} m
+                </Text>
+              )}
+              <Text style={styles.totalText}>
+                Celkem spánku: {Math.floor(totalSleepMinutes / 60)} h {totalSleepMinutes % 60} m
+              </Text>
+            </GroupSection>
+          ))}
+        </View>
       </ScrollView>
 
       <Pressable
         style={styles.statisticButton}
-        onPress={() => 
-          router.push({pathname: "/actions/sleep-statistic"})
-        }
+        onPress={() => router.push({pathname: "/actions/sleep-statistic"})}
       >
         <ChartColumn color="white" size={28} />
       </Pressable>
@@ -349,7 +344,7 @@ const styles = StyleSheet.create({
   },
   eyeButtonSelected: {
     borderWidth: 2,
-    borderColor: "#993769",
+    borderColor: COLORS.primary,
   },
   counterText: {
     fontSize: 22,
@@ -357,13 +352,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   deleteModeButton: {
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     padding: 10,
     borderRadius: 8,
     alignSelf: "center",
   },
   buttonText: {
-    color: "#fff",
+    color: "white",
     fontWeight: "bold",
     fontSize: 15,
   },
@@ -389,7 +384,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 30,
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",

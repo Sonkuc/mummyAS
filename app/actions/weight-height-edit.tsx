@@ -14,7 +14,7 @@ import { useChild } from "@/contexts/ChildContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, ScrollView, View } from "react-native";
 
 export default function WeightHeightEdit() {
   const { whIndex } = useLocalSearchParams();
@@ -34,10 +34,10 @@ export default function WeightHeightEdit() {
   const HIDE_MODE_KEY = "hideMode";
 
   const validateNumberInput = (text: string) => {
-    // povolíme čísla + jeden oddělovač (tečka nebo čárka)
+    // povolena čísla + jeden oddělovač (tečka nebo čárka)
     let cleaned = text.replace(/[^0-9.,]/g, "");
 
-    // pokud má víc než jednu tečku/čárku, necháme jen první
+    // pokud má víc než jednu tečku/čárku, zůstává jen první
     const parts = cleaned.split(/[,\.]/);
     if (parts.length > 2) {
       cleaned = parts[0] + "." + parts[1]; // první část + jedna desetinná
@@ -51,7 +51,7 @@ export default function WeightHeightEdit() {
     return cleaned;
   };
 
-    useEffect(() => {
+  useEffect(() => {
     const loadHideMode = async () => {
       try {
         const stored = await AsyncStorage.getItem(HIDE_MODE_KEY);
@@ -66,15 +66,15 @@ export default function WeightHeightEdit() {
     loadHideMode();
   }, []);
 
-    const toggleHideMode = async () => {
-      const newValue = !hideMode;
-      setHideMode(newValue);
-      try {
-        await AsyncStorage.setItem(HIDE_MODE_KEY, JSON.stringify(newValue));
-      } catch (e) {
-        console.error("Chyba při ukládání hideMode:", e);
-      }
-    };
+  const toggleHideMode = async () => {
+    const newValue = !hideMode;
+    setHideMode(newValue);
+    try {
+      await AsyncStorage.setItem(HIDE_MODE_KEY, JSON.stringify(newValue));
+    } catch (e) {
+      console.error("Chyba při ukládání hideMode:", e);
+    }
+  };
 
   useEffect(() => {
     if (
@@ -106,12 +106,11 @@ export default function WeightHeightEdit() {
     const formattedDate = formatDateToCzech(date);
       const dateExists = existingWh.some(
         (wh, i) => i !== idx && wh.date === formattedDate
-      );
-            
-        if (dateExists) {
-          Alert.alert("Záznam pro toto datum už existuje.");
-          return;
-        }
+      );    
+      if (dateExists) {
+        Alert.alert("Záznam pro toto datum už existuje.");
+        return;
+      }
 
     const updatedWh: WeightHeight = {
       date: formatDateToCzech(date),
@@ -132,13 +131,16 @@ export default function WeightHeightEdit() {
 
   return (
     <MainScreenContainer>
-        <CustomHeader>
-          {selectedChildIndex !== null && whIndex !== undefined && (
-            <DeleteButton type="wh" index={Number(whIndex)} 
-            onDeleteSuccess={() => router.replace("/actions/weight-height")}/>
-          )}
-        </CustomHeader>
-        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <CustomHeader>
+        {selectedChildIndex !== null && whIndex !== undefined && (
+          <DeleteButton 
+            type="wh" 
+            index={Number(whIndex)} 
+            onDeleteSuccess={() => router.replace("/actions/weight-height")}
+          />
+        )}
+      </CustomHeader>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Upravit záznam</Title>
         <Subtitle>Datum</Subtitle>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
@@ -154,6 +156,7 @@ export default function WeightHeightEdit() {
             onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
           />
         </View>
+
         <Subtitle>Váha</Subtitle>
         <MyTextInput
           placeholder="Váha v kg"
@@ -161,6 +164,7 @@ export default function WeightHeightEdit() {
           keyboardType="numeric"
           onChangeText={(textW) => setWeight(validateNumberInput(textW))}
         />
+
         <Subtitle>Výška</Subtitle>
         <MyTextInput
           placeholder="Výška v cm"
@@ -168,6 +172,7 @@ export default function WeightHeightEdit() {
           keyboardType="numeric"
           onChangeText={(textH) => setHeight(validateNumberInput(textH))}
         />
+
         <View style={{alignSelf: "flex-end", right: 10}}>
           <HideButton 
             hideMode={hideMode}
@@ -183,6 +188,7 @@ export default function WeightHeightEdit() {
               keyboardType="numeric"
               onChangeText={(textHead) => setHead(validateNumberInput(textHead))}
             />
+
             <Subtitle>Velikost chodidla</Subtitle>
             <MyTextInput
               placeholder="Velikost nohy"
@@ -190,6 +196,7 @@ export default function WeightHeightEdit() {
               keyboardType="numeric"
               onChangeText={(textF) => setFoot(validateNumberInput(textF))}
             />
+
             <Subtitle>Velikost oblečení</Subtitle>
             <MyTextInput
               placeholder="Konfekční velikost"
@@ -204,9 +211,3 @@ export default function WeightHeightEdit() {
     </MainScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontWeight: "500",
-  },
-});

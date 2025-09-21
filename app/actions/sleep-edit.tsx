@@ -5,6 +5,7 @@ import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -20,7 +21,7 @@ type EditableRecord = StoredSleepRecord & {
   label: string; // jen pro UI, neukládá se
 };
 
-// Pomocná funkce pro číslování "spánků"
+// číslování "spánků"
 const renumberSleeps = (records: StoredSleepRecord[]): EditableRecord[] => {
   let sleepCount = 0;
   return records.map((r) => {
@@ -32,7 +33,7 @@ const renumberSleeps = (records: StoredSleepRecord[]): EditableRecord[] => {
   });
 };
 
-// povolíme jen čísla a 1 dvojtečku, max délka 5
+// povolit jen čísla a 1 dvojtečku, max délka 5
 const handleTimeInput = (txt: string, set: (v: string) => void) => {
   let t = txt.replace(/[^\d:]/g, ""); // jen čísla a :
   // odstraníme případné další dvojtečky
@@ -85,7 +86,7 @@ export default function SleepEdit() {
       });
 
     // Pozn.: nevnucujeme opravu uložených nevalidních časů automaticky,
-    // ale při editaci je uživatel bude muset opravit (onBlur / save zablokuje).
+    // ale při editaci je uživatel musí opravit (onBlur / save zablokuje).
     setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
     setRecords(renumberSleeps(dayRecords));
 
@@ -107,7 +108,6 @@ export default function SleepEdit() {
     });
   };
 
-  // Smazání záznamu
   const deleteRecord = (index: number) => {
     Alert.alert("Smazat záznam?", "Opravdu chceš tento záznam smazat?", [
       { text: "Zrušit", style: "cancel" },
@@ -145,11 +145,11 @@ export default function SleepEdit() {
       const updated = [...withoutLabels, newRec].sort((a, b) => a.time.localeCompare(b.time));
       const renumbered = renumberSleeps(updated);
 
-      // Najdeme poslední stav a přepneme opačný
+      // Najít poslední stav a přepnout na opačný
       const lastState = updated[updated.length - 1].state;
       setNewState(lastState === "sleep" ? "awake" : "sleep");
 
-      // Předvyplníme aktuální čas
+      // Předvyplnit aktuální čas
       const now = new Date();
       const currentTime = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
       setNewTime(currentTime);
@@ -158,11 +158,10 @@ export default function SleepEdit() {
     });
   };
 
-  // Uložení změn
   const saveChanges = () => {
     if (selectedChildIndex === null) return;
 
-    // znormalizujeme a ověříme všechny časy; pokud některý nevalidní -> zablokujeme uložení
+    // znormalizovat a ověřit všechny časy; pokud některý nevalidní -> zablokovat uložení
     const normalized: StoredSleepRecord[] = [];
     for (let i = 0; i < records.length; i++) {
       const r = records[i];
@@ -174,7 +173,7 @@ export default function SleepEdit() {
       normalized.push({ date: r.date, time: norm, state: r.state });
     }
 
-    // uložíme normalized (správné) časy
+    // uložit normalized (správné) časy
     const updatedChildren = [...allChildren];
     const child = updatedChildren[selectedChildIndex];
 
@@ -199,7 +198,7 @@ export default function SleepEdit() {
             <TextInput
               style={styles.input}
               value={rec.time}
-              // filtrujeme vstup už během psaní
+              // filtruje se vstup už během psaní
               onChangeText={(txt) => handleTimeInput(txt, (t) => updateTime(idx, t))}
               onBlur={() => {
                 const current = records[idx]?.time ?? "";
@@ -208,7 +207,7 @@ export default function SleepEdit() {
                   updateTime(idx, norm);
                 } else {
                   Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
-                  updateTime(idx, ""); // smažeme neplatný, uživatel musí opravit
+                  updateTime(idx, ""); // smaže neplatný, uživatel musí opravit
                 }
               }}
             />
@@ -237,7 +236,6 @@ export default function SleepEdit() {
               </Text>
             </Pressable>
           </View>
-
           <TextInput
             placeholder="HH:MM"
             style={styles.input}
@@ -252,7 +250,6 @@ export default function SleepEdit() {
               }
             }}
           />
-
           <Pressable onPress={addRecord}>
             <Text style={styles.icon}>✅</Text>
           </Pressable>
@@ -280,13 +277,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 30,
     textAlign: "center",
   },
-  saveBtn: {
-    backgroundColor: "rgb(164, 91, 143)",
-    padding: 5,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 20,
-  },
   icon: {
     fontSize: 20,
   },
@@ -294,7 +284,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#f2f2f2",
+    backgroundColor: COLORS.switchNonActive,
     borderWidth: 1,
     borderColor: "#ccc",
     maxWidth: 200,
@@ -307,10 +297,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   switchBtnActive: {
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
   },
   switchText: {
-    color: "#333",
     fontSize: 14,
   },
   switchTextActive: {

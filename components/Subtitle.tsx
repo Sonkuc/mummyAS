@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import React from "react";
 import { StyleSheet, Text, TextStyle, ViewStyle } from "react-native";
 
@@ -13,7 +14,7 @@ export default function Subtitle({ children, style }: Props) {
 const styles = StyleSheet.create({
     subtitle: {
         fontSize: 20,
-        color: "#993769",
+        color: COLORS.primary,
         marginBottom: 10,
       },
 });

@@ -1,8 +1,8 @@
+import { COLORS } from "@/constants/MyColors";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Calendar } from "lucide-react-native";
 import { useState } from "react";
 import { Modal, Platform, Pressable, StyleSheet, Text, View, useColorScheme } from "react-native";
-
 
 type Props = {
   date: Date;
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   iconButton: {
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     padding: 8,
     borderRadius: 10,
     justifyContent: "center",
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   confirmButton: {
     padding: 10,
     borderRadius: 8,
-    backgroundColor: "#e489ca",
+    backgroundColor: COLORS.secundary,
     flex: 1,
     marginLeft: 10,
   },

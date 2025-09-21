@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import { Eye, EyeOff } from "lucide-react-native";
 import React from "react";
 import { Pressable, StyleSheet } from "react-native";
@@ -29,7 +30,7 @@ const styles = StyleSheet.create({
     width: 35,
     height: 35,
     borderRadius: 25,
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
   },

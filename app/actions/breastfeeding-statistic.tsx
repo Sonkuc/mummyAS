@@ -3,6 +3,7 @@ import MainScreenContainer from "@/components/MainScreenContainer";
 import { MyBarChart } from "@/components/MyBarChart";
 import type { GroupedBreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -31,7 +32,7 @@ export default function BreastfeedingStats() {
 
       const stats = computeDailyStatsFromGrouped(sorted);
 
-      // vyhodíme dnešní datum
+      // vyhodit dnešní datum
       const today = new Date();
       const filtered = stats.filter((d) => {
         const [y, m, dd] = d.date.split("-").map(Number);
@@ -55,7 +56,6 @@ export default function BreastfeedingStats() {
           const chunk = last30.slice(i, i + 5);
           if (chunk.length > 0) {
             const avg = chunk.reduce((sum, d) => sum + d.hours, 0) / chunk.length;
-            
             const first = chunk[0];
             if (first?.date) {
               const [y, m, dd] = first.date.split("-");
@@ -96,75 +96,74 @@ export default function BreastfeedingStats() {
       return filtered.map(d => ({
           hours: d.hours,
           label: d.date, // fallback
-        }));
-      }, [grouped, periodMode]);
+      }));
+    }, [grouped, periodMode]);
   
   return (
     <MainScreenContainer>
-    <CustomHeader backTargetPath="/actions/breastfeeding" />
-    <Title>Statistika</Title>
+      <CustomHeader backTargetPath="/actions/breastfeeding" />
+      <Title>Statistika</Title>
+      <View style={styles.row}>
+        <Pressable 
+          style={[styles.periodButton, periodMode === "week" && styles.activeButton]}
+          onPress={() => setPeriodMode("week")}
+        >
+          <Text style={styles.buttonText}>Týden</Text>
+        </Pressable>
+        <Pressable 
+          style={[styles.periodButton, periodMode === "month" && styles.activeButton]}
+          onPress={() => setPeriodMode("month")}
+        >
+          <Text style={styles.buttonText}>Měsíc</Text>
+        </Pressable>
+        <Pressable 
+          style={[styles.periodButton, periodMode === "halfYear" && styles.activeButton]}
+          onPress={() => setPeriodMode("halfYear")}
+        >
+          <Text style={styles.buttonText}>Půlrok</Text>
+        </Pressable>
+      </View>
 
-    <View style={styles.row}>
-      <Pressable 
-        style={[styles.periodButton, periodMode === "week" && styles.activeButton]}
-        onPress={() => setPeriodMode("week")}
-      >
-        <Text style={styles.buttonText}>Týden</Text>
-      </Pressable>
-      <Pressable 
-        style={[styles.periodButton, periodMode === "month" && styles.activeButton]}
-        onPress={() => setPeriodMode("month")}
-      >
-        <Text style={styles.buttonText}>Měsíc</Text>
-      </Pressable>
-      <Pressable 
-        style={[styles.periodButton, periodMode === "halfYear" && styles.activeButton]}
-        onPress={() => setPeriodMode("halfYear")}
-      >
-        <Text style={styles.buttonText}>Půlrok</Text>
-      </Pressable>
-    </View>
-
-    {periodMode === "week" && (
-      <MyBarChart
-        title="Doba kojení denně za poslední týden"
-        data={dailyData}
-        mode="week"
-      />
-    )}
-    {periodMode === "month" && (
-      <MyBarChart
-        title="Průměrná doba kojení za 5 dní v posledním měsíci"
-        data={dailyData}
-        mode="month"
-      />
-    )}
-    {periodMode === "halfYear" && (
-      <MyBarChart
-        title="Měsíční průměr doby kojení za poslední půlrok"
-        data={dailyData}
-        mode="halfYear"
-      />
-    )}
-  </MainScreenContainer>
+      {periodMode === "week" && (
+        <MyBarChart
+          title="Doba kojení denně za poslední týden"
+          data={dailyData}
+          mode="week"
+        />
+      )}
+      {periodMode === "month" && (
+        <MyBarChart
+          title="Průměrná doba kojení za 5 dní v posledním měsíci"
+          data={dailyData}
+          mode="month"
+        />
+      )}
+      {periodMode === "halfYear" && (
+        <MyBarChart
+          title="Měsíční průměr doby kojení za poslední půlrok"
+          data={dailyData}
+          mode="halfYear"
+        />
+      )}
+    </MainScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   periodButton: {
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     padding: 10,
     borderRadius: 8,
     alignSelf: "center",
     marginTop: 15,
   },
   buttonText: {
-    color: "#fff",
+    color: "white",
     fontWeight: "bold",
     fontSize: 15,
   },
   activeButton: {
-    backgroundColor: "#cc5588",
+    backgroundColor: COLORS.secundary,
   },
   row: {
     flexDirection: "row",

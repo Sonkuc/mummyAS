@@ -5,14 +5,13 @@ import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
-import { useRouter } from "expo-router";
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Milestone() {
   const { selectedChild } = useChild();
-  const router = useRouter();
   const [isEditMode, setIsEditMode] = React.useState(false);
 
   const parseDate = (dateStr: string) => {
@@ -36,23 +35,23 @@ export default function Milestone() {
             sortedMilestones.map((m, milIndex) => (
               <View key={milIndex}>
                 <GroupSection>
-                    <View style={{ flexDirection: "row", alignItems: "center"}}>
-                        {isEditMode && (
-                          <EditPencil 
-                            targetPath={`/actions/milestone-edit?milIndex=${milIndex}`} 
-                            color="#993769" 
-                          />
-                        )}
-                        <Text style={styles.item}>
-                          {m.date}
-                        </Text>
-                        <Text style={{fontSize: 16, marginLeft: 10}}>
-                          {m.name}
-                        </Text>
-                    </View> 
-                    {m.note?.trim() !== "" && (
-                    <Text style={styles.note}>  {m.note}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center"}}>
+                    {isEditMode && (
+                      <EditPencil 
+                        targetPath={`/actions/milestone-edit?milIndex=${milIndex}`} 
+                        color={COLORS.primary}
+                      />
                     )}
+                    <Text style={styles.item}>
+                      {m.date}
+                    </Text>
+                    <Text style={{fontSize: 16, marginLeft: 10}}>
+                      {m.name}
+                    </Text>
+                  </View> 
+                  {m.note?.trim() !== "" && (
+                    <Text style={styles.note}>  {m.note}</Text>
+                  )}
                 </GroupSection> 
               </View>
             ))

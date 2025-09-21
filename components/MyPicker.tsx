@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import { Picker } from "@react-native-picker/picker";
 import React from "react";
 import { StyleSheet, View, useColorScheme } from "react-native";
@@ -49,7 +50,7 @@ export default function MyPicker({ data, selectedValue, onChange, setName, place
 const styles = StyleSheet.create({
   pickerWrapper: {
     borderWidth: 2,
-    borderColor: "#bf5f82",
+    borderColor: COLORS.primary,
     borderRadius: 10,
     marginVertical: 10,
     marginBottom: 15,

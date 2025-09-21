@@ -6,24 +6,22 @@ import { IsoFormatDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
-import { useRouter } from "expo-router";
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Speaking() {
   const { selectedChild } = useChild();
-  const router = useRouter();
   const [isEditMode, setIsEditMode] = React.useState(false);
   const { formatDateToCzech } = IsoFormatDate();
 
   const sortedWords = [...(selectedChild?.words || [])]
-  .map((word) => ({
-    word,
-    originalIndex: selectedChild?.words?.findIndex(w => w.name === word.name),
-  }))
-  .sort((a, b) =>
-    a.word.name.localeCompare(b.word.name, "cs", { sensitivity: "base" })
+    .map((word) => ({
+      word,
+      originalIndex: selectedChild?.words?.findIndex(w => w.name === word.name),
+    }))
+    .sort((a, b) => a.word.name.localeCompare(b.word.name, "cs", { sensitivity: "base" })
   );
 
   return (
@@ -41,7 +39,7 @@ export default function Speaking() {
                   {isEditMode && (
                     <EditPencil 
                       targetPath={`/actions/speaking-edit?wordIndex=${originalIndex}`} 
-                      color="#993769" 
+                      color={COLORS.primary}
                     />
                   )}
                   <Text style={styles.item}>{word.name}</Text>
@@ -54,7 +52,7 @@ export default function Speaking() {
                       {formatDateToCzech(entry.date)}
                       {entry.note?.trim() ? `: ${entry.note}` : ""}
                     </Text>
-                    ))}
+                  ))}
               </GroupSection>
             ))
           ) : (
@@ -83,7 +81,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 10,
   },
-    row: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
   },

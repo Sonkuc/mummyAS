@@ -8,6 +8,7 @@ import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDate";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
@@ -50,20 +51,11 @@ export default function SpeakingEdit() {
       entries: entries.filter(e => e.date.trim() !== ""),
     };
 
-  const updatedChildren = [...allChildren];
+    const updatedChildren = [...allChildren];
     const idx = Number(wordIndex);
     updatedChildren[selectedChildIndex].words[idx] = updatedWord;
     saveAllChildren(updatedChildren);
     router.back();
-  };
-
-    const handleDeleteWord = () => {
-    if (selectedChildIndex === null || wordIndex === undefined) return;
-
-    const updatedChildren = [...allChildren];
-    updatedChildren[selectedChildIndex].words.splice(Number(wordIndex), 1);
-    saveAllChildren(updatedChildren);
-    router.replace("/actions/speaking");
   };
 
   const removeEntry = (index: number) => {
@@ -85,55 +77,56 @@ export default function SpeakingEdit() {
       <CustomHeader>
         {selectedChildIndex !== null && wordIndex !== undefined && (
           <DeleteButton type="word" index={Number(wordIndex)} 
-          onDeleteSuccess={() => router.replace("/actions/speaking")}/>
+            onDeleteSuccess={() => router.replace("/actions/speaking")}
+          />
         )}
       </CustomHeader>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-      <Title>{name}</Title>
-      {sortedEntries.map((entry, index) => (
-        <GroupSection key={index} style={{ flexDirection: "row" }}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.entryText}>Datum: {formatDateToCzech(entry.date)}</Text>
-            <Text style={styles.entryText}>Poznámka: {entry.note}</Text>
-          </View>
-          <TouchableOpacity onPress={() => removeEntry(index)}>
-            <Text style={styles.delete}>🚮</Text>
-          </TouchableOpacity>
-        </GroupSection>
-      ))}
-      <GroupSection>
-        <Text style={styles.entryLabel}>Datum</Text>
-        <View style={styles.inputRow}>
-          <View style={{ flex: 1 }}>
-            <ValidatedDateInput
-              value={newDate}
-              onChange={setDate}
-              birthISO={selectedChild ? selectedChild.birthDate : null}
+        <Title>{name}</Title>
+        {sortedEntries.map((entry, index) => (
+          <GroupSection key={index} style={{ flexDirection: "row" }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.entryText}>Datum: {formatDateToCzech(entry.date)}</Text>
+              <Text style={styles.entryText}>Poznámka: {entry.note}</Text>
+            </View>
+            <TouchableOpacity onPress={() => removeEntry(index)}>
+              <Text style={styles.delete}>🚮</Text>
+            </TouchableOpacity>
+          </GroupSection>
+        ))}
+        <GroupSection>
+          <Text style={styles.entryLabel}>Datum</Text>
+          <View style={styles.inputRow}>
+            <View style={{ flex: 1 }}>
+              <ValidatedDateInput
+                value={newDate}
+                onChange={setDate}
+                birthISO={selectedChild ? selectedChild.birthDate : null}
+              />
+            </View>
+            <DateSelector
+              date={new Date(newDate)}
+              onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
             />
           </View>
-          <DateSelector
-            date={new Date(newDate)}
-            onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
-          />
-        </View>
 
-        <Text style={styles.entryLabel}>Výslovnost</Text>
-        <View style={styles.inputRow}>
-          <View style={{ flex: 1 }}>
-            <MyTextInput
-              placeholder="Např. Aoj"
-              value={newNote}
-              onChangeText={setNewNote}
-            />
+          <Text style={styles.entryLabel}>Výslovnost</Text>
+          <View style={styles.inputRow}>
+            <View style={{ flex: 1 }}>
+              <MyTextInput
+                placeholder="Např. Aoj"
+                value={newNote}
+                onChangeText={setNewNote}
+              />
+            </View>
           </View>
+          <Pressable style={styles.iconButton} onPress={addEntry}>
+            <Plus size={24} color="white" />
+          </Pressable>
+        </GroupSection>
+        <View style={{ marginTop: 30 }}>
+          <MyButton title="Uložit" onPress = {handleSave} />
         </View>
-        <Pressable style={styles.iconButton} onPress={addEntry}>
-          <Plus size={24} color="#fff" />
-        </Pressable>
-      </GroupSection>
-      <View style={{ marginTop: 30 }}>
-        <MyButton title="Uložit" onPress = {handleSave} />
-      </View>
       </ScrollView>
     </MainScreenContainer>
   );
@@ -145,13 +138,11 @@ const styles = StyleSheet.create({
   },
   delete: {
     fontSize: 20,
-    color: "#bf5f82",
   },
   entryLabel: {
     fontSize: 15,
     fontWeight: "600",
     marginBottom: 4,
-    color: "#333",
   },
   inputRow: {
     flexDirection: "row",
@@ -159,7 +150,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconButton: {
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     padding: 8,
     borderRadius: 10,
     justifyContent: "center",

@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import { ReactNode } from "react";
 import { ScrollView, StyleSheet, View, ViewStyle } from "react-native";
 
@@ -34,7 +35,7 @@ export default function MainScreenContainer({
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: "#fff0f5",
+    backgroundColor: COLORS.backgroundContainer,
     position: "relative",
   },
   container: {

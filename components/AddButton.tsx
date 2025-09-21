@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import { useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
 import { Pressable, StyleSheet } from "react-native";
@@ -25,7 +26,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 30,
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",

@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import { Dimensions, Text } from "react-native";
 import { BarChart } from "react-native-chart-kit";
 
@@ -31,8 +32,8 @@ export function MyBarChart({ title, data }: Props) {
         }}
         chartConfig={{
           backgroundColor: "#fff",
-          backgroundGradientFrom: "#fff0f5",
-          backgroundGradientTo: "#fff0f5",
+          backgroundGradientFrom: COLORS.backgroundContainer,
+          backgroundGradientTo: COLORS.backgroundContainer,
           decimalPlaces: 0,
           color: (opacity = 1) => `rgba(153, 55, 105, ${opacity})`,
           labelColor: () => "#333",

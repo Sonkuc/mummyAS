@@ -6,6 +6,7 @@ import MyButton from "@/components/MyButton";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDate";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -45,7 +46,6 @@ export default function SleepAdd() {
   const [newState, setNewState] = useState<"sleep" | "awake">("awake");
   const [errorMessage, setErrorMessage] = useState("");
 
-
   const checkDuplicateDate = (date: string) => {
     if (!selectedChild) return false;
 
@@ -60,7 +60,7 @@ export default function SleepAdd() {
     return false;
   };
 
-  // povolíme jen čísla a 1 dvojtečku, max délka 5
+  // povolit jen čísla a 1 dvojtečku, max délka 5
   const handleTimeInput = (txt: string, set: (v: string) => void) => {
     let t = txt.replace(/[^\d:]/g, "");               // jen 0-9 a :
     const firstColon = t.indexOf(":");                 // jen první dvojtečka
@@ -142,7 +142,6 @@ export default function SleepAdd() {
     }
 
     const newRec: StoredSleepRecord = { date: newDate, time: norm, state: newState };
-
     const withoutLabels: StoredSleepRecord[] = records.map(({ label, ...rest }) => rest);
     const allRecords = [...withoutLabels, newRec].sort((a, b) => a.time.localeCompare(b.time));
     setRecords(renumberSleeps(allRecords));
@@ -231,7 +230,6 @@ export default function SleepAdd() {
                 Spánek od
               </Text>
             </Pressable>
-            
           </View>
           <TextInput 
             placeholder="HH:MM" 
@@ -306,7 +304,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#f2f2f2",
+    backgroundColor: COLORS.switchNonActive,
     borderWidth: 1,
     borderColor: "#ccc",
     maxWidth: 200,
@@ -319,10 +317,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   switchBtnActive: {
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
   },
   switchText: {
-    color: "#333",
     fontSize: 14,
   },
   switchTextActive: {

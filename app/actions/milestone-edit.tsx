@@ -14,7 +14,7 @@ import { useChild } from "@/contexts/ChildContext";
 import { MILESTONES } from "@/data/milestones";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 export default function EditMilestone() {
   const { milIndex } = useLocalSearchParams();
@@ -28,7 +28,7 @@ export default function EditMilestone() {
   const selectedChild =
     selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
 
-useEffect(() => {
+  useEffect(() => {
     if (
       selectedChildIndex !== null &&
       milIndex !== undefined &&
@@ -49,17 +49,17 @@ useEffect(() => {
   const handleSave = () => {
     if (selectedChildIndex === null || milIndex === undefined) return;
 
-  const finalName = name.trim() !== "" 
-    ? name 
-    : MILESTONES.find(m => m.id === selectedMilestone)?.label || "";
+    const finalName = name.trim() !== "" 
+      ? name 
+      : MILESTONES.find(m => m.id === selectedMilestone)?.label || "";
 
-  const updatedMilestone: Milestone = {
-    name: finalName,
-    date: formatDateToCzech(date),
-    note,
-  };
+    const updatedMilestone: Milestone = {
+      name: finalName,
+      date: formatDateToCzech(date),
+      note,
+    };
 
-  const updatedChildren = [...allChildren];
+    const updatedChildren = [...allChildren];
     const child = updatedChildren[selectedChildIndex];
     const idx = Number(milIndex);
 
@@ -71,15 +71,15 @@ useEffect(() => {
     router.back();
   };
 
-   return (
+  return (
     <MainScreenContainer>
-        <CustomHeader>
-          {selectedChildIndex !== null && milIndex !== undefined && (
-            <DeleteButton type="milestone" index={Number(milIndex)} 
-            onDeleteSuccess={() => router.replace("/actions/milestone")}/>
-          )}
-        </CustomHeader>
-        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <CustomHeader>
+        {selectedChildIndex !== null && milIndex !== undefined && (
+          <DeleteButton type="milestone" index={Number(milIndex)} 
+          onDeleteSuccess={() => router.replace("/actions/milestone")}/>
+        )}
+      </CustomHeader>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Upravit milník</Title>
         <View style={{marginTop: 10, gap: 10}}>
           <MyTextInput
@@ -113,18 +113,12 @@ useEffect(() => {
         </View>
         <Subtitle style={{marginTop: 10}}>Poznámka</Subtitle>
         <MyTextInput
-                placeholder="Např. u babičky"
-                value={note}
-                onChangeText={setNote}
+          placeholder="Např. u babičky"
+          value={note}
+          onChangeText={setNote}
         />
         <CheckButton onPress = {handleSave} />
       </ScrollView>
     </MainScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontWeight: "500",
-  },
-});

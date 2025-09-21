@@ -5,6 +5,7 @@ import LookUp from "@/components/LookUpButton";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { CEREAL } from "@/data/food/cereal";
 import React, { useState } from "react";
@@ -48,7 +49,7 @@ export default function Cereal() {
     };
 
     await saveAllChildren(updatedChildren);
-    };
+  };
 
   const getChildAgeInMonths = (): number => {
     if (!selectedChild?.birthDate) return 0;
@@ -56,34 +57,39 @@ export default function Cereal() {
     const birth = new Date(selectedChild.birthDate);
     const now = new Date();
 
-    const years = now.getFullYear() - birth.getFullYear();
-    const months = now.getMonth() - birth.getMonth();
-    const totalMonths = years * 12 + months;
+    let years = now.getFullYear() - birth.getFullYear();
+    let months = now.getMonth() - birth.getMonth();
 
+    // Pokud ještě neproběhly "narozeniny" v aktuálním měsíci, odečti 1 měsíc
+    if (now.getDate() < birth.getDate()) {
+      months -= 1;
+    }
+
+    const totalMonths = years * 12 + months;
     return totalMonths >= 0 ? totalMonths : 0;
-  };  
+  };
 
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions/food">
-          <LookUp
-            list={CEREAL.map(item => ({
-              ...item,
-              buttonStyle: !!selectedChild?.foodDates?.[item.label]
-                ? styles.buttonIntroduced
-                : getChildAgeInMonths() >= item.month
-                ? styles.buttonSuggested
-                : styles.buttonFuture
-            }))}
-            getButtonStyle={(item) =>
-              typeof item === "string" ? {} : item.buttonStyle
-            }
-            onSelect={(label) => setSelectedFood(label)}
-          />
+        <LookUp
+          list={CEREAL.map(item => ({
+            ...item,
+            buttonStyle: !!selectedChild?.foodDates?.[item.label]
+              ? styles.buttonIntroduced
+              : getChildAgeInMonths() >= item.month
+              ? styles.buttonSuggested
+              : styles.buttonFuture
+          }))}
+          getButtonStyle={(item) =>
+            typeof item === "string" ? {} : item.buttonStyle
+          }
+          onSelect={(label) => setSelectedFood(label)}
+        />
       </CustomHeader>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Obiloviny</Title>
-        <Text style={styles.sectionTitle}> Zavedeno </Text>
+        <Subtitle> Zavedeno </Subtitle>
         <GroupSection style={styles.sectionContainer}>
           {CEREAL.map((item, index) => {
             const isIntroduced = !!selectedChild?.foodDates?.[item.label];
@@ -112,7 +118,7 @@ export default function Cereal() {
             }}>
               <GroupSection style={styles.dateSelectorBox}>
                 <View style={styles.titleRow}>
-                  <Subtitle style={{color:"#993769", marginTop: -10, marginLeft: 10}}>
+                  <Subtitle style={{color:COLORS.primary, marginTop: -10, marginLeft: 10}}>
                     {selectedFood}
                   </Subtitle>
                   <DateSelector
@@ -144,7 +150,7 @@ export default function Cereal() {
             </View>
           )}
         </Modal>
-        <Text style={styles.sectionTitle}> Navrženo dle věku </Text>
+        <Subtitle> Navrženo dle věku </Subtitle>
         <GroupSection style={styles.sectionContainer}>
           {CEREAL.filter((item) => {
             const ageInMonths = getChildAgeInMonths();
@@ -161,7 +167,7 @@ export default function Cereal() {
             </Pressable>
           ))}
         </GroupSection>
-        <Text style={styles.sectionTitle}> Ostatní </Text>
+        <Subtitle> Ostatní </Subtitle>
         <GroupSection style={styles.sectionContainer}>
           {CEREAL.filter((item) => {
             const ageInMonths = getChildAgeInMonths();
@@ -189,14 +195,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
-    color: "#4d4d4d",
-  },
   button: {
-    backgroundColor: "rgba(233, 205, 225, 1)",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -206,16 +205,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   buttonIntroduced: {
-    backgroundColor: "#d4f1d4",
+    backgroundColor: COLORS.lightGreen,
   },
   buttonSuggested: {
-    backgroundColor: "#fff6c4",
+    backgroundColor: COLORS.lightYellow,
   },
   buttonFuture: {
-    backgroundColor: "#e6e6e6",
+    backgroundColor: COLORS.lightGrey,
   },
   buttonText: {
-    color: "#333",
     fontSize: 16,
     textAlign: "center",
     flexWrap: "wrap",
@@ -229,10 +227,10 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     marginBottom: 10,
-    color: "#993769",
+    color: COLORS.primary,
   },
   dateText: {
-    color: "#993769",
+    color: COLORS.primary,
     fontWeight: "500",
   },
   titleRow: {
@@ -242,7 +240,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   closeText: {
-    color: "#741212ff",
+    color: COLORS.darkRedText,
     fontSize: 15,
     fontWeight: "bold",
     textAlign: "right",

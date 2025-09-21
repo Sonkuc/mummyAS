@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import BackButton from "./BackButton";
@@ -21,7 +22,7 @@ const styles = StyleSheet.create({
     height: 40,
     paddingTop: 15,
     paddingHorizontal: 10,
-    backgroundColor: "#fff0f5",
+    backgroundColor: COLORS.backgroundContainer,
     justifyContent: "center",
     position: "relative",
   },

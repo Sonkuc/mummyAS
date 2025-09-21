@@ -6,6 +6,7 @@ import MyButton from "@/components/MyButton";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -13,7 +14,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 
 type DisplayBreastfeedingRecord = BreastfeedingRecord & { label: string };
 
-// Pomocná funkce pro číslování "spánků"
+// číslování spánků
 const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecord[] => {
   let feedCount = 0;
   return records.map((r) => {
@@ -25,8 +26,7 @@ const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecor
   });
 };
 
-
-// povolíme jen čísla a 1 dvojtečku, max délka 5
+// povolit jen čísla a 1 dvojtečku, max délka 5
 const handleTimeInput = (txt: string, set: (v: string) => void) => {
   let t = txt.replace(/[^\d:]/g, ""); // jen čísla a :
   // odstraníme případné další dvojtečky
@@ -78,12 +78,12 @@ export default function BreastfeedingEdit() {
         return { date: r.date, time: r.time, state };
       });
 
-    // Pozn.: nevnucujeme opravu uložených nevalidních časů automaticky,
-    // ale při editaci je uživatel bude muset opravit (onBlur / save zablokuje).
+    // nevnucuje se oprava uložených nevalidních časů automaticky,
+    // ale při editaci je uživatel musí opravit (onBlur / save zablokuje).
     setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
     setRecords(renumberFeed(dayRecords));
 
-    // Pokud existuje poslední záznam, nastavíme opačný stav
+    // Pokud existuje poslední záznam, nastaví se opačný stav
     if (dayRecords.length > 0) {
       const lastState = dayRecords[dayRecords.length - 1].state;
       setNewState(lastState === "start" ? "stop" : "start");
@@ -156,7 +156,7 @@ export default function BreastfeedingEdit() {
   const saveChanges = () => {
     if (selectedChildIndex === null) return;
 
-    // znormalizujeme a ověříme všechny časy; pokud některý nevalidní -> zablokujeme uložení
+    // znormalizují se a ověřují všechny časy; pokud některý nevalidní -> zablokuje uložení
     const normalized: BreastfeedingRecord[] = [];
     for (let i = 0; i < records.length; i++) {
       const r = records[i];
@@ -274,13 +274,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 30,
     textAlign: "center",
   },
-  saveBtn: {
-    backgroundColor: "rgb(164, 91, 143)",
-    padding: 5,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 20,
-  },
   icon: {
     fontSize: 20,
   },
@@ -288,7 +281,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#f2f2f2",
+    backgroundColor: COLORS.switchNonActive,
     borderWidth: 1,
     borderColor: "#ccc",
     maxWidth: 200,
@@ -301,10 +294,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   switchBtnActive: {
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
   },
   switchText: {
-    color: "#333",
     fontSize: 14,
   },
   switchTextActive: {

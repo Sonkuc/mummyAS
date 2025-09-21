@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet } from "react-native";
@@ -19,7 +20,7 @@ export default function BackButton({ targetPath }: BackButtonProps) {
 
   return (
     <Pressable style={styles.backButton} onPress={handlePress}>
-      <Ionicons name="arrow-back" size={28} color="#993769"/>
+      <Ionicons name="arrow-back" size={28} color={COLORS.primary}/>
     </Pressable>
   );
 }

@@ -13,7 +13,7 @@ import { useChild } from "@/contexts/ChildContext";
 import { MILESTONES } from "@/data/milestones";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 export default function AddMilestone() {
   const router = useRouter();
@@ -26,7 +26,6 @@ export default function AddMilestone() {
   const selectedChild =
     selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
   
-
   const handleAdd = () => {
     const finalName = name.trim() !== "" 
       ? name 
@@ -46,15 +45,15 @@ export default function AddMilestone() {
 
     child.milestones = [...existingMilestones, newMilestone];
 
-      saveAllChildren(updatedChildren);
+    saveAllChildren(updatedChildren);
 
-      router.replace("/actions/milestone");
+    router.replace("/actions/milestone");
   };
 
   return (
     <MainScreenContainer>
-        <CustomHeader/>
-        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <CustomHeader/>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Přidat milník</Title>
         <View style={{marginTop: 10, gap: 10}}>
           <MyTextInput
@@ -86,20 +85,14 @@ export default function AddMilestone() {
             onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
           />
         </View>
-      <Subtitle style={{marginTop: 10}}>Poznámka</Subtitle>
-      <MyTextInput
-              placeholder="Např. u babičky"
-              value={note}
-              onChangeText={setNote}
-      />
-      <CheckButton onPress = {handleAdd} />
-    </ScrollView>
+        <Subtitle style={{marginTop: 10}}>Poznámka</Subtitle>
+        <MyTextInput
+          placeholder="Např. u babičky"
+          value={note}
+          onChangeText={setNote}
+        />
+        <CheckButton onPress = {handleAdd} />
+      </ScrollView>
     </MainScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontWeight: "500",
-  },
-});

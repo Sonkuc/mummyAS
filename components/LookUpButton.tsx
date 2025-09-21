@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import { Search } from "lucide-react-native";
 import React, { useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 30,
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -119,7 +120,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   resultButtonText: {
-    color: "#333",
     fontSize: 16,
   },
 });

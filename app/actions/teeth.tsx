@@ -4,6 +4,7 @@ import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import React, { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -69,7 +70,7 @@ export default function Teeth() {
     };
 
     await saveAllChildren(updatedChildren);
-    };
+  };
 
   return (
     <MainScreenContainer>
@@ -90,8 +91,8 @@ export default function Teeth() {
                 styles.toothHotspot,
                 { left: tooth.x, top: tooth.y },
               ]}
-              onPress={() =>
-                setSelectedTooth(tooth.id)}/>
+              onPress={() => setSelectedTooth(tooth.id)}
+            />
           ))}
         </View>
       </GroupSection>
@@ -109,22 +110,22 @@ export default function Teeth() {
                 styles.toothHotspot,
                 { left: tooth.x, top: tooth.y },
               ]}
-              onPress={() =>
-                setSelectedTooth(tooth.id)}/>
+              onPress={() => setSelectedTooth(tooth.id)}
+            />
           ))}
         </View>
       </GroupSection>
       {selectedTooth && (
         <GroupSection style={styles.dateSelectorBox}>
           <View style={styles.titleRow}>
-            <Subtitle style={{color: "#993769"}}>
+            <Subtitle>
               {teeth.find(t => t.id === selectedTooth)?.name}
             </Subtitle>
             <DateSelector
               date={
                 selectedChild?.teethDates?.[selectedTooth]
-                  ? new Date(selectedChild.teethDates[selectedTooth])
-                  : new Date()
+                ? new Date(selectedChild.teethDates[selectedTooth])
+                : new Date()
               }
               onChange={(date) => {
                 handleDateChange(selectedTooth, date);
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
     alignSelf: "center"
   },
   dateText: {
-    color: "#993769",
+    color: COLORS.primary,
     fontWeight: "500",
     flexShrink: 1,
     fontSize: 15,

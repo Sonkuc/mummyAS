@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet } from "react-native";
@@ -25,7 +26,7 @@ export default function EditPencil({ targetPath, color, circle = false, onPress,
     const iconName = editMode ? "times" : "pencil";
     const circleStyle = {
       ...styles.circleButton,
-      backgroundColor: editMode ? "crimson" : "#993769",
+      backgroundColor: editMode ? "crimson" : COLORS.primary,
     };
 
 return (
@@ -44,7 +45,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 30,
-    backgroundColor: "#993769",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",

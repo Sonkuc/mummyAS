@@ -1,3 +1,4 @@
+import { COLORS } from "@/constants/MyColors";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(233, 200, 224, 1)",
   },
   selected: {
-    backgroundColor: "#bae6c0ff",
+    backgroundColor: COLORS.lightGreen,
   },
   label: {
     fontSize: 20,

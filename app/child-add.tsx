@@ -7,11 +7,40 @@ import PhotoChooser from "@/components/PhotoChooser";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDate";
+import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import uuid from "react-native-uuid";
+
+export async function pickImage(onSelect: (uri: string) => void) {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: [ImagePicker.MediaType.Image],
+    quality: 1,
+  });
+
+  if (!result.canceled) {
+    const sourceUri = result.assets[0].uri;
+
+    // dočasné jméno souboru
+    const tempName = `temp-${uuid.v4()}.jpg`;
+    const tempPath = FileSystem.documentDirectory + tempName;
+
+    try {
+      await FileSystem.copyAsync({
+        from: sourceUri,
+        to: tempPath,
+      });
+      onSelect(tempPath); // zatím dočasná cesta
+    } catch (err) {
+      console.error("Chyba při ukládání fotky:", err);
+      onSelect(sourceUri); // fallback
+    }
+  }
+}
 
 export default function ChildAdd() {
   const router = useRouter();
@@ -43,21 +72,40 @@ export default function ChildAdd() {
     if (exists) {
       alert("Toto dítě už je přidáno.");
       return;
-  }
+    }
+    const childId = uuid.v4() as string;
 
-  const newChild = {
-    id: uuid.v4() as string,
-    name,
-    sex,
-    birthDate: birthDateObj.toISOString(),
-    photo: photoUri || Image.resolveAssetSource(anonymPicture).uri,
-    milestones: [],
-    words: [],
-    teethDates: {},
-    wh: [],
-  };
+    let finalPhotoUri: string;
+    if (photoUri) {
+      // přejmenujeme dočasný soubor na stabilní název podle ID dítěte
+      const newPath = FileSystem.documentDirectory + `${childId}.jpg`;
+      try {
+        await FileSystem.moveAsync({
+          from: photoUri,
+          to: newPath,
+        });
+        finalPhotoUri = newPath;
+      } catch (err) {
+        console.error("Chyba při přejmenování fotky:", err);
+        finalPhotoUri = photoUri; // fallback
+      }
+    } else {
+      finalPhotoUri = Image.resolveAssetSource(anonymPicture).uri;
+    }
 
-  try {
+    const newChild = {
+      id: childId,
+      name,
+      sex,
+      birthDate: birthDateObj.toISOString(),
+      photo: finalPhotoUri || Image.resolveAssetSource(anonymPicture).uri,
+      milestones: [],
+      words: [],
+      teethDates: {},
+      wh: [],
+    };
+
+    try {
       const updatedChildren = [...allChildren, newChild];
       await saveAllChildren(updatedChildren);
 
@@ -101,7 +149,7 @@ export default function ChildAdd() {
         />
       </View>
 
-        <View style={styles.genderContainer}>
+      <View style={styles.genderContainer}>
         <Pressable
           style={[
             styles.genderButton,
@@ -110,9 +158,8 @@ export default function ChildAdd() {
           onPress={() => setSex("chlapec")}
         >
           <Text style={[
-                      styles.genderText,
-                      sex === "chlapec" && styles.genderTextSelected,
-                    ]}>Chlapec</Text>
+            sex === "chlapec" && styles.genderTextSelected,
+          ]}>Chlapec</Text>
         </Pressable>
 
         <Pressable
@@ -123,31 +170,29 @@ export default function ChildAdd() {
           onPress={() => setSex("divka")}
         >
           <Text style={[
-                      styles.genderText,
-                      sex === "divka" && styles.genderTextSelected,
-                    ]}>Dívka</Text>
+            sex === "divka" && styles.genderTextSelected,
+          ]}>Dívka</Text>
         </Pressable>
       </View>
 
       <PhotoChooser onSelect={(uri) => setPhotoUri(uri)} />
-
       {photoUri && (
         <Image
           source={
             typeof photoUri === "string"
-              ? { uri: photoUri }
-              : anonymPicture
+            ? { uri: photoUri }
+            : anonymPicture
           }
           style={{
             width: 120,
             height: 120,
             borderRadius: 60,
             alignSelf: "center",
-            marginVertical: 20,
+            marginVertical: 10,
           }}
         />
       )}
-      <CheckButton onPress = {handleSave} /> 
+      <CheckButton style={{marginBottom: 20}} onPress = {handleSave} /> 
 
     </MainScreenContainer>
   );
@@ -164,16 +209,13 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#993769",
+    borderColor: COLORS.primary,
     width: 80,
     justifyContent: "center",
     alignItems: "center", 
   },
   genderSelected: {
-    backgroundColor: "#993769",
-  },
-  genderText: {
-    color: "#333",
+    backgroundColor: COLORS.primary,
   },
   genderTextSelected: {
     color: "white",
