@@ -59,7 +59,7 @@ export default function Home() {
             <View style={styles.row}>
               {kid.photo && (
                 <Image
-                  source={{ uri: kid.photo }}
+                  source={{ uri: `${kid.photo}?t=${Date.now()}` }}
                   style={styles.childImage}
                   resizeMode="cover"
                 />

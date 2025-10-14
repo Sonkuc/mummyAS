@@ -1,6 +1,6 @@
 import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
-import { IsoFormatDate } from "@/components/IsoFormatDate";
+import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
@@ -53,7 +53,6 @@ const normalizeTime = (input: string): string | null => {
 
 export default function BreastfeedingEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
-  const { formatDateToCzech } = IsoFormatDate();
   const router = useRouter();
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } = useChild();
 

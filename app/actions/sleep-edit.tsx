@@ -1,6 +1,6 @@
 import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
-import { IsoFormatDate } from "@/components/IsoFormatDate";
+import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import Subtitle from "@/components/Subtitle";
@@ -60,7 +60,6 @@ const normalizeTime = (input: string): string | null => {
 
 export default function SleepEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
-  const { formatDateToCzech } = IsoFormatDate();
   const router = useRouter();
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } = useChild();
 

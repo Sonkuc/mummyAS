@@ -2,6 +2,7 @@ import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
+import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import PhotoChooser from "@/components/PhotoChooser";
@@ -13,14 +14,15 @@ import { useChild } from "@/contexts/ChildContext";
 import * as FileSystem from "expo-file-system/legacy";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function ChildEdit() {
   const router = useRouter();
-  
-  const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
+  const { selectedChildIndex, allChildren, updateChild, setSelectedChildIndex } = useChild();
+
   const childIdx = selectedChildIndex;
-  const isValidIndex = childIdx !== null && childIdx >= 0 && childIdx < allChildren.length;
+  const isValidIndex =
+    childIdx !== null && childIdx >= 0 && childIdx < allChildren.length;
 
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
@@ -28,7 +30,12 @@ export default function ChildEdit() {
     isValidIndex ? new Date(allChildren[childIdx].birthDate) : null
   );
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+
   const anonymPicture = require("../assets/images/avatars/avatarN0.jpg");
+
+  function normalizeUri(uri: string): string {
+    return uri.split("?")[0]; // odřízne ?t=...
+  }
 
   useEffect(() => {
     if (isValidIndex) {
@@ -38,138 +45,147 @@ export default function ChildEdit() {
       setPhotoUri(kid.photo);
     }
   }, [childIdx, isValidIndex, allChildren]);
-  
+
   const handleSave = async () => {
+    if (!isValidIndex) {
+      alert("Neplatný index dítěte.");
+      return;
+    }
+
     if (!name.trim() || !sex || !birthDate) {
       alert("Vyplň všechna pole.");
       return;
     }
 
-    if (!birthDate || isNaN(birthDate.getTime())) {
+    if (isNaN(birthDate.getTime())) {
       alert("Datum narození není platné.");
       return;
     }
 
     const updated = [...allChildren];
-    if (childIdx === null || childIdx < 0 || childIdx >= updated.length) {
-      alert("Neplatný index dítěte.");
+    const currentChild = updated[childIdx];
+
+    const duplicate = allChildren.some(
+      (c, i) =>
+        i !== childIdx &&
+        c.name.trim().toLowerCase() === name.trim().toLowerCase() &&
+        c.birthDate.slice(0, 10) === formatDateLocal(birthDate)
+    );
+
+    if (duplicate) {
+      alert("Dítě se stejným jménem a datem už existuje.");
       return;
     }
 
-    const currentChild = updated[childIdx];
-    const childId = currentChild.id;   // už existující ID
+    let finalPhotoUri: string;
 
-    let finalPhotoUri = currentChild.photo;
+    if (photoUri) {
+      const cleanUri = normalizeUri(photoUri);
+      const docDir = FileSystem.documentDirectory ?? "";
 
-    if (photoUri && photoUri !== currentChild.photo) {
-      // uživatel vybral novou fotku → uložíme ji pod stabilním jménem podle ID
-      const newPath = FileSystem.documentDirectory + `${childId}.jpg`;
-
-      try {
-        // smaž starou, pokud existuje (aby nedocházelo k bordelu)
-        await FileSystem.deleteAsync(newPath, { idempotent: true });
-
-        // překopíruj novou do finální cesty
-        await FileSystem.copyAsync({
-          from: photoUri,
-          to: newPath,
-        });
-
-        finalPhotoUri = newPath;
-      } catch (err) {
-        console.error("Chyba při ukládání nové fotky:", err);
-        finalPhotoUri = photoUri; // fallback
+      if (cleanUri.startsWith("file://") || cleanUri.startsWith(docDir)) {
+        const newPath = FileSystem.documentDirectory + `${currentChild.id}.jpg`;
+        try {
+          if (cleanUri !== newPath) {
+            await FileSystem.deleteAsync(newPath, { idempotent: true });
+            await FileSystem.copyAsync({ from: cleanUri, to: newPath });
+          }
+          finalPhotoUri = newPath;
+        } catch (err) {
+          console.error("Chyba při ukládání fotky:", err);
+          finalPhotoUri = cleanUri;
+        }
+      } else {
+        finalPhotoUri = cleanUri;
       }
+    } else {
+      finalPhotoUri = Image.resolveAssetSource(anonymPicture).uri;
     }
 
-    updated[childIdx] = {
+    const noChanges =
+      name === currentChild.name &&
+      sex === currentChild.sex &&
+      formatDateLocal(birthDate) === currentChild.birthDate &&
+      photoUri === currentChild.photo;
+
+    if (noChanges) {
+      return;
+    }
+
+    await updateChild({
       ...currentChild,
       name,
       sex,
-      birthDate: birthDate.toISOString(),
+      birthDate: formatDateLocal(birthDate),
       photo: finalPhotoUri,
-    };
+    });
 
-    await saveAllChildren(updated);
-    alert("Údaje byly uloženy.");
+    if (selectedChildIndex !== null) {
+      await setSelectedChildIndex(selectedChildIndex);
+    }
+
     router.back();
   };
-  
+
+  if (!isValidIndex) return null;
+
+  const currentChild = allChildren[childIdx];
+
   return (
     <MainScreenContainer>
       <CustomHeader>
-        {childIdx !== null && <DeleteButton type="child" index={childIdx} />}
+        <DeleteButton type="child" index={childIdx} />
       </CustomHeader>
+
       <Title>Uprav informace</Title>
+
       <Subtitle>Jméno</Subtitle>
+      <MyTextInput placeholder="Jméno" value={name} onChangeText={setName} />
 
-      <MyTextInput
-        placeholder="Jméno"
-        value={name}
-        onChangeText={setName}
-      />
-
-      <Subtitle style={{marginTop: 10}}>Datum narození</Subtitle>
+      <Subtitle style={{ marginTop: 10 }}>Datum narození</Subtitle>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
         <View style={{ width: "80%" }}>
           <ValidatedDateInput
-            value={birthDate ? birthDate.toISOString().slice(0, 10) : ""}
-            onChange={(val) => setBirthDate(val ? new Date(val) : null)} 
-            birthISO={isValidIndex ? allChildren[childIdx].birthDate : null} 
+            value={birthDate ? formatDateLocal(birthDate) : ""}
+            onChange={(val) => setBirthDate(val ? new Date(val) : null)}
+            birthISO={currentChild.birthDate}
             allowPastDates
             fallbackOnError="original"
           />
         </View>
         <DateSelector
           date={birthDate && !isNaN(birthDate.getTime()) ? birthDate : new Date()}
-          onChange={(newDate) => setBirthDate(newDate)}
+          onChange={setBirthDate}
         />
       </View>
 
       <View style={styles.genderContainer}>
         <Pressable
-          style={[
-            styles.genderButton,
-            sex === "chlapec" && styles.genderSelected,
-          ]}
+          style={[styles.genderButton, sex === "chlapec" && styles.genderSelected]}
           onPress={() => setSex("chlapec")}
         >
-          <Text style={[
-            sex === "chlapec" && styles.genderTextSelected,
-          ]}>Chlapec</Text>
+          <Text style={[sex === "chlapec" && styles.genderTextSelected]}>
+            Chlapec
+          </Text>
         </Pressable>
 
         <Pressable
-          style={[
-            styles.genderButton,
-            sex === "divka" && styles.genderSelected,
-          ]}
+          style={[styles.genderButton, sex === "divka" && styles.genderSelected]}
           onPress={() => setSex("divka")}
         >
-          <Text style={[
-            sex === "divka" && styles.genderTextSelected,
-          ]}>Dívka</Text>
+          <Text style={[sex === "divka" && styles.genderTextSelected]}>
+            Dívka
+          </Text>
         </Pressable>
       </View>
 
-      <PhotoChooser onSelect={(uri) => setPhotoUri(uri)} />
-        {photoUri && (
-          <Image
-            source={
-              typeof photoUri === "string"
-              ? { uri: photoUri }
-              : anonymPicture
-            }
-            style={{
-              width: 120,
-              height: 120,
-              borderRadius: 60,
-              alignSelf: "center",
-              marginVertical: 10,
-            }}
-          />
-        )}
-      <CheckButton style={{marginBottom: 20}} onPress = {handleSave} />
+      <PhotoChooser
+        childId={currentChild.id}
+        initialUri={currentChild.photo}
+        onSelect={(uri) => setPhotoUri(uri)}
+      />
+
+      <CheckButton style={{ marginBottom: 20 }} onPress={handleSave} />
     </MainScreenContainer>
   );
 }
@@ -188,7 +204,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
     width: 80,
     justifyContent: "center",
-    alignItems: "center", 
+    alignItems: "center",
   },
   genderSelected: {
     backgroundColor: COLORS.primary,

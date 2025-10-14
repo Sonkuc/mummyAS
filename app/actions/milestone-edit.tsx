@@ -2,7 +2,7 @@ import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
-import { IsoFormatDate } from "@/components/IsoFormatDate";
+import { formatDateToCzech, toIsoDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
@@ -22,7 +22,6 @@ export default function EditMilestone() {
   const [name, setName] = useState("");
   const [selectedMilestone, setSelectedMilestone] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const { formatDateToCzech, toIsoDate } = IsoFormatDate();
   const [note, setNote] = useState("");
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
   const selectedChild =

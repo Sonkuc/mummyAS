@@ -1,6 +1,7 @@
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
+import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import PhotoChooser from "@/components/PhotoChooser";
@@ -10,47 +11,21 @@ import ValidatedDateInput from "@/components/ValidDate";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import * as FileSystem from "expo-file-system/legacy";
-import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import uuid from "react-native-uuid";
-
-export async function pickImage(onSelect: (uri: string) => void) {
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: [ImagePicker.MediaType.Image],
-    quality: 1,
-  });
-
-  if (!result.canceled) {
-    const sourceUri = result.assets[0].uri;
-
-    // dočasné jméno souboru
-    const tempName = `temp-${uuid.v4()}.jpg`;
-    const tempPath = FileSystem.documentDirectory + tempName;
-
-    try {
-      await FileSystem.copyAsync({
-        from: sourceUri,
-        to: tempPath,
-      });
-      onSelect(tempPath); // zatím dočasná cesta
-    } catch (err) {
-      console.error("Chyba při ukládání fotky:", err);
-      onSelect(sourceUri); // fallback
-    }
-  }
-}
 
 export default function ChildAdd() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
-  const today = new Date().toISOString().slice(0, 10);
-  const [birthDate, setBirthDate] = useState(today); 
+  const [birthDate, setBirthDate] = useState<Date>(new Date());
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const { saveAllChildren, allChildren, setSelectedChildIndex } = useChild();
   const anonymPicture = require("../assets/images/avatars/avatarN0.jpg");
+
+  const childId = useMemo(() => uuid.v4() as string, []);
 
   const handleSave = async () => {
     if (!name.trim() || !sex || !birthDate) {
@@ -58,47 +33,51 @@ export default function ChildAdd() {
       return;
     }
 
-    const [y, m, d] = birthDate.split("-").map(Number);
-    const birthDateObj = new Date(y, m - 1, d);
-    if (isNaN(birthDateObj.getTime())) {
+    if (isNaN(birthDate.getTime())) {
       alert("Datum narození není platné.");
       return;
     }
 
-    const exists = allChildren.some(c => 
-      c.name.toLowerCase() === name.toLowerCase() && 
-      c.birthDate.slice(0, 10) === birthDate
+    const duplicate = allChildren.some(c => 
+      c.name.trim().toLowerCase() === name.toLowerCase() && 
+      c.birthDate.slice(0, 10) === formatDateLocal(birthDate)
     );
-    if (exists) {
+    if (duplicate) {
       alert("Toto dítě už je přidáno.");
       return;
     }
-    const childId = uuid.v4() as string;
 
     let finalPhotoUri: string;
     if (photoUri) {
-      // přejmenujeme dočasný soubor na stabilní název podle ID dítěte
-      const newPath = FileSystem.documentDirectory + `${childId}.jpg`;
+    // jestli je to fotka z FS (ne asset)
+    const docDir = FileSystem.documentDirectory ?? "";
+    if (photoUri.startsWith("file://") || photoUri.startsWith(docDir)) {
+      const newPath = FileSystem.documentDirectory + `${childId}.jpg`; // použij childId, ne currentChild
       try {
-        await FileSystem.moveAsync({
-          from: photoUri,
-          to: newPath,
-        });
+        if (photoUri !== newPath) {
+          await FileSystem.deleteAsync(newPath, { idempotent: true });
+          await FileSystem.copyAsync({ from: photoUri, to: newPath });
+        }
         finalPhotoUri = newPath;
       } catch (err) {
-        console.error("Chyba při přejmenování fotky:", err);
+        console.error("Chyba při ukládání fotky:", err);
         finalPhotoUri = photoUri; // fallback
       }
     } else {
-      finalPhotoUri = Image.resolveAssetSource(anonymPicture).uri;
+      // asset (avatar/anonym) – uložit jen URI
+      finalPhotoUri = photoUri;
     }
+  } else {
+    finalPhotoUri = Image.resolveAssetSource(anonymPicture).uri;
+  }
+
 
     const newChild = {
       id: childId,
       name,
       sex,
-      birthDate: birthDateObj.toISOString(),
-      photo: finalPhotoUri || Image.resolveAssetSource(anonymPicture).uri,
+      birthDate: formatDateLocal(birthDate),
+      photo: finalPhotoUri,
       milestones: [],
       words: [],
       teethDates: {},
@@ -116,7 +95,7 @@ export default function ChildAdd() {
         await setSelectedChildIndex(newIndex);
       }
 
-      router.replace("/");
+      router.back();
     } catch (error) {
       alert("Nastala neočekávaná chyba při ukládání.");
     }
@@ -138,14 +117,21 @@ export default function ChildAdd() {
       <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
         <View style={{ width: "80%" }}>
           <ValidatedDateInput
-            value={birthDate}
-            onChange={setBirthDate} 
+            value={formatDateLocal(birthDate)}
+            onChange={(val) => {
+              if (val) {
+                const [y, m, d] = val.split("-").map(Number);
+                setBirthDate(new Date(y, m - 1, d));
+              } else {
+                setBirthDate(new Date());
+              }
+            }}
             allowPastDates
           />
         </View>
         <DateSelector
-          date={new Date(birthDate)}
-          onChange={(newDate) => setBirthDate(newDate.toISOString().slice(0, 10))}
+          date={birthDate}
+          onChange={setBirthDate}
         />
       </View>
 
@@ -175,23 +161,11 @@ export default function ChildAdd() {
         </Pressable>
       </View>
 
-      <PhotoChooser onSelect={(uri) => setPhotoUri(uri)} />
-      {photoUri && (
-        <Image
-          source={
-            typeof photoUri === "string"
-            ? { uri: photoUri }
-            : anonymPicture
-          }
-          style={{
-            width: 120,
-            height: 120,
-            borderRadius: 60,
-            alignSelf: "center",
-            marginVertical: 10,
-          }}
-        />
-      )}
+      <PhotoChooser
+        childId={childId}
+        initialUri={null}
+        onSelect={(uri) => setPhotoUri(uri)}
+      />
       <CheckButton style={{marginBottom: 20}} onPress = {handleSave} /> 
 
     </MainScreenContainer>

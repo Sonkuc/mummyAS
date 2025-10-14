@@ -3,7 +3,7 @@ import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
 import HideButton from "@/components/HideButton";
-import { IsoFormatDate } from "@/components/IsoFormatDate";
+import { formatDateToCzech, toIsoDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import { WeightHeight } from "@/components/storage/SaveChildren";
@@ -20,7 +20,6 @@ export default function WeightHeightEdit() {
   const { whIndex } = useLocalSearchParams();
   const router = useRouter();
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const { formatDateToCzech, toIsoDate } = IsoFormatDate();  
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [head, setHead] = useState("");

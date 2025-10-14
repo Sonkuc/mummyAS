@@ -1,20 +1,18 @@
-export function IsoFormatDate() {
-  // Převod z ISO (YYYY-MM-DD) na český formát (DD.MM.YYYY)
-  const formatDateToCzech = (isoDate: string): string => {
-    if (!isoDate) return "";
-    const [year, month, day] = isoDate.split("-");
-    return `${day}.${month}.${year}`;
-  };
+export const formatDateLocal = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 
-  // Převod z českého formátu (DD.MM.YYYY) na ISO (YYYY-MM-DD)
-  const toIsoDate = (czDate: string): string => {
-    if (!czDate) return "";
-    const [day, month, year] = czDate.split(".");
-    return `${year}-${month}-${day}`;
-  };
+export const formatDateToCzech = (isoDate: string): string => {
+  if (!isoDate) return "";
+  const [year, month, day] = isoDate.split("-");
+  return `${day}.${month}.${year}`;
+};
 
-  return {
-    formatDateToCzech,
-    toIsoDate
-  };
-}
+export const toIsoDate = (czDate: string): string => {
+  if (!czDate) return "";
+  const [day, month, year] = czDate.split(".");
+  return `${year}-${month}-${day}`;
+};

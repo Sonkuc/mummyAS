@@ -9,6 +9,7 @@ type ChildContextType = {
   setSelectedChild: (child: Child | null) => void;
   allChildren: Child[];
   saveAllChildren: (children: Child[]) => Promise<void>;
+  updateChild: (child: Child) => Promise<void>;
 };
 
 const ChildContext = createContext<ChildContextType | undefined>(undefined);
@@ -51,9 +52,9 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
         await AsyncStorage.removeItem("selectedChildIndex");
         return;
       }
-      const index = allChildren.findIndex(c => c === child);
+      const index = allChildren.findIndex(c => c.id === child.id); // <--- změna
       if (index !== -1) {
-        setSelectedChildIndex(index);
+        await setSelectedChildIndex(index);
       } else {
         console.warn("Child not found in allChildren");
       }
@@ -61,10 +62,28 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     [allChildren, setSelectedChildIndex]
   );
 
+  const updateChild = useCallback(async (updatedChild: Child) => {
+    const newChildren = allChildren.map(c =>
+      c.id === updatedChild.id ? updatedChild : c
+    );
+    await AsyncStorage.setItem("children", JSON.stringify(newChildren));
+    setAllChildren(newChildren);
+
+    if (selectedChildIndex !== null && newChildren[selectedChildIndex]) {
+      setSelectedChildIndexState(selectedChildIndex); // tím se refreshne selectedChild
+    }
+  }, [allChildren, selectedChildIndex]);
+
   const saveAllChildren = useCallback(async (children: Child[]) => {
     await AsyncStorage.setItem("children", JSON.stringify(children));
     setAllChildren(children);
-  }, []);
+
+    // pokud je nastavené selectedChildIndex, aktualizuj ho na nové pole
+    if (selectedChildIndex !== null && children[selectedChildIndex]) {
+      // tím se rerenderuje i selectedChild
+      setSelectedChildIndexState(selectedChildIndex);
+    }
+  }, [selectedChildIndex]);
 
   return (
     <ChildContext.Provider
@@ -75,6 +94,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
         setSelectedChildIndex,
         allChildren,
         saveAllChildren,
+        updateChild,
       }}
     >
       {children}

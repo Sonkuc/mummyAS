@@ -2,7 +2,7 @@ import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
 import GroupSection from "@/components/GroupSection";
-import { IsoFormatDate } from "@/components/IsoFormatDate";
+import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
@@ -26,7 +26,6 @@ export default function SpeakingEdit() {
   const [entries, setEntries] = useState<{ date: string; note: string }[]>([]);
   const [newDate, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [newNote, setNewNote] = useState("");
-  const { formatDateToCzech } = IsoFormatDate();
 
   useEffect(() => {
     if (

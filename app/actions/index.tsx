@@ -4,8 +4,10 @@ import MyButton from "@/components/MyButton";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
-import { useRouter } from "expo-router";
+import * as FileSystem from "expo-file-system/legacy";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Apple, Baby, Heart, MessageCircle, Moon, Ruler, Star } from "lucide-react-native";
+import { useCallback, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Action = {
@@ -18,6 +20,7 @@ export default function Actions() {
   const router = useRouter();
   const { selectedChild, selectedChildIndex } = useChild();
   const sex = selectedChild?.sex || "";
+  const [version, setVersion] = useState(0);
 
   const actions: Action[] = [
     { title: "Spánek", route: "/actions/sleep", icon: <Moon color="white" size={20} /> },
@@ -29,27 +32,54 @@ export default function Actions() {
     { title: "Potraviny", route: "/actions/food", icon: <Apple color="white" size={20} /> },
   ];
 
+  function withTimestamp(uri: string): string {
+    const docDir = FileSystem.documentDirectory ?? "";
+    if (uri.startsWith("file://") || uri.startsWith(docDir)) {
+      return `${uri}?t=${Date.now()}`;
+    }
+    return uri; // asset:/ a http:// necháme čisté
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedChild) {
+        // třeba trigger nějaký useState, aby se přegenerovalo ?t=...
+      }
+    }, [selectedChild])
+  );
+
+  // aby se aktualizovala fotka v inicialCircle
+  useFocusEffect(
+    useCallback(() => {
+      setVersion((v) => v + 1);
+    }, [])
+  );
+
   return (
-    <MainScreenContainer contentContainerStyle={{position: "relative"}}>
+    <MainScreenContainer contentContainerStyle={{ position: "relative" }}>
       <CustomHeader backTargetPath="/">
-        <Pressable 
+        <Pressable
           style={styles.avatarContainer}
-          hitSlop={20} 
+          hitSlop={20}
           onPress={() => {
             if (selectedChildIndex !== null) {
               router.push("../child-edit");
             }
-        }}>
+          }}
+        >
           {selectedChild?.photo ? (
             <>
-              <Image source={{ uri: selectedChild.photo }} 
-                style={styles.avatar} 
-                resizeMode="cover"
+              <Image
+                key={`${selectedChild?.photo}-${version}`}
+                source={{ uri: withTimestamp(selectedChild.photo) }}
+                style={styles.avatar}
               />
-              <View style={[
-                styles.avatarInitialOverlay,
-                sex === "chlapec" && styles.avatarInitialOverlayBoy,
-              ]}>
+              <View
+                style={[
+                  styles.avatarInitialOverlay,
+                  sex === "chlapec" ? styles.avatarInitialOverlayBoy : null,
+                ]}
+              >
                 <Text style={styles.avatarInitialText}>
                   {selectedChild?.name?.charAt(0) || "?"}
                 </Text>
@@ -64,14 +94,16 @@ export default function Actions() {
           )}
         </Pressable>
       </CustomHeader>
+
       <Title>Vyber akci</Title>
+
       <View style={styles.buttonContainer}>
         {actions.map((action: Action, index) => (
           <MyButton
             key={index}
             title={action.title}
             onPress={() => router.push(action.route)}
-            icon={action.icon} 
+            icon={action.icon}
           />
         ))}
       </View>
