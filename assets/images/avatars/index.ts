@@ -31,4 +31,8 @@ export const avatars = [
     id: "avatar8",
     source: require("./avatar8.png"),
   },
+  {
+    id: "anonym",
+    source: require("./anonym.jpg"),
+  },
 ];

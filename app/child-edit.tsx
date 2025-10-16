@@ -31,12 +31,6 @@ export default function ChildEdit() {
   );
   const [photoUri, setPhotoUri] = useState<string | null>(null);
 
-  const anonymPicture = require("../assets/images/avatars/avatarN0.jpg");
-
-  function normalizeUri(uri: string): string {
-    return uri.split("?")[0]; // odřízne ?t=...
-  }
-
   useEffect(() => {
     if (isValidIndex) {
       const kid = allChildren[childIdx];
@@ -77,40 +71,35 @@ export default function ChildEdit() {
       return;
     }
 
-    let finalPhotoUri: string;
+    let finalPhotoUri = photoUri || "anonym";
 
-    if (photoUri) {
-      const cleanUri = normalizeUri(photoUri);
+    if (photoUri && !photoUri.startsWith("avatar")) {
       const docDir = FileSystem.documentDirectory ?? "";
-
-      if (cleanUri.startsWith("file://") || cleanUri.startsWith(docDir)) {
-        const newPath = FileSystem.documentDirectory + `${currentChild.id}.jpg`;
+      if (photoUri.startsWith("file://") || photoUri.startsWith(docDir)) {
+        const newPath = `${docDir}${currentChild.id}.jpg`;
         try {
-          if (cleanUri !== newPath) {
+          if (photoUri !== newPath) {
             await FileSystem.deleteAsync(newPath, { idempotent: true });
-            await FileSystem.copyAsync({ from: cleanUri, to: newPath });
+            await FileSystem.copyAsync({ from: photoUri, to: newPath });
           }
           finalPhotoUri = newPath;
         } catch (err) {
           console.error("Chyba při ukládání fotky:", err);
-          finalPhotoUri = cleanUri;
         }
-      } else {
-        finalPhotoUri = cleanUri;
       }
-    } else {
-      finalPhotoUri = Image.resolveAssetSource(anonymPicture).uri;
     }
+
+    const photoChanged =
+      photoUri !== currentChild.photo &&
+      !(photoUri && photoUri.startsWith("avatar") && photoUri === currentChild.photo);
 
     const noChanges =
       name === currentChild.name &&
       sex === currentChild.sex &&
       formatDateLocal(birthDate) === currentChild.birthDate &&
-      photoUri === currentChild.photo;
+      !photoChanged;
 
-    if (noChanges) {
-      return;
-    }
+    if (noChanges) return;
 
     await updateChild({
       ...currentChild,

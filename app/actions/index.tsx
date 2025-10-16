@@ -1,10 +1,10 @@
 import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
+import { getPhotoSource } from "@/components/PhotoFunctions";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
-import * as FileSystem from "expo-file-system/legacy";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Apple, Baby, Heart, MessageCircle, Moon, Ruler, Star } from "lucide-react-native";
 import { useCallback, useState } from "react";
@@ -32,14 +32,6 @@ export default function Actions() {
     { title: "Potraviny", route: "/actions/food", icon: <Apple color="white" size={20} /> },
   ];
 
-  function withTimestamp(uri: string): string {
-    const docDir = FileSystem.documentDirectory ?? "";
-    if (uri.startsWith("file://") || uri.startsWith(docDir)) {
-      return `${uri}?t=${Date.now()}`;
-    }
-    return uri; // asset:/ a http:// necháme čisté
-  }
-
   useFocusEffect(
     useCallback(() => {
       if (selectedChild) {
@@ -51,8 +43,8 @@ export default function Actions() {
   // aby se aktualizovala fotka v inicialCircle
   useFocusEffect(
     useCallback(() => {
-      setVersion((v) => v + 1);
-    }, [])
+      setVersion(v => v + 1);
+    }, [selectedChild?.photo])
   );
 
   return (
@@ -71,7 +63,7 @@ export default function Actions() {
             <>
               <Image
                 key={`${selectedChild?.photo}-${version}`}
-                source={{ uri: withTimestamp(selectedChild.photo) }}
+                source={getPhotoSource(selectedChild?.photo)}
                 style={styles.avatar}
               />
               <View

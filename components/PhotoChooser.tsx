@@ -1,6 +1,6 @@
 import { avatars } from "@/assets/images/avatars";
+import { getPhotoSource } from "@/components/PhotoFunctions";
 import { COLORS } from "@/constants/MyColors";
-import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
@@ -18,17 +18,9 @@ export default function PhotoChooser({ childId, onSelect, initialUri }: Props) {
   useEffect(() => {
     if (initialUri) {
       setPreviewUri(initialUri);
-      onSelect(initialUri); // jen čistá cesta
+      onSelect(initialUri);
     }
   }, [initialUri]);
-
-  function withTimestamp(uri: string): string {
-    const docDir = FileSystem.documentDirectory ?? "";
-    if (uri.startsWith("file://") || uri.startsWith(docDir)) {
-      return `${uri}?t=${Date.now()}`;
-    }
-    return uri; // asset:/ a http:// necháme čisté
-  }
 
   const pickFromLibrary = async () => {
     const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -41,36 +33,23 @@ export default function PhotoChooser({ childId, onSelect, initialUri }: Props) {
 
     if (!res.canceled && res.assets.length) {
       const pickedUri = res.assets[0].uri;
-      const newPath = (FileSystem.documentDirectory ?? "") + `${childId}.jpg`;
 
-      try {
-        await FileSystem.deleteAsync(newPath, { idempotent: true });
-        await FileSystem.copyAsync({ from: pickedUri, to: newPath });
-
-        // do preview dáme ?t=..., do onSelect čistou cestu
-        setPreviewUri(`${newPath}?t=${Date.now()}`);
-        onSelect(newPath);
-      } catch (err) {
-        console.error("Chyba při ukládání fotky:", err);
-
-        // fallback
-        setPreviewUri(`${pickedUri}?t=${Date.now()}`);
-        onSelect(pickedUri);
-      }
+      setPreviewUri(`${pickedUri}?t=${Date.now()}`);
+      onSelect(pickedUri);
     }
   };
 
   const renderAvatar = ({ item }: { item: { id: string; source: any } }) => {
-    const uri = Image.resolveAssetSource(item.source).uri;
+    const isSelected = previewUri === item.id;
     return (
       <Pressable
         onPress={() => {
-          setPreviewUri(uri); // pro náhled čistě (bez ?t, protože je to asset)
-          onSelect(uri); // uložit čistě
+          setPreviewUri(item.id);
+          onSelect(item.id);
         }}
         style={[
           styles.avatarWrapper,
-          previewUri?.startsWith(uri) && styles.avatarSelected,
+          isSelected && styles.avatarSelected,
         ]}
       >
         <Image source={item.source} style={styles.avatarImg} />
@@ -90,7 +69,7 @@ export default function PhotoChooser({ childId, onSelect, initialUri }: Props) {
 
       <View style={{ height: 100 }}>
         <FlatList
-          data={avatars}
+          data={avatars.filter(a => a.id.startsWith("avatar"))}
           horizontal
           renderItem={renderAvatar}
           keyExtractor={(item) => item.id}
@@ -101,7 +80,7 @@ export default function PhotoChooser({ childId, onSelect, initialUri }: Props) {
 
       {previewUri && (
         <Image
-          source={{ uri: withTimestamp(previewUri) }}
+          source={getPhotoSource(previewUri)}
           style={{
             width: 120,
             height: 120,

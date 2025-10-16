@@ -1,6 +1,7 @@
 import EditPencil from "@/components/EditPencil";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
+import { getPhotoSource } from "@/components/PhotoFunctions";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
@@ -59,7 +60,7 @@ export default function Home() {
             <View style={styles.row}>
               {kid.photo && (
                 <Image
-                  source={{ uri: `${kid.photo}?t=${Date.now()}` }}
+                  source={getPhotoSource(kid.photo)}
                   style={styles.childImage}
                   resizeMode="cover"
                 />

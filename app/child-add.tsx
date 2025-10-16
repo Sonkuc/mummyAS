@@ -13,7 +13,7 @@ import { useChild } from "@/contexts/ChildContext";
 import * as FileSystem from "expo-file-system/legacy";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import uuid from "react-native-uuid";
 
 export default function ChildAdd() {
@@ -23,7 +23,7 @@ export default function ChildAdd() {
   const [birthDate, setBirthDate] = useState<Date>(new Date());
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const { saveAllChildren, allChildren, setSelectedChildIndex } = useChild();
-  const anonymPicture = require("../assets/images/avatars/avatarN0.jpg");
+  const anonymID = "anonym";
 
   const childId = useMemo(() => uuid.v4() as string, []);
 
@@ -49,28 +49,31 @@ export default function ChildAdd() {
 
     let finalPhotoUri: string;
     if (photoUri) {
-    // jestli je to fotka z FS (ne asset)
-    const docDir = FileSystem.documentDirectory ?? "";
-    if (photoUri.startsWith("file://") || photoUri.startsWith(docDir)) {
-      const newPath = FileSystem.documentDirectory + `${childId}.jpg`; // použij childId, ne currentChild
-      try {
-        if (photoUri !== newPath) {
-          await FileSystem.deleteAsync(newPath, { idempotent: true });
-          await FileSystem.copyAsync({ from: photoUri, to: newPath });
+      // uživatel vybral fotku nebo avatar
+      if (!photoUri.startsWith("avatar")) {
+        const docDir = FileSystem.documentDirectory ?? "";
+        if (photoUri.startsWith("file://") || photoUri.startsWith(docDir)) {
+          const newPath = `${docDir}${childId}.jpg`;
+          try {
+            if (photoUri !== newPath) {
+              await FileSystem.deleteAsync(newPath, { idempotent: true });
+              await FileSystem.copyAsync({ from: photoUri, to: newPath });
+            }
+            finalPhotoUri = newPath;
+          } catch (err) {
+            console.error("Chyba při ukládání fotky:", err);
+            finalPhotoUri = "anonym";
+          }
+        } else {
+          finalPhotoUri = photoUri;
         }
-        finalPhotoUri = newPath;
-      } catch (err) {
-        console.error("Chyba při ukládání fotky:", err);
-        finalPhotoUri = photoUri; // fallback
+      } else {
+        finalPhotoUri = photoUri; // avatar
       }
     } else {
-      // asset (avatar/anonym) – uložit jen URI
-      finalPhotoUri = photoUri;
+      // pokud není vybraná žádná fotka ani avatar, použijeme anonym
+      finalPhotoUri = "anonym";
     }
-  } else {
-    finalPhotoUri = Image.resolveAssetSource(anonymPicture).uri;
-  }
-
 
     const newChild = {
       id: childId,
