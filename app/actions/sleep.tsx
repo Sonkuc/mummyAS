@@ -4,6 +4,7 @@ import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
+import { clearStateGeneric, formatDuration, getLastModeGeneric, toTimestamp } from "@/components/SleepBfFunctions";
 import type { GroupedSleepRecord, RecordTypeSleep } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
@@ -11,7 +12,7 @@ import { useChild } from "@/contexts/ChildContext";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { ChartColumn, Eye, EyeClosed } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Sleep() {
@@ -24,19 +25,12 @@ export default function Sleep() {
 
   const router = useRouter();
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren } = useChild();
-  
-  const clearState = () => {
-    setMode("");
-    setMinutesSinceAwake(null);
-    setMinutesSinceSleep(null);
-    setModeStart(null);
 
-    if (selectedChildIndex !== null) {
-      const updated = [...allChildren];
-      updated[selectedChildIndex].currentModeSleep = null;
-      saveAllChildren(updated);
-    }
-  };
+  const clearState = () =>
+    clearStateGeneric("sleep", setMode, setMinutesSinceAwake, setMinutesSinceSleep, setModeStart, selectedChildIndex, allChildren, saveAllChildren);
+
+  const getLastMode = () =>
+    getLastModeGeneric("sleep", selectedChild);
 
   const addRecord = async (label: string, newMode: "awake" | "sleep") => {
     if (!selectedChild) return;
@@ -67,7 +61,6 @@ export default function Sleep() {
       };
       saveAllChildren(updated);
     }
-
   };
 
   useFocusEffect(
@@ -110,86 +103,62 @@ export default function Sleep() {
     };
   }, [mode, modeStart]);
 
-  const formatDuration = (minutes: number) => {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    if (h > 0) return `${h} h ${m} min`;
-    return `${m} min`;
-  };
-
-  const toTimestamp = (dateStr: string, timeStr: string) => {
-    let year = 0, month = 0, day = 0;
-    if (dateStr.includes("-")) {
-      [year, month, day] = dateStr.split("-").map((s) => parseInt(s, 10));
-    } else if (dateStr.includes(".")) {
-      [day, month, year] = dateStr.split(".").map((s) => parseInt(s, 10));
-    }
-    const [hh, mm] = timeStr.split(":").map((s) => parseInt(s, 10));
-    return new Date(year, month - 1, day, hh, mm).getTime();
-  };
-
-  // seskupení a výpočty per den
-  const grouped: GroupedSleepRecord[] = Object.entries(
-    records.reduce((acc, rec) => {
+  // memoizovaný výpočet grouped podle records
+  const grouped: GroupedSleepRecord[] = useMemo(() => {
+    const groupedMap = records.reduce((acc, rec) => {
       if (!acc[rec.date]) acc[rec.date] = [];
       acc[rec.date].push({ ...rec, ts: toTimestamp(rec.date, rec.time) });
       return acc;
-    }, {} as Record<string, (RecordTypeSleep & { ts: number })[]>)
-  )
-    .map(([date, recs]) => {
-      const sortedAsc = [...recs].sort((a, b) => a.ts - b.ts);
+    }, {} as Record<string, (RecordTypeSleep & { ts: number })[]>);
 
-      let totalSleepMinutes = 0;
-      const enhanced: (RecordTypeSleep & { ts: number })[] = [];
-      let sleepCounter = 1;
+    const groups = Object.entries(groupedMap)
+      .map(([date, recs]) => {
+        const sortedAsc = recs.slice().sort((a, b) => a.ts - b.ts);
 
-      for (let i = 0; i < sortedAsc.length; i++) {
-        const curr = sortedAsc[i];
-        const next = sortedAsc[i + 1];
-        let extra = "";
+        let totalSleepMinutes = 0;
+        let sleepCounter = 1;
 
-        if (next) {
-          const minutes = Math.floor((next.ts - curr.ts) / 60000);
-          if (minutes > 0) {
-            extra = ` → ${formatDuration(minutes)}`;
-            if (curr.state === "sleep") {
-              totalSleepMinutes += minutes;
+        const enhanced = sortedAsc.map((curr, i) => {
+          const next = sortedAsc[i + 1];
+          let extra = "";
+
+          if (next) {
+            const minutes = Math.floor((next.ts - curr.ts) / 60000);
+            if (minutes > 0) {
+              extra = ` → ${formatDuration(minutes)}`;
+              if (curr.state === "sleep") totalSleepMinutes += minutes;
             }
           }
-        }
 
-        let label = curr.state === "sleep"
-          ? `${sleepCounter++}. spánek od: ${curr.time}`
-          : `Vzhůru od: ${curr.time}`;
+          const label =
+            curr.state === "sleep"
+              ? `${sleepCounter++}. spánek od: ${curr.time}`
+              : `Vzhůru od: ${curr.time}`;
 
-        enhanced.push({ ...curr, label, extra });
-      }
+          return { ...curr, label, extra };
+        });
 
-      const sortedDesc = [...enhanced].sort((a, b) => b.ts - a.ts);
-      return {
-        date,
-        totalSleepMinutes,
-        records: sortedDesc,
-      };
-    })
-    .sort((a, b) => {
-      const ta = toTimestamp(a.date, "23:59");
-      const tb = toTimestamp(b.date, "23:59");
-      return tb - ta;
-    });
+        return {
+          date,
+          totalSleepMinutes,
+          records: enhanced.slice().sort((a, b) => b.ts - a.ts),
+        };
+      })
+      .sort((a, b) => toTimestamp(b.date, "23:59") - toTimestamp(a.date, "23:59"));
 
-    //dopočítání nočního spánku
-    for (let i = 0; i < grouped.length - 1; i++) {
-      const today = grouped[i];
-      const yesterday = grouped[i + 1];
+    // dopočítání nočního spánku (mutuje výsledné groups)
+    for (let i = 0; i < groups.length - 1; i++) {
+      const today = groups[i];
+      const yesterday = groups[i + 1];
 
-      // poslední usnutí včera
-      const lastSleep = [...yesterday.records]
+      const lastSleep = yesterday.records
+        .slice()
         .sort((a, b) => a.ts - b.ts)
-        .findLast(r => r.state === "sleep");
+        .filter(r => r.state === "sleep")
+        .at(-1);
 
-      // první probuzení dnes
-      const firstAwake = [...today.records]
+      const firstAwake = today.records
+        .slice()
         .sort((a, b) => a.ts - b.ts)
         .find(r => r.state === "awake");
 
@@ -199,29 +168,25 @@ export default function Sleep() {
           yesterday.totalSleepMinutes += nightMinutes;
           (yesterday as any).nightSleepMinutes = nightMinutes;
 
-          const idx = yesterday.records.findIndex(r => r.ts === lastSleep.ts);
-          if (idx !== -1) {
-            yesterday.records[idx].extra = ` → ${formatDuration(nightMinutes)}`;
+          const recIndex = yesterday.records.findIndex(r => r.ts === lastSleep.ts);
+          if (recIndex !== -1) {
+            yesterday.records[recIndex].extra = ` → ${formatDuration(nightMinutes)}`;
           }
         }
       }
     }
 
+    return groups;
+  }, [records]); // přepočítá se pouze při změně records
+
+  // uložíme grouped do storage pokud se změní
   useEffect(() => {
     if (selectedChildIndex !== null) {
       const updated = [...allChildren];
       updated[selectedChildIndex].groupedSleep = grouped;
       saveAllChildren(updated);
     }
-  }, [records]);
-
-  const getLastMode = () => {
-    if (selectedChild?.currentModeSleep?.mode) {
-      return selectedChild.currentModeSleep.mode;
-    }
-    const last = selectedChild?.sleepRecords?.[selectedChild.sleepRecords.length - 1];
-    return last?.state ?? null;
-  };
+  }, [grouped, selectedChildIndex, saveAllChildren]);
 
   return (
     <MainScreenContainer>
@@ -332,10 +297,9 @@ export default function Sleep() {
 const styles = StyleSheet.create({
   buttonsRow: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
     marginBottom: 15,
-    gap: 30,
+    justifyContent: "space-evenly"
   },
   button: {
     padding: 15,

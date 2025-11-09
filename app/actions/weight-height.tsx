@@ -25,12 +25,48 @@ export default function WeightHeight() {
 
   const parseDate = (dateStr: string) => {
     const [day, month, year] = dateStr.split(".");
-    return new Date(`${year}-${month}-${day}`);
+    return new Date(Number(year), Number(month) - 1, Number(day));
   };
 
   const sortedNotes = [...(selectedChild?.wh || [])].sort(
     (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
   );
+
+    useEffect(() => {
+    if (!selectedChild) return;
+
+    const FILTERS_KEY = `filters-${selectedChild.id}`;
+
+    const loadFilterSettings  = async () => {
+      try {
+        const storedFilters = await AsyncStorage.getItem(FILTERS_KEY);
+        if (storedFilters !== null) {
+          setFilters(JSON.parse(storedFilters));
+        ;}
+      } catch (e) {
+        console.error("Chyba při načítání filtrů:", e);
+      }
+    };
+
+
+    loadFilterSettings();
+  }, [selectedChild]);
+
+  useEffect(() => {
+    if (!selectedChild) return;
+
+    const FILTERS_KEY = `filters-${selectedChild.id}`;
+
+    const saveFilters = async () => {
+      try {
+        await AsyncStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+      } catch (e) {
+        console.error("Chyba při ukládání filtrů:", e);
+      }
+    };
+
+    saveFilters();
+  }, [filters]);
 
   function getLastValue(
     arr: { date: string; weight?: string; height?: string; head?: string }[],
@@ -92,43 +128,7 @@ export default function WeightHeight() {
     );
   }
 
-  useEffect(() => {
-    if (!selectedChild) return;
-
-    const FILTERS_KEY = `filters-${selectedChild.id}`;
-
-    const loadFilterSettings  = async () => {
-      try {
-        const storedFilters = await AsyncStorage.getItem(FILTERS_KEY);
-        if (storedFilters !== null) {
-          setFilters(JSON.parse(storedFilters));
-        ;}
-      } catch (e) {
-        console.error("Chyba při načítání filtrů:", e);
-      }
-    };
-
-
-    loadFilterSettings();
-  }, [selectedChild]);
-
-  useEffect(() => {
-    if (!selectedChild) return;
-
-    const FILTERS_KEY = `filters-${selectedChild.id}`;
-
-    const saveFilters = async () => {
-      try {
-        await AsyncStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
-      } catch (e) {
-        console.error("Chyba při ukládání filtrů:", e);
-      }
-    };
-
-    saveFilters();
-  }, [filters]);
-
-   return (
+  return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/weight-height-add" />

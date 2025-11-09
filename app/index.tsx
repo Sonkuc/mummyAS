@@ -47,15 +47,10 @@ export default function Home() {
               router.push({
                 pathname: "/actions" });
             }} 
-            key={idx} 
+            key={kid.id || idx}
             style={[
               styles.childCard, 
-              {
-                backgroundColor: getCardColor(kid.sex),
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-              },
+              { backgroundColor: getCardColor(kid.sex)},
             ]}>
             <View style={styles.row}>
               {kid.photo && (
@@ -98,17 +93,6 @@ const styles = StyleSheet.create({
     padding: 30,
     backgroundColor: "#fff0f5",
   },
-  button: {
-    backgroundColor: COLORS.primary,
-    padding: 12,
-    borderRadius: 10,
-    justifyContent: "center",
-    marginVertical: 10,
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 18,
-  },
   logo: {
     width: 350,
     height: 180,
@@ -123,7 +107,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 2,
-    width: '80%'
+    width: '80%',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   name: {
     fontWeight: "bold",

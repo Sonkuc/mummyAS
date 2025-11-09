@@ -128,6 +128,7 @@ export default function Fruit() {
                         : new Date()
                     }
                     onChange={(date) => handleDateChange(selectedFood, date)}
+                    birthISO={selectedChild ? selectedChild.birthDate : null}
                   />
                 </View>
                 {selectedChild?.foodDates?.[selectedFood] && (
@@ -237,7 +238,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 10,
   },
   closeText: {
     color: COLORS.darkRedText,
@@ -247,6 +247,5 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
-    gap: 5,
   }
 });

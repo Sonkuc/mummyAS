@@ -55,7 +55,6 @@ export default function Food() {
 const styles = StyleSheet.create({
   buttonContainer: {
     marginTop: 20,
-    gap: 1,
     alignItems: "center",
   },
   web: {

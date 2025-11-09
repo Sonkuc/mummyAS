@@ -1,6 +1,7 @@
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
+import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
@@ -18,7 +19,7 @@ export default function SpeakingAdd() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [selectedWord, setSelectedWord] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(formatDateLocal(new Date()));
   const [note, setNote] = useState("");
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
 
@@ -26,9 +27,7 @@ export default function SpeakingAdd() {
   selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
   
   const handleAdd = () => {
-    const finalName = name.trim() !== "" 
-      ? name.trim() 
-      : selectedWord.trim();
+    const finalName = (name || selectedWord).trim();
 
     if (!finalName) {
       Alert.alert("Chyba", "Zadej nebo vyber slovo.");
@@ -42,13 +41,9 @@ export default function SpeakingAdd() {
 
     // DUPLICITNÍ KONTROLA (case insensitive)
     const nameExists = existingWords.some(
-      (word) => word.name.toLowerCase() === finalName.toLowerCase()
+      (w) => w.name.toLowerCase() === finalName.toLowerCase()
     );
-
-    if (nameExists) {
-      Alert.alert("Toto slovo už existuje.");
-      return;
-    }
+    if (nameExists) return Alert.alert("Toto slovo už existuje.");
 
     const newWord: Word = {
       name: finalName,
@@ -65,7 +60,7 @@ export default function SpeakingAdd() {
 
     saveAllChildren(updatedChildren);
 
-    router.replace("/actions/speaking");
+    router.back();
   };
 
   return (
@@ -73,7 +68,7 @@ export default function SpeakingAdd() {
       <CustomHeader/>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Přidat slovo</Title>
-        <View style={{marginTop: 10, gap: 10}}>
+        <View style={{marginTop: 10}}>
           <MyTextInput
             placeholder="Např. Ahoj"
             value={name}
@@ -90,17 +85,18 @@ export default function SpeakingAdd() {
           />
           <Subtitle>Datum</Subtitle>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ width: "80%" }}>
             <ValidatedDateInput
               value={date}
-              onChange={setDate}
+              onChange={(d) => d && setDate(d)}
               birthISO={selectedChild ? selectedChild.birthDate : null}
             />
           </View>
           <DateSelector
             date={new Date(date)}
-            onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
+            onChange={(newDate) => setDate(formatDateLocal(newDate))}
+            birthISO={selectedChild ? selectedChild.birthDate : null}
           />
         </View>
         <Subtitle style={{marginTop: 10}}>Výslovnost</Subtitle>

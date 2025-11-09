@@ -2,7 +2,7 @@ import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
-import { formatDateToCzech, toIsoDate } from "@/components/IsoFormatDate";
+import { formatDateLocal, formatDateToCzech, toIsoDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
@@ -17,54 +17,54 @@ import React, { useEffect, useState } from "react";
 import { ScrollView, View } from "react-native";
 
 export default function EditMilestone() {
-  const { milIndex } = useLocalSearchParams();
+  const { milId } = useLocalSearchParams<{ milId: string }>();
   const router = useRouter();
   const [name, setName] = useState("");
   const [selectedMilestone, setSelectedMilestone] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(formatDateLocal(new Date()));
+  const [originalDate, setOriginalDate] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
   const selectedChild =
     selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
 
   useEffect(() => {
-    if (
-      selectedChildIndex !== null &&
-      milIndex !== undefined &&
-      allChildren[selectedChildIndex]?.milestones
-    ) {
-      const idx = Number(milIndex);
-      const milestone = allChildren[selectedChildIndex].milestones[idx];
-      if (milestone) {
-        setName(milestone.name);
-        setDate(toIsoDate(milestone.date));
-        setNote(milestone.note || "");
-        const found = MILESTONES.find((m) => m.label === milestone.name);
-        if (found) setSelectedMilestone(found.id);
-      }
-    }
-  }, [milIndex, selectedChildIndex, allChildren]);
+    if (!selectedChild || !milId) return;
 
-  const handleSave = () => {
-    if (selectedChildIndex === null || milIndex === undefined) return;
+    const milestone = selectedChild.milestones?.find((m) => m.milId === milId);
+    if (milestone) {
+      const isoDate = toIsoDate(milestone.date); 
+      setName(milestone.name);
+      setDate(toIsoDate(milestone.date));
+      setOriginalDate(isoDate); 
+      setNote(milestone.note || "");
+      const found = MILESTONES.find((m) => m.label === milestone.name);
+      if (found) setSelectedMilestone(found.id);
+    }
+  }, [milId, selectedChild]);
+
+    const handleSave = () => {
+      if (!selectedChild || !milId) return;
 
     const finalName = name.trim() !== "" 
       ? name 
       : MILESTONES.find(m => m.id === selectedMilestone)?.label || "";
 
     const updatedMilestone: Milestone = {
+      milId: milId as string,
       name: finalName,
       date: formatDateToCzech(date),
       note,
     };
 
     const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-    const idx = Number(milIndex);
-
-    if (child.milestones && child.milestones[idx]) {
-      child.milestones[idx] = updatedMilestone;
+    const child = updatedChildren[selectedChildIndex!];
+    const milestones = child.milestones ?? [];
+    const idx = milestones.findIndex((m) => m.milId === milId);
+    if (idx >= 0) {
+      milestones[idx] = updatedMilestone;
     }
+    child.milestones = milestones;
 
     saveAllChildren(updatedChildren);
     router.back();
@@ -73,14 +73,14 @@ export default function EditMilestone() {
   return (
     <MainScreenContainer>
       <CustomHeader>
-        {selectedChildIndex !== null && milIndex !== undefined && (
-          <DeleteButton type="milestone" index={Number(milIndex)} 
+        {selectedChildIndex !== null && milId && (
+          <DeleteButton type="milestone" id={milId as string} 
           onDeleteSuccess={() => router.replace("/actions/milestone")}/>
         )}
       </CustomHeader>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Upravit milník</Title>
-        <View style={{marginTop: 10, gap: 10}}>
+        <View style={{marginTop: 10}}>
           <MyTextInput
             placeholder="Např. První úsměv"
             value={name}
@@ -97,17 +97,20 @@ export default function EditMilestone() {
           />
           <Subtitle>Datum</Subtitle>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between"}}>
           <View style={{ width: "80%" }}>
             <ValidatedDateInput
               value={date}
-              onChange={setDate}
+              onChange={(d) => d && setDate(d)}
               birthISO={selectedChild ? selectedChild.birthDate : null}
+              fallbackOnError="original"
+              originalValue={originalDate ?? undefined}
             />
           </View>
           <DateSelector
             date={new Date(date)}
-            onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
+            onChange={(newDate) => setDate(formatDateLocal(newDate))}
+            birthISO={selectedChild ? selectedChild.birthDate : null}
           />
         </View>
         <Subtitle style={{marginTop: 10}}>Poznámka</Subtitle>

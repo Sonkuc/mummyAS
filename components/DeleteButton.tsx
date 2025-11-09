@@ -5,11 +5,12 @@ import { Alert, Pressable, Text } from "react-native";
 
 type Props = {
   type: "child" | "milestone" | "word" | "wh"; // rozšiř podle potřeby
-  index: number;
+  index?: number;
+  id?: string;
   onDeleteSuccess?: () => void;
 };
 
-export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
+export default function DeleteButton({ type, index, id, onDeleteSuccess }: Props) {
   const router = useRouter();
   const {
     selectedChildIndex,
@@ -39,7 +40,7 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
                 }
 
                 router.replace("/");
-                alert("Dítě bylo smazáno.");
+                //alert("Dítě bylo smazáno.");
                 return;
               }
 
@@ -57,11 +58,20 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
 
               if (selectedChildIndex !== null && fieldKey) {
                 const selected = allChildren[selectedChildIndex];
-                
                 const currentArray = (selected[fieldKey] ?? []) as any[];
 
-                const updatedArray = currentArray.filter((_, i) => i !== index);
-                
+                let updatedArray: any[];
+
+                if (id) {
+                  // Mazání podle id (pro milníky)
+                  updatedArray = currentArray.filter((item) => item.milId !== id);
+                } else if (index !== undefined) {
+                  // Mazání podle indexu (pro slova, wh atd.)
+                  updatedArray = currentArray.filter((_, i) => i !== index);
+                } else {
+                  return;
+                }
+
                 const updatedChild: Child = {
                   ...selected,
                   [fieldKey]: updatedArray,
@@ -73,7 +83,7 @@ export default function DeleteButton({ type, index, onDeleteSuccess }: Props) {
 
                 await saveAllChildren(updatedAll);
                 onDeleteSuccess?.();
-                alert("Záznam byl smazán.");
+                //alert("Záznam byl smazán.");
               }
             } catch (err) {
               alert("Chyba při mazání záznamu.");

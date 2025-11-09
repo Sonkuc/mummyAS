@@ -6,10 +6,18 @@ type Props = {
   title: string;
   data: { label: string; hours: number }[];
   mode: "week" | "month" | "halfYear";
+  dayMode?: "day" | "plusNight";
 };
 
-export function MyBarChart({ title, data }: Props) {
+export function MyBarChart({ title, data, dayMode = "day" }: Props) {
   const screenWidth = Dimensions.get("window").width;
+
+  const maxHours = Math.max(...data.map((d) => d.hours), 0);
+
+  const segments =
+    maxHours <= 6 ? 6 :
+    maxHours <= 12 ? 8 :
+    maxHours <= 18 ? 9 : 10;
 
   return (
     <>
@@ -24,17 +32,24 @@ export function MyBarChart({ title, data }: Props) {
         width={screenWidth - 20}
         height={300}
         fromZero
-        yAxisInterval={2}
-        segments={5}
-        formatYLabel={(value: string) => {
-          const hours = parseFloat(value);
-          return `${Math.round(hours)}h`;
+        yAxisInterval={1}
+        segments={segments}
+        formatYLabel={(v: string) => {
+          const num = parseFloat(v);
+          if (isNaN(num)) return "";
+          if (dayMode === "day") {
+            // zobrazit s 1 desetinným místem
+            return `${num.toFixed(1)}h`;
+          } else {
+            // zobrazit celé číslo
+            return `${Math.round(num)}h`;
+          }
         }}
         chartConfig={{
           backgroundColor: "#fff",
           backgroundGradientFrom: COLORS.backgroundContainer,
           backgroundGradientTo: COLORS.backgroundContainer,
-          decimalPlaces: 0,
+          decimalPlaces: dayMode === "day" ? 1 : 0,
           color: (opacity = 1) => `rgba(153, 55, 105, ${opacity})`,
           labelColor: () => "#333",
           style: { borderRadius: 16 },

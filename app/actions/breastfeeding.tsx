@@ -4,17 +4,19 @@ import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
+import { clearStateGeneric, formatDuration, toTimestamp } from "@/components/SleepBfFunctions";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight, ChartColumn, Milk, MilkOff } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-type DisplayBreastfeedingRecord = BreastfeedingRecord & { label: string };
+type DisplayBreastfeedingRecord = BreastfeedingRecord & { label?: string };
 
 type GroupedFeed = {
   date: string;
@@ -29,21 +31,35 @@ export default function Breastfeeding() {
   const [minutesSinceStop, setMinutesSinceStop] = useState<number | null>(null);
   const [mode, setMode] = useState<"start" | "stop" | "">("");
   const [modeStart, setModeStart] = useState<number | null>(null);
-  const [brestSide, setBrestSide] = useState <"left"|"right" | null >("right")
+  const [brestSide, setBrestSide] = useState<"left" | "right">("right");
+  const BREST_SIDE_KEY = "brestSideMode";
 
   const router = useRouter();
   const { selectedChild, allChildren, selectedChildIndex, saveAllChildren } = useChild();
 
-  const clearState = () => {
-    setMode("");
-    setMinutesSinceStart(null);
-    setMinutesSinceStop(null);
-    setModeStart(null);
+  const clearState = () =>
+      clearStateGeneric("feed", setMode, setMinutesSinceStart, setMinutesSinceStop, setModeStart, selectedChildIndex, allChildren, saveAllChildren);
 
-    if (selectedChildIndex !== null) {
-      const updated = [...allChildren];
-      updated[selectedChildIndex].currentModeFeed = null;
-      saveAllChildren(updated);
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(BREST_SIDE_KEY);
+        if (stored) {
+          setBrestSide(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error("Chyba při načítání brestSide:", e);
+      }
+    })();
+  }, []);
+
+  const toggleBrestSide = async () => {
+    const newSide = brestSide === "left" ? "right" : "left";
+    setBrestSide(newSide);
+    try {
+      await AsyncStorage.setItem(BREST_SIDE_KEY, JSON.stringify(newSide));
+    } catch (e) {
+      console.error("Chyba při ukládání brestSide:", e);
     }
   };
 
@@ -57,7 +73,7 @@ export default function Breastfeeding() {
     const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
     const date = now.toISOString().slice(0, 10); // vždy ISO YYYY-MM-DD
 
-    const newRecord: DisplayBreastfeedingRecord = { date, time, state: newMode, label };
+    const newRecord: DisplayBreastfeedingRecord = { date, time, state: newMode};
 
     setRecords((prev) => [...prev, newRecord]);
 
@@ -77,7 +93,6 @@ export default function Breastfeeding() {
       };
       saveAllChildren(updated);
     }
-
   };
 
   useFocusEffect(
@@ -119,78 +134,61 @@ export default function Breastfeeding() {
     };
   }, [mode, modeStart]);
 
-  const formatDuration = (minutes: number) => {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    if (h > 0) return `${h} h ${m} min`;
-    return `${m} min`;
-  };
+  const grouped = useMemo(() => {
+    if (!records.length) return [];
 
-  const toTimestamp = (dateStr: string, timeStr: string) => {
-    let year = 0, month = 0, day = 0;
-    if (dateStr.includes("-")) {
-      [year, month, day] = dateStr.split("-").map((s) => parseInt(s, 10));
-    } else if (dateStr.includes(".")) {
-      [day, month, year] = dateStr.split(".").map((s) => parseInt(s, 10));
-    }
-    const [hh, mm] = timeStr.split(":").map((s) => parseInt(s, 10));
-    return new Date(year, month - 1, day, hh, mm).getTime();
-  };
+    // Seskupení záznamů podle data
+    const groupedByDate: Record<string, (DisplayBreastfeedingRecord & { ts: number })[]> = {};
+    records.forEach((rec) => {
+      const ts = toTimestamp(rec.date, rec.time);
+      if (!groupedByDate[rec.date]) groupedByDate[rec.date] = [];
+      groupedByDate[rec.date].push({ ...rec, ts });
+    });
 
-  // seskupení a výpočty per den
-  const grouped: GroupedFeed[] = Object.entries(
-    records.reduce((acc, rec) => {
-      if (!acc[rec.date]) acc[rec.date] = [];
-      acc[rec.date].push({ ...rec, ts: toTimestamp(rec.date, rec.time) });
-      return acc;
-    }, {} as Record<string, (DisplayBreastfeedingRecord & { ts: number })[]>)
-  )
-    .map(([date, recs]) => {
-      const sortedAsc = [...recs].sort((a, b) => a.ts - b.ts);
+    return Object.entries(groupedByDate)
+      .map(([date, recs]) => {
+        const sortedAsc = [...recs].sort((a, b) => a.ts - b.ts);
 
-      let totalFeedMinutes = 0;
-      const enhanced: (DisplayBreastfeedingRecord & { ts: number; extra?: string })[] = [];      let feedCounter = 1;
+        let totalFeedMinutes = 0;
+        const enhanced: (DisplayBreastfeedingRecord & { ts: number; extra?: string })[] = [];
+        let feedCounter = 1;
 
-      for (let i = 0; i < sortedAsc.length; i++) {
-        const curr = sortedAsc[i];
-        const next = sortedAsc[i + 1];
-        let extra = "";
+        for (let i = 0; i < sortedAsc.length; i++) {
+          const curr = sortedAsc[i];
+          const next = sortedAsc[i + 1];
+          let extra = "";
 
-        if (next) {
-          const minutes = Math.floor((next.ts - curr.ts) / 60000);
-
-          if (minutes > 0) {
-            // pokud začátek -> stop, započítat do času kojení
-            if (curr.state === "start" && next.state === "stop") {
+          if (next && curr.state === "start" && next.state === "stop") {
+            const minutes = Math.floor((next.ts - curr.ts) / 60000);
+            if (minutes > 0) {
               totalFeedMinutes += minutes;
               extra = ` → ${formatDuration(minutes)}`;
             }
-            // pokud je to stop -> start, zobrazit jen pauzu
-            /*else if (curr.state === "stop" && next.state === "start") {
-              extra = ` (pauza ${formatDuration(minutes)})`;
-            }*/
           }
+
+          const label =
+            curr.state === "stop"
+              ? `Konec kojení: ${curr.time}`
+              : `Začátek ${feedCounter++}. kojení: ${curr.time}`;
+
+          enhanced.push({ ...curr, label, extra });
         }
 
-        let label =
-          curr.state === "stop"
-            ? `Konec kojení: ${curr.time}`
-            : `Začátek ${feedCounter++}. kojení: ${curr.time}`;
-        enhanced.push({ ...curr, label, extra });
-      }
+        // Seřadíme sestupně pro UI
+        const sortedDesc = [...enhanced].sort((a, b) => b.ts - a.ts);
 
-      const sortedDesc = [...enhanced].sort((a, b) => b.ts - a.ts);
-      return {
-        date,
-        totalFeedMinutes,
-        records: sortedDesc,
-      };
-    })
-    .sort((a, b) => {
-      const ta = toTimestamp(a.date, "23:59");
-      const tb = toTimestamp(b.date, "23:59");
-      return tb - ta;
-    });
+        return {
+          date,
+          totalFeedMinutes,
+          records: sortedDesc,
+        };
+      })
+      .sort((a, b) => {
+        const ta = toTimestamp(a.date, "23:59");
+        const tb = toTimestamp(b.date, "23:59");
+        return tb - ta;
+      });
+  }, [records]);
 
   useEffect(() => {
     if (selectedChildIndex !== null) {
@@ -276,13 +274,9 @@ export default function Breastfeeding() {
           <Text style={styles.counterText}>
             Teď je na řadě
           </Text>
-          <Pressable style={styles.breastButton} onPress={() => setBrestSide(prev => prev === "left" ? "right" : "left")}>
-            {brestSide === "left" &&
-              <ArrowLeft color="white" size={28} />
-            }
-            {brestSide === "right" &&
-              <ArrowRight color="white" size={28} />
-            }
+          <Pressable style={styles.breastButton} onPress={toggleBrestSide}>
+            {brestSide === "left" && <ArrowLeft color="white" size={28} />}
+            {brestSide === "right" && <ArrowRight color="white" size={28} />}
           </Pressable>
           <Text style={styles.counterText}>
             prso.

@@ -23,7 +23,6 @@ export default function ChildAdd() {
   const [birthDate, setBirthDate] = useState<Date>(new Date());
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const { saveAllChildren, allChildren, setSelectedChildIndex } = useChild();
-  const anonymID = "anonym";
 
   const childId = useMemo(() => uuid.v4() as string, []);
 
@@ -47,10 +46,12 @@ export default function ChildAdd() {
       return;
     }
 
-    let finalPhotoUri: string;
+    let finalPhotoUri = "anonym";
+
     if (photoUri) {
-      // uživatel vybral fotku nebo avatar
-      if (!photoUri.startsWith("avatar")) {
+      if (photoUri.startsWith("avatar")) {
+        finalPhotoUri = photoUri;
+      } else {
         const docDir = FileSystem.documentDirectory ?? "";
         if (photoUri.startsWith("file://") || photoUri.startsWith(docDir)) {
           const newPath = `${docDir}${childId}.jpg`;
@@ -62,17 +63,11 @@ export default function ChildAdd() {
             finalPhotoUri = newPath;
           } catch (err) {
             console.error("Chyba při ukládání fotky:", err);
-            finalPhotoUri = "anonym";
           }
         } else {
           finalPhotoUri = photoUri;
         }
-      } else {
-        finalPhotoUri = photoUri; // avatar
-      }
-    } else {
-      // pokud není vybraná žádná fotka ani avatar, použijeme anonym
-      finalPhotoUri = "anonym";
+      }     
     }
 
     const newChild = {
@@ -91,12 +86,7 @@ export default function ChildAdd() {
       const updatedChildren = [...allChildren, newChild];
       await saveAllChildren(updatedChildren);
 
-      const newIndex = updatedChildren.findIndex(
-        (child) => child.id === newChild.id
-      );
-      if (newIndex !== -1) {
-        await setSelectedChildIndex(newIndex);
-      }
+      await setSelectedChildIndex(updatedChildren.length - 1);
 
       router.back();
     } catch (error) {

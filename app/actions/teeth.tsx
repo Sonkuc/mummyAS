@@ -37,6 +37,27 @@ export default function Teeth() {
     { id: "L10", name: "Levá druhá stolička", x: "2.9%",  y: "16.9%", jaw: "lower" }
   ];
 
+  const TeethJawSection = ({ jaw, label }: { jaw: "upper" | "lower", label: string }) => (
+    <GroupSection>
+      <Subtitle style={{ marginLeft: 10, marginTop: 5, marginBottom: -5 }}>{label}</Subtitle>
+      <View style={styles.imageWrapper}>
+        <Image
+          source={jaw === "upper"
+            ? require("@/assets/images/teethA.png")
+            : require("@/assets/images/teethB.png")}
+          style={styles.teethImage}
+        />
+        {teeth.filter(t => t.jaw === jaw).map(tooth => (
+          <TouchableOpacity
+            key={tooth.id}
+            style={[styles.toothHotspot, { left: tooth.x, top: tooth.y }]}
+            onPress={() => setSelectedTooth(tooth.id)}
+          />
+        ))}
+      </View>
+    </GroupSection>
+  );
+
   const handleDateChange = async (toothId: string, date: Date) => {
     if (selectedChildIndex === null) return;
 
@@ -76,45 +97,8 @@ export default function Teeth() {
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions" />
       <Title>Moje zoubky</Title>
-      
-      <GroupSection>
-        <Subtitle style={{marginLeft: 10, marginTop: 5, marginBottom: -5}}>Horní patro</Subtitle>
-        <View style={styles.imageWrapper}>  
-          <Image
-            source={require("@/assets/images/teethA.png")}
-            style={styles.teethImage}
-          />
-          {teeth.filter(t => t.jaw === "upper").map((tooth) => (
-            <TouchableOpacity
-              key={tooth.id}
-              style={[
-                styles.toothHotspot,
-                { left: tooth.x, top: tooth.y },
-              ]}
-              onPress={() => setSelectedTooth(tooth.id)}
-            />
-          ))}
-        </View>
-      </GroupSection>
-      <GroupSection>
-        <Subtitle style={{marginLeft: 10, marginTop: 5, marginBottom: -5}}>Dolní patro</Subtitle>
-        <View style={styles.imageWrapper}>
-          <Image
-            source={require("@/assets/images/teethB.png")}
-            style={styles.teethImage}
-          />
-          {teeth.filter(t => t.jaw === "lower").map((tooth) => (
-            <TouchableOpacity
-              key={tooth.id}
-              style={[
-                styles.toothHotspot,
-                { left: tooth.x, top: tooth.y },
-              ]}
-              onPress={() => setSelectedTooth(tooth.id)}
-            />
-          ))}
-        </View>
-      </GroupSection>
+      <TeethJawSection jaw="upper" label="Horní patro" />
+      <TeethJawSection jaw="lower" label="Dolní patro" />
       {selectedTooth && (
         <GroupSection style={styles.dateSelectorBox}>
           <View style={styles.titleRow}>
@@ -127,9 +111,8 @@ export default function Teeth() {
                 ? new Date(selectedChild.teethDates[selectedTooth])
                 : new Date()
               }
-              onChange={(date) => {
-                handleDateChange(selectedTooth, date);
-              }}
+              onChange={(date) => { handleDateChange(selectedTooth, date); }}
+              birthISO={selectedChild ? selectedChild.birthDate : null}
             />
           </View>
           {selectedChild?.teethDates?.[selectedTooth] && (
@@ -161,7 +144,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between", 
-    gap: 5,
+    marginRight: 5,
   },
   toothHotspot: {
     position: "absolute",

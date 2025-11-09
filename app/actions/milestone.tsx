@@ -16,7 +16,7 @@ export default function Milestone() {
 
   const parseDate = (dateStr: string) => {
     const [day, month, year] = dateStr.split(".");
-    return new Date(`${year}-${month}-${day}`);
+    return new Date(`${year}-${month}-${day}`) || new Date(0);
   };
 
   const sortedMilestones = [...(selectedChild?.milestones || [])].sort(
@@ -32,28 +32,26 @@ export default function Milestone() {
         <Title>Už umím</Title>
         <View>
           {sortedMilestones.length > 0 ? (
-            sortedMilestones.map((m, milIndex) => (
-              <View key={milIndex}>
-                <GroupSection>
-                  <View style={{ flexDirection: "row", alignItems: "center"}}>
-                    {isEditMode && (
-                      <EditPencil 
-                        targetPath={`/actions/milestone-edit?milIndex=${milIndex}`} 
-                        color={COLORS.primary}
-                      />
-                    )}
-                    <Text style={styles.item}>
-                      {m.date}
-                    </Text>
-                    <Text style={{fontSize: 16, marginLeft: 10}}>
-                      {m.name}
-                    </Text>
-                  </View> 
-                  {m.note?.trim() !== "" && (
-                    <Text style={styles.note}>  {m.note}</Text>
+            sortedMilestones.map((m, milId) => (
+              <GroupSection key={milId}>
+                <View style={{ flexDirection: "row", alignItems: "center"}}>
+                  {isEditMode && (
+                    <EditPencil 
+                      targetPath={`/actions/milestone-edit?milId=${m.milId}`}
+                      color={COLORS.primary}
+                    />
                   )}
-                </GroupSection> 
-              </View>
+                  <Text style={styles.item}>
+                    {m.date}
+                  </Text>
+                  <Text style={{fontSize: 16, marginLeft: 10}}>
+                    {m.name}
+                  </Text>
+                </View> 
+                {m.note?.trim() !== "" && (
+                  <Text style={styles.note}>  {m.note}</Text>
+                )}
+            </GroupSection> 
             ))
           ) : (
             <Subtitle style={{ textAlign: "center" }}>
@@ -80,5 +78,7 @@ const styles = StyleSheet.create({
   note: {
     fontSize: 16,
     marginLeft: 10,
+    color: "#555",
+    marginTop: 5,
   },
 });

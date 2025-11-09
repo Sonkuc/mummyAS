@@ -3,6 +3,7 @@ import GroupSection from "@/components/GroupSection";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
+import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -24,31 +25,6 @@ const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecor
     }
     return { ...r, label: "Konec kojení" };
   });
-};
-
-// povolit jen čísla a 1 dvojtečku, max délka 5
-const handleTimeInput = (txt: string, set: (v: string) => void) => {
-  let t = txt.replace(/[^\d:]/g, ""); // jen čísla a :
-  // odstraníme případné další dvojtečky
-  const firstColon = t.indexOf(":");
-  if (firstColon !== -1) {
-    t = t.slice(0, firstColon + 1) + t.slice(firstColon + 1).replace(/:/g, "");
-  }
-  // omezíme délku
-  if (t.length > 5) t = t.slice(0, 5);
-  set(t);
-};
-
-// vrátí validní HH:MM nebo null
-const normalizeTime = (input: string): string | null => {
-  if (!input) return null;
-  const m = input.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return null;
-  const hh = parseInt(m[1], 10);
-  const mm = parseInt(m[2], 10);
-  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
-  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
-  return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}`;
 };
 
 export default function BreastfeedingEdit() {
@@ -108,12 +84,9 @@ export default function BreastfeedingEdit() {
         text: "Smazat",
         style: "destructive",
         onPress: () => {
-          setRecords((prev) => {
-            const withoutDeleted: BreastfeedingRecord[] = prev
-              .filter((_, i) => i !== index)
-              .map(({ label, ...rest }) => rest);
-            return renumberFeed(withoutDeleted);
-          });
+          setRecords((prev) => renumberFeed(
+            prev.filter((_, i) => i !== index)
+          ));
         },
       },
     ]);
@@ -175,7 +148,6 @@ export default function BreastfeedingEdit() {
     child.breastfeedingRecords = [...otherDays, ...normalized];
 
     saveAllChildren(updatedChildren);
-    setSelectedChild(updatedChildren[selectedChildIndex]);
     router.back();
   };
 

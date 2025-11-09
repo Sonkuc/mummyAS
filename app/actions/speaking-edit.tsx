@@ -2,7 +2,7 @@ import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
 import GroupSection from "@/components/GroupSection";
-import { formatDateToCzech } from "@/components/IsoFormatDate";
+import { formatDateLocal, formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
@@ -24,7 +24,7 @@ export default function SpeakingEdit() {
 
   const [name, setName] = useState("");
   const [entries, setEntries] = useState<{ date: string; note: string }[]>([]);
-  const [newDate, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [newDate, setDate] = useState(formatDateLocal(new Date()));
   const [newNote, setNewNote] = useState("");
 
   useEffect(() => {
@@ -62,9 +62,9 @@ export default function SpeakingEdit() {
   };
 
   const addEntry = () => {
-    if (newDate.trim() === "" && newNote.trim() === "") return;
+    if (!newDate.trim()) return;
     setEntries(prev => [...prev, { date: newDate, note: newNote }]);
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(formatDateLocal(new Date()));
     setNewNote("");
   };
 
@@ -99,13 +99,14 @@ export default function SpeakingEdit() {
             <View style={{ flex: 1 }}>
               <ValidatedDateInput
                 value={newDate}
-                onChange={setDate}
+                onChange={(d) => d && setDate(d)}
                 birthISO={selectedChild ? selectedChild.birthDate : null}
               />
             </View>
             <DateSelector
               date={new Date(newDate)}
-              onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
+              onChange={(newDate) => setDate(formatDateLocal(newDate))}
+              birthISO={selectedChild ? selectedChild.birthDate : null}
             />
           </View>
 

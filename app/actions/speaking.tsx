@@ -15,13 +15,11 @@ export default function Speaking() {
   const { selectedChild } = useChild();
   const [isEditMode, setIsEditMode] = React.useState(false);
 
-  const sortedWords = [...(selectedChild?.words || [])]
-    .map((word) => ({
-      word,
-      originalIndex: selectedChild?.words?.findIndex(w => w.name === word.name),
-    }))
-    .sort((a, b) => a.word.name.localeCompare(b.word.name, "cs", { sensitivity: "base" })
-  );
+  const sortedWords = selectedChild?.words
+    ? selectedChild.words
+        .map((word, index) => ({ word, originalIndex: index }))
+        .sort((a, b) => a.word.name.localeCompare(b.word.name, "cs", { sensitivity: "base" }))
+    : [];
 
   return (
     <MainScreenContainer>
@@ -30,36 +28,33 @@ export default function Speaking() {
       </CustomHeader>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Už povídám</Title>
-        <View>
-          {sortedWords.length > 0 ? (
-            sortedWords.map(({ word, originalIndex }) => (
-              <GroupSection key={originalIndex}>
-                <View style={styles.row}>
-                  {isEditMode && (
-                    <EditPencil 
-                      targetPath={`/actions/speaking-edit?wordIndex=${originalIndex}`} 
-                      color={COLORS.primary}
-                    />
-                  )}
-                  <Text style={styles.item}>{word.name}</Text>
-                </View>
-                  {word.entries
-                    ?.slice()
-                    .sort((a, b) => a.date.localeCompare(b.date))
-                    .map((entry, i) => (
-                    <Text key={i} style={styles.note}>
-                      {formatDateToCzech(entry.date)}
-                      {entry.note?.trim() ? `: ${entry.note}` : ""}
-                    </Text>
-                  ))}
-              </GroupSection>
-            ))
-          ) : (
-            <Subtitle style={{ textAlign: "center" }}>
-              Žádná slova zatím nebyla uložena.
-            </Subtitle>
-          )}
-        </View>
+        {sortedWords.length > 0 ? (
+          sortedWords.map(({ word, originalIndex }) => (
+            <GroupSection key={originalIndex}>
+              <View style={styles.row}>
+                {isEditMode && (
+                  <EditPencil 
+                    targetPath={`/actions/speaking-edit?wordIndex=${originalIndex}`} 
+                    color={COLORS.primary}
+                  />
+                )}
+                <Text style={styles.item}>{word.name}</Text>
+              </View>
+                {word.entries
+                  .sort((a, b) => a.date.localeCompare(b.date))
+                  .map((entry, i) => (
+                <Text key={i} style={styles.note}>
+                  {formatDateToCzech(entry.date)}
+                  {entry.note?.trim() ? `: ${entry.note}` : ""}
+                </Text>
+              ))}
+            </GroupSection>
+          ))
+        ) : (
+          <Subtitle style={{ textAlign: "center" }}>
+            Žádná slova zatím nebyla uložena.
+          </Subtitle>
+        )}
       </ScrollView>
       <EditPencil 
         onPress={() => setIsEditMode(!isEditMode)}

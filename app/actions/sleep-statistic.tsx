@@ -1,7 +1,6 @@
 import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import { MyBarChart } from "@/components/MyBarChart";
-import type { GroupedSleepRecord } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
@@ -14,147 +13,107 @@ export default function SleepStats() {
   const grouped = selectedChild?.groupedSleep ?? [];
   const [dayMode, setDayMode] = useState <"day" | "plusNight"> ("plusNight")
 
-  const computeDailyStatsFromGrouped = (records: GroupedSleepRecord[], dayMode: "day" | "plusNight") =>
-    records.map(r => {
-      const totalMinutes =
-        dayMode === "day" && r.nightSleepMinutes
-          ? r.totalSleepMinutes - r.nightSleepMinutes
-          : r.totalSleepMinutes;
+  const dailyData = useMemo(() => {
+    if (!grouped.length) return [];
 
-      const h = Math.floor(totalMinutes / 60);
-      const m = totalMinutes % 60;
+    const today = new Date();
+    const sorted = [...grouped]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((r) => {
+        const totalMinutes =
+          dayMode === "day" && r.nightSleepMinutes
+            ? r.totalSleepMinutes - r.nightSleepMinutes
+            : r.totalSleepMinutes;
 
-      return {
-        date: r.date,
-        hours: totalMinutes / 60, // čistá hodnota v hodinách
-        label: `${h} h ${m} m`,
-      };
-    });
-
-    const dailyData = useMemo(() => {
-      if (grouped.length === 0) return [];
-
-      const sorted = [...grouped].sort((a, b) => a.date.localeCompare(b.date));
-      const stats = computeDailyStatsFromGrouped(sorted, dayMode);
-
-      // nepočítat dnešek
-      const today = new Date();
-      const filtered = stats.filter((d) => {
-        const [y, m, dd] = d.date.split("-").map(Number);
-        const dDate = new Date(y, m - 1, dd);
+        return {
+          date: r.date,
+          hours: totalMinutes / 60,
+          label: `${r.date.split("-")[2]}/${r.date.split("-")[1]}`, // DD/MM
+          hasDaySleep: r.nightSleepMinutes !== undefined,
+          finishedDay: r.totalSleepMinutes / 60 <= 24,
+        };
+      })
+      .filter((r) => {
+        const [y, m, d] = r.date.split("-").map(Number);
+        const date = new Date(y, m - 1, d);
         return !(
-          dDate.getFullYear() === today.getFullYear() &&
-          dDate.getMonth() === today.getMonth() &&
-          dDate.getDate() === today.getDate()
+          date.getFullYear() === today.getFullYear() &&
+          date.getMonth() === today.getMonth() &&
+          date.getDate() === today.getDate()
         );
+      })
+      .filter((r) => r.finishedDay && r.hasDaySleep);
+
+    if (periodMode === "week") {
+      return sorted.slice(-7);
+    }
+
+    if (periodMode === "month") {
+      const last30 = sorted.slice(-30);
+      const groups: { hours: number; label: string }[] = [];
+
+      for (let i = 0; i < last30.length; i += 5) {
+        const chunk = last30.slice(i, i + 5);
+        const avg = chunk.reduce((sum, r) => sum + r.hours, 0) / chunk.length;
+        const [y, m, d] = chunk[0].date.split("-");
+        groups.push({ hours: avg, label: `od ${d}/${m}` });
+      }
+
+      return groups;
+    }
+
+    if (periodMode === "halfYear") {
+      const last180 = sorted.slice(-180);
+      const monthMap: Record<string, { sum: number; count: number }> = {};
+
+      last180.forEach(({ date, hours }) => {
+        const [y, m] = date.split("-");
+        const key = `${m}/${y}`;
+        if (!monthMap[key]) monthMap[key] = { sum: 0, count: 0 };
+        monthMap[key].sum += hours;
+        monthMap[key].count++;
       });
 
-      if (periodMode === "week") {
-        return filtered.slice(-7).map(d => ({
-          hours: d.hours,
-          label: `${d.date.split("-")[2]}/${d.date.split("-")[1]}`, // DD/MM
-        }));
-      }
-
-      if (periodMode === "month") {
-        const last30 = filtered.slice(-30);
-        const groups: { hours: number; label: string }[] = [];
-
-        for (let i = 0; i < last30.length; i += 5) {
-          const chunk = last30.slice(i, i + 5);
-          if (chunk.length > 0) {
-            const avg = chunk.reduce((sum, d) => sum + d.hours, 0) / chunk.length;
-            
-            const first = chunk[0];
-            if (first?.date) {
-              const [y, m, dd] = first.date.split("-");
-              groups.push({
-                hours: avg,
-                label: `od ${dd}/${m}`, // od DD/MM
-              });
-            } else {
-              groups.push({
-                hours: avg,
-                label: "neznámé",
-              });
-            }
-          }
-        }
-
-        return groups;
-      }
-
-      if (periodMode === "halfYear") {
-        const last180 = filtered.slice(-180);
-        const monthMap: Record<string, { sum: number; count: number }> = {};
-        last180.forEach((d) => {
-          const [y, m] = d.date.split("-");
-          const key = `${m}/${y}`; // MM/YYYY
-          if (!monthMap[key]) {
-            monthMap[key] = { sum: 0, count: 0 };
-          }
-          monthMap[key].sum += d.hours;
-          monthMap[key].count += 1;
-        });
-        return Object.entries(monthMap).map(([label, val]) => ({
-          hours: val.sum / val.count,
-          label,
-        }));
-      }
-
-      return filtered.map(d => ({
-        hours: d.hours,
-        label: d.date, // fallback
+      return Object.entries(monthMap).map(([label, { sum, count }]) => ({
+        label,
+        hours: sum / count,
       }));
-    }, [grouped, periodMode, dayMode]);
-  
+    }
+
+    return sorted;
+  }, [grouped, periodMode, dayMode]);
+    
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions/sleep" />
       <Title>Statistika</Title>
 
       <View style={styles.row}>
-        <Pressable 
-          style={[styles.periodButton, periodMode === "week" && styles.activeButton]}
-          onPress={() => setPeriodMode("week")}
-        >
-          <Text style={styles.buttonText}>Týden</Text>
-        </Pressable>
-        <Pressable 
-          style={[styles.periodButton, periodMode === "month" && styles.activeButton]}
-          onPress={() => setPeriodMode("month")}
-        >
-          <Text style={styles.buttonText}>Měsíc</Text>
-        </Pressable>
-        <Pressable 
-          style={[styles.periodButton, periodMode === "halfYear" && styles.activeButton]}
-          onPress={() => setPeriodMode("halfYear")}
-        >
-          <Text style={styles.buttonText}>Půlrok</Text>
-        </Pressable>
+        {(["week", "month", "halfYear"] as const).map((mode) => (
+          <Pressable
+            key={mode}
+            style={[styles.periodButton, periodMode === mode && styles.activeButton]}
+            onPress={() => setPeriodMode(mode)}
+          >
+            <Text style={styles.buttonText}>
+              {mode === "week" ? "Týden" : mode === "month" ? "Měsíc" : "Půlrok"}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
-      {periodMode === "week" && (
-        <MyBarChart
-          title="Doba spánku denně za poslední týden"
-          data={dailyData}
-          mode="week"
-        />
-      )}
-      {periodMode === "month" && (
-        <MyBarChart
-          title="Průměrná doba spánku za 5 dní v posledním měsíci"
-          data={dailyData}
-          mode="month"
-        />
-      )}
-      {periodMode === "halfYear" && (
-        <MyBarChart
-          title="Měsíční průměr doby spánku za poslední půlrok"
-          data={dailyData}
-          mode="halfYear"
-        />
-      )}
+      <MyBarChart
+        title={
+          periodMode === "week"
+            ? "Doba spánku denně za poslední týden"
+            : periodMode === "month"
+            ? "Průměrná doba spánku za 5 dní v posledním měsíci"
+            : "Měsíční průměr doby spánku za poslední půlrok"
+        }
+        data={dailyData}
+        mode={periodMode}
+        dayMode={dayMode}
+      />
 
       <Pressable 
         style={[styles.periodButton, { marginTop: 30 }]}
@@ -188,8 +147,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 25,
-    justifyContent: "center",
+    justifyContent: "space-evenly",
     marginBottom: 15,
   },
 });

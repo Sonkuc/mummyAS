@@ -1,8 +1,10 @@
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
+import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
+import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -12,7 +14,6 @@ import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-
 type DisplayBreastfeedingRecord = BreastfeedingRecord & { label: string };
 
 const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecord[] => {
@@ -33,7 +34,7 @@ export default function BreastfeedingAdd() {
 
   const now = new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
   const today = new Date().toISOString().slice(0, 10);
-  const [newDate, setNewDate] = useState(today);
+  const [newDate, setNewDate] = useState(formatDateLocal(new Date()));
   const [records, setRecords] = useState<DisplayBreastfeedingRecord[]>([]);
   const [newTime, setNewTime] = useState(now);
   const [newState, setNewState] = useState<"start" | "stop">("start");
@@ -53,31 +54,7 @@ export default function BreastfeedingAdd() {
     setErrorMessage("");
     return false;
   };
-
-  // povolit jen čísla a 1 dvojtečku, max délka 5
-  const handleTimeInput = (txt: string, set: (v: string) => void) => {
-    let t = txt.replace(/[^\d:]/g, "");               // jen 0-9 a :
-    const firstColon = t.indexOf(":");                 // jen první dvojtečka
-    if (firstColon !== -1) {
-      t = t.slice(0, firstColon + 1) + t.slice(firstColon + 1).replace(/:/g, "");
-    } else {
-      t = t.replace(/:/g, "");
-    }
-    if (t.length > 5) t = t.slice(0, 5);              // HH:MM
-    set(t);
-  };
-
-  const normalizeTime = (input: string): string | null => {
-    if (!input) return null;
-    const m = input.trim().match(/^(\d{1,2}):(\d{2})$/);
-    if (!m) return null;
-    const hh = parseInt(m[1], 10);
-    const mm = parseInt(m[2], 10);
-    if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
-    if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
-    return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}`;
-  };
-
+  
   // Při načtení stránky zkontrolovat dnešní datum
   useEffect(() => {
     checkDuplicateDate(today);
@@ -85,15 +62,17 @@ export default function BreastfeedingAdd() {
 
   // Při změně data
   const handleDateChange = (d: Date) => {
-    const formatted = d.toISOString().slice(0, 10);
+    const formatted = formatDateLocal(d);
     setNewDate(formatted);
-    const isInvalid = checkDuplicateDate(formatted);
 
+    const isInvalid = checkDuplicateDate(formatted);
     if (isInvalid || !selectedChild) return;
 
     setRecords([]);
-    setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
-    setNewState("stop");
+    setNewTime(
+      new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })
+    );
+    setNewState("start");
   };
 
   const updateTime = (index: number, newTime: string) => {
@@ -111,12 +90,9 @@ export default function BreastfeedingAdd() {
         text: "Smazat",
         style: "destructive",
         onPress: () => {
-          setRecords((prev) => {
-            const withoutDeleted: BreastfeedingRecord[] = prev
-              .filter((_, i) => i !== index)
-              .map(({ label, ...rest }) => rest);
-            return renumberFeed(withoutDeleted);
-          });
+          setRecords((prev) => renumberFeed(
+            prev.filter((_, i) => i !== index)
+          ));
         },
       },
     ]);
@@ -136,8 +112,11 @@ export default function BreastfeedingAdd() {
 
     const newRec: BreastfeedingRecord = { date: newDate, time: norm, state: newState };
 
-    const withoutLabels: BreastfeedingRecord[] = records.map(({ label, ...rest }) => rest);
-    const allRecords = [...withoutLabels, newRec].sort((a, b) => a.time.localeCompare(b.time));
+    const allRecords = [...records.map(r => ({
+      date: r.date,
+      time: r.time,
+      state: r.state
+    })), newRec].sort((a, b) => a.time.localeCompare(b.time));
     setRecords(renumberFeed(allRecords));
 
     const now = new Date();
@@ -179,7 +158,6 @@ export default function BreastfeedingAdd() {
     child.breastfeedingRecords = [...otherDays, ...normalized];
 
     saveAllChildren(updatedChildren);
-    setSelectedChild(updatedChildren[selectedChildIndex]);
     router.back();
   };
 
@@ -189,17 +167,18 @@ export default function BreastfeedingAdd() {
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Přidat záznam</Title>
         <Subtitle>Datum</Subtitle>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ width: "80%" }}>
             <ValidatedDateInput
               value={newDate}
-              onChange={setNewDate}
+              onChange={(d) => d && setNewDate(d)}
               birthISO={selectedChild ? selectedChild.birthDate : null}
             />
           </View>
           <DateSelector
             date={new Date(newDate)}
             onChange={handleDateChange}
+            birthISO={selectedChild ? selectedChild.birthDate : null}
           />
         </View>
         {errorMessage ? (

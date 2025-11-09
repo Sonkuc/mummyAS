@@ -1,7 +1,6 @@
 import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import { MyBarChart } from "@/components/MyBarChart";
-import type { GroupedBreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
@@ -10,141 +9,108 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function BreastfeedingStats() {
   const { selectedChild } = useChild();
-  const [periodMode, setPeriodMode] = useState<"week" | "month" | "halfYear" > ("week");
+  const [periodMode, setPeriodMode] = useState<"week" | "month" | "halfYear">("week");
   const grouped = selectedChild?.groupedFeed ?? [];
 
-  const computeDailyStatsFromGrouped = (records: GroupedBreastfeedingRecord[]) =>
-    records.map(r => {
-      const h = Math.floor(r.totalFeedMinutes / 60);
-      const m = r.totalFeedMinutes % 60;
+  const dailyData = useMemo(() => {
+    if (!grouped.length) return [];
 
-      return {
-        date: r.date,
-        hours: r.totalFeedMinutes / 60, // čistá hodnota v hodinách
-        label: `${h} h ${m} m`,
-      };
-    });
-
-    const dailyData = useMemo(() => {
-      if (grouped.length === 0) return [];
-
-      const sorted = [...grouped].sort((a, b) => a.date.localeCompare(b.date));
-
-      const stats = computeDailyStatsFromGrouped(sorted);
-
-      // vyhodit dnešní datum
-      const today = new Date();
-      const filtered = stats.filter((d) => {
-        const [y, m, dd] = d.date.split("-").map(Number);
-        const dDate = new Date(y, m - 1, dd);
-        return !(
-          dDate.getFullYear() === today.getFullYear() &&
-          dDate.getMonth() === today.getMonth() &&
-          dDate.getDate() === today.getDate()
+    const today = new Date();
+    const sorted = [...grouped]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .filter((r) => {
+        const [y, m, d] = r.date.split("-").map(Number);
+        const date = new Date(y, m - 1, d);
+        return (
+          !(date.getFullYear() === today.getFullYear() &&
+            date.getMonth() === today.getMonth() &&
+            date.getDate() === today.getDate())
         );
+      })
+      .map((r) => ({
+        date: r.date,
+        hours: r.totalFeedMinutes / 60,
+        label: `${r.date.split("-")[2]}/${r.date.split("-")[1]}`, // DD/MM
+      }))
+      .filter((r) => r.hours <= 24);
+
+    if (periodMode === "week") {
+      return sorted.slice(-7);
+    }
+
+    if (periodMode === "month") {
+      const last30 = sorted.slice(-30);
+      const groups: { hours: number; label: string }[] = [];
+
+      for (let i = 0; i < last30.length; i += 5) {
+        const chunk = last30.slice(i, i + 5);
+        const avg = chunk.reduce((sum, r) => sum + r.hours, 0) / chunk.length;
+        const [y, m, d] = chunk[0].date.split("-");
+        groups.push({ hours: avg, label: `od ${d}/${m}` });
+      }
+
+      return groups;
+    }
+
+    if (periodMode === "halfYear") {
+      const last180 = sorted.slice(-180);
+      const monthMap: Record<string, { sum: number; count: number }> = {};
+
+      last180.forEach(({ date, hours }) => {
+        const [y, m] = date.split("-");
+        const key = `${m}/${y}`;
+        if (!monthMap[key]) monthMap[key] = { sum: 0, count: 0 };
+        monthMap[key].sum += hours;
+        monthMap[key].count++;
       });
 
-      if (periodMode === "week") {
-        return filtered.slice(-7); 
-      }
-
-      if (periodMode === "month") {
-        const last30 = filtered.slice(-30);
-        const groups: { hours: number; label: string }[] = [];
-
-        for (let i = 0; i < last30.length; i += 5) {
-          const chunk = last30.slice(i, i + 5);
-          if (chunk.length > 0) {
-            const avg = chunk.reduce((sum, d) => sum + d.hours, 0) / chunk.length;
-            const first = chunk[0];
-            if (first?.date) {
-              const [y, m, dd] = first.date.split("-");
-              groups.push({
-                hours: avg,
-                label: `od ${dd}/${m}`, // od DD/MM
-              });
-            } else {
-              groups.push({
-                hours: avg,
-                label: "neznámé",
-              });
-            }
-          }
-        }
-
-        return groups;
-      }
-
-      if (periodMode === "halfYear") {
-        const last180 = filtered.slice(-180);
-        const monthMap: Record<string, { sum: number; count: number }> = {};
-        last180.forEach((d) => {
-          const [y, m] = d.date.split("-");
-          const key = `${m}/${y}`;
-          if (!monthMap[key]) {
-            monthMap[key] = { sum: 0, count: 0 };
-          }
-          monthMap[key].sum += d.hours;
-          monthMap[key].count += 1;
-        });
-        return Object.entries(monthMap).map(([key, val]) => ({
-          label: key,
-          hours: val.sum / val.count,
-        }));
-      }
-
-      return filtered.map(d => ({
-          hours: d.hours,
-          label: d.date, // fallback
+      return Object.entries(monthMap).map(([label, { sum, count }]) => ({
+        label,
+        hours: sum / count,
       }));
-    }, [grouped, periodMode]);
-  
+    }
+
+    return sorted;
+  }, [grouped, periodMode]);
+
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions/breastfeeding" />
       <Title>Statistika</Title>
+
       <View style={styles.row}>
-        <Pressable 
-          style={[styles.periodButton, periodMode === "week" && styles.activeButton]}
-          onPress={() => setPeriodMode("week")}
-        >
-          <Text style={styles.buttonText}>Týden</Text>
-        </Pressable>
-        <Pressable 
-          style={[styles.periodButton, periodMode === "month" && styles.activeButton]}
-          onPress={() => setPeriodMode("month")}
-        >
-          <Text style={styles.buttonText}>Měsíc</Text>
-        </Pressable>
-        <Pressable 
-          style={[styles.periodButton, periodMode === "halfYear" && styles.activeButton]}
-          onPress={() => setPeriodMode("halfYear")}
-        >
-          <Text style={styles.buttonText}>Půlrok</Text>
-        </Pressable>
+        {(["week", "month", "halfYear"] as const).map((mode) => (
+          <Pressable
+            key={mode}
+            style={[
+              styles.periodButton,
+              periodMode === mode && styles.activeButton,
+            ]}
+            onPress={() => setPeriodMode(mode)}
+          >
+            <Text style={styles.buttonText}>
+              {mode === "week"
+                ? "Týden"
+                : mode === "month"
+                ? "Měsíc"
+                : "Půlrok"}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
-      {periodMode === "week" && (
-        <MyBarChart
-          title="Doba kojení denně za poslední týden"
-          data={dailyData}
-          mode="week"
-        />
-      )}
-      {periodMode === "month" && (
-        <MyBarChart
-          title="Průměrná doba kojení za 5 dní v posledním měsíci"
-          data={dailyData}
-          mode="month"
-        />
-      )}
-      {periodMode === "halfYear" && (
-        <MyBarChart
-          title="Měsíční průměr doby kojení za poslední půlrok"
-          data={dailyData}
-          mode="halfYear"
-        />
-      )}
+      <MyBarChart
+        title={
+          periodMode === "week"
+            ? "Doba kojení denně za poslední týden"
+            : periodMode === "month"
+            ? "Průměrná doba kojení za 5 dní v posledním měsíci"
+            : "Měsíční průměr doby kojení za poslední půlrok"
+        }
+        data={dailyData}
+        mode={periodMode}
+        dayMode="day"
+      />
     </MainScreenContainer>
   );
 }

@@ -1,3 +1,4 @@
+import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
@@ -18,18 +19,16 @@ export default function Cereal() {
   const handleDateChange = async (foodLabel: string, date: Date) => {
     if (selectedChildIndex === null) return;
 
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-
+    const child = allChildren[selectedChildIndex];
     const isoDate = date.toISOString().slice(0, 10);
-    const updatedFoodDates = {
-      ...(child.foodDates || {}),
-      [foodLabel]: isoDate,
-    };
 
+    // jen pokud je změna
+    if (child.foodDates?.[foodLabel] === isoDate) return;
+
+    const updatedChildren = [...allChildren];
     updatedChildren[selectedChildIndex] = {
       ...child,
-      foodDates: updatedFoodDates,
+      foodDates: { ...(child.foodDates || {}), [foodLabel]: isoDate },
     };
 
     await saveAllChildren(updatedChildren);
@@ -41,12 +40,7 @@ export default function Cereal() {
     const updatedChildren = [...allChildren];
     const child = updatedChildren[selectedChildIndex];
 
-    // Odstraň položku z foodDates
-    const { [selectedFood]: _, ...remainingFoodDates } = child.foodDates || {};
-    updatedChildren[selectedChildIndex] = {
-      ...child,
-      foodDates: remainingFoodDates,
-    };
+    delete child.foodDates?.[selectedFood];
 
     await saveAllChildren(updatedChildren);
   };
@@ -128,6 +122,7 @@ export default function Cereal() {
                         : new Date()
                     }
                     onChange={(date) => handleDateChange(selectedFood, date)}
+                    birthISO={selectedChild ? selectedChild.birthDate : null}
                   />
                 </View>
                 {selectedChild?.foodDates?.[selectedFood] && (
@@ -184,6 +179,15 @@ export default function Cereal() {
             </Pressable>
           ))}
         </GroupSection>
+        <AddButton 
+          targetPath="/actions/food-add" 
+          style={{
+            bottom: 30,
+            top: undefined,
+            right: undefined,
+            alignSelf: "center",
+          }}
+        />
       </ScrollView>
     </MainScreenContainer>
   );
@@ -237,7 +241,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 10,
   },
   closeText: {
     color: COLORS.darkRedText,
@@ -247,6 +250,5 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
-    gap: 5,
   }
 });

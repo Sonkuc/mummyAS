@@ -4,11 +4,12 @@ import { validateDate } from "./DateUtils";
 
 type Props = {
   value: string;
-  onChange: (date: string) => void;
+  onChange: (date: string | null) => void;
   birthISO?: string | null;
   allowPastDates?: boolean;
   placeholder?: string;
   fallbackOnError?: "today" | "original";
+  originalValue?: string;
 };
 
 export default function ValidatedDateInput({
@@ -18,6 +19,7 @@ export default function ValidatedDateInput({
   allowPastDates = false,
   placeholder = "YYYY-MM-DD",
   fallbackOnError = "today",
+  originalValue,
 }: Props) {
   const [internal, setInternal] = useState(value);
 
@@ -32,8 +34,8 @@ export default function ValidatedDateInput({
     if (t.length > 4) t = t.slice(0, 4) + "-" + t.slice(4);
     if (t.length > 7) t = t.slice(0, 7) + "-" + t.slice(7);
 
-    setInternal(t);
-    onChange(t);
+    setInternal(t); 
+    onChange(t); 
   };
 
   const handleBlur = () => {
@@ -42,11 +44,12 @@ export default function ValidatedDateInput({
       Alert.alert("Chybné datum", error);
 
       let fallback: string;
-      if (fallbackOnError === "original" && birthISO) {
-        fallback = birthISO.slice(0, 10); // uložené datum
+      if (fallbackOnError === "original" && originalValue) {
+        fallback = originalValue;
       } else {
-        fallback = new Date().toISOString().slice(0, 10); // dnešní
+        fallback = new Date().toISOString().slice(0, 10);
       }
+
       setInternal(fallback);
       onChange(fallback);
     }

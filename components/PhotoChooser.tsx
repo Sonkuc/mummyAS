@@ -15,13 +15,14 @@ type Props = {
 export default function PhotoChooser({ childId, onSelect, initialUri }: Props) {
   const [previewUri, setPreviewUri] = useState<string | null>(initialUri ?? null);
 
+  // Když přijde nový initialUri (např. po uložení), aktualizuj náhled
   useEffect(() => {
     if (initialUri) {
       setPreviewUri(initialUri);
-      onSelect(initialUri);
     }
   }, [initialUri]);
 
+  // Výběr fotky z knihovny
   const pickFromLibrary = async () => {
     const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!granted) return;
@@ -33,19 +34,23 @@ export default function PhotoChooser({ childId, onSelect, initialUri }: Props) {
 
     if (!res.canceled && res.assets.length) {
       const pickedUri = res.assets[0].uri;
+      const uriWithTimestamp = `${pickedUri}?t=${Date.now()}`;
 
-      setPreviewUri(`${pickedUri}?t=${Date.now()}`);
-      onSelect(pickedUri);
+      setPreviewUri(uriWithTimestamp);
+      onSelect(uriWithTimestamp); // timestamp může zůstat, používá se i v souborové cestě
     }
   };
 
+  // Výběr avataru
   const renderAvatar = ({ item }: { item: { id: string; source: any } }) => {
-    const isSelected = previewUri === item.id;
+    const isSelected = previewUri?.startsWith(item.id);
+
     return (
       <Pressable
         onPress={() => {
-          setPreviewUri(item.id);
-          onSelect(item.id);
+          const timestampedUri = `${item.id}?t=${Date.now()}`;
+          setPreviewUri(timestampedUri); // zobrazí okamžitě nový avatar
+          onSelect(item.id); // uloží se čistý avatar ID (např. "avatar1")
         }}
         style={[
           styles.avatarWrapper,
@@ -69,7 +74,7 @@ export default function PhotoChooser({ childId, onSelect, initialUri }: Props) {
 
       <View style={{ height: 100 }}>
         <FlatList
-          data={avatars.filter(a => a.id.startsWith("avatar"))}
+          data={avatars.filter((a) => a.id.startsWith("avatar"))}
           horizontal
           renderItem={renderAvatar}
           keyExtractor={(item) => item.id}

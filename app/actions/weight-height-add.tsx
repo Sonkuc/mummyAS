@@ -2,7 +2,7 @@ import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import HideButton from "@/components/HideButton";
-import { formatDateToCzech } from "@/components/IsoFormatDate";
+import { formatDateLocal, formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import { WeightHeight } from "@/components/storage/SaveChildren";
@@ -17,7 +17,7 @@ import { Alert, ScrollView, View } from "react-native";
 
 export default function WeightHeightAdd() {
   const router = useRouter();
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(formatDateLocal(new Date()));  
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [head, setHead] = useState("");
@@ -31,36 +31,16 @@ export default function WeightHeightAdd() {
   const HIDE_MODE_KEY = "hideMode";
   
   const validateNumberInput = (text: string) => {
-    // povolena čísla + jeden oddělovač (tečka nebo čárka)
-    let cleaned = text.replace(/[^0-9.,]/g, "");
-
-    // pokud má víc než jednu tečku/čárku, zůstává jen první
-    const parts = cleaned.split(/[,\.]/);
-    if (parts.length > 2) {
-      cleaned = parts[0] + "." + parts[1]; // první část + jedna desetinná
-    } else if (parts.length === 2) {
-      cleaned = parts[0] + "." + parts[1]; // normalizace na tečku
-    }
-    if (cleaned.startsWith(".") || cleaned.startsWith(",")) {
-      cleaned = "0" + cleaned.replace(",", ".");
-    }
-
-    return cleaned;
+    let cleaned = text.replace(/[^0-9.,]/g, "").replace(",", ".");
+    const [integer, decimal] = cleaned.split(".");
+    cleaned = integer + (decimal !== undefined ? "." + decimal.slice(0, 2) : "");
+    return cleaned.startsWith(".") ? "0" + cleaned : cleaned;
   };
 
   useEffect(() => {
-    const loadHideMode = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(HIDE_MODE_KEY);
-        if (stored !== null) {
-          setHideMode(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.error("Chyba při načítání hideMode:", e);
-      }
-    };
-
-    loadHideMode();
+    AsyncStorage.getItem(HIDE_MODE_KEY)
+      .then(stored => stored && setHideMode(JSON.parse(stored)))
+      .catch(e => console.error("Chyba při načítání hideMode:", e));
   }, []);
 
   const toggleHideMode = async () => {
@@ -110,17 +90,18 @@ export default function WeightHeightAdd() {
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Přidat záznam</Title>
         <Subtitle>Datum</Subtitle>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between"}}>
           <View style={{ width: "80%" }}>
             <ValidatedDateInput
               value={date}
-              onChange={setDate}
+              onChange={(d) => d && setDate(d)}
               birthISO={selectedChild ? selectedChild.birthDate : null}
             />
           </View>
           <DateSelector
             date={new Date(date)}
-            onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
+            onChange={(newDate) => setDate(formatDateLocal(newDate))}
+            birthISO={selectedChild ? selectedChild.birthDate : null}
           />
         </View>
         <Subtitle>Váha</Subtitle>
@@ -172,7 +153,7 @@ export default function WeightHeightAdd() {
             />
           </>
         )}
-        <CheckButton onPress = {handleAdd} />
+        <CheckButton onPress={handleAdd} />
       </ScrollView>
     </MainScreenContainer>
   );

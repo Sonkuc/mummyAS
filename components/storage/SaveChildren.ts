@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface Milestone {
+  milId: string;       
   name: string;
   date: string; // ve formátu YYYY-MM-DD
   note?: string;

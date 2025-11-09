@@ -23,7 +23,6 @@ export default function ChildEdit() {
   const childIdx = selectedChildIndex;
   const isValidIndex =
     childIdx !== null && childIdx >= 0 && childIdx < allChildren.length;
-
   const [name, setName] = useState("");
   const [sex, setSex] = useState("");
   const [birthDate, setBirthDate] = useState<Date | null>(
@@ -71,27 +70,35 @@ export default function ChildEdit() {
       return;
     }
 
-    let finalPhotoUri = photoUri || "anonym";
+    let finalPhotoUri = "anonym";
 
-    if (photoUri && !photoUri.startsWith("avatar")) {
-      const docDir = FileSystem.documentDirectory ?? "";
-      if (photoUri.startsWith("file://") || photoUri.startsWith(docDir)) {
-        const newPath = `${docDir}${currentChild.id}.jpg`;
-        try {
-          if (photoUri !== newPath) {
-            await FileSystem.deleteAsync(newPath, { idempotent: true });
-            await FileSystem.copyAsync({ from: photoUri, to: newPath });
-          }
-          finalPhotoUri = newPath;
-        } catch (err) {
-          console.error("Chyba při ukládání fotky:", err);
-        }
+    if (photoUri) {
+  const basePhoto = photoUri.split("?")[0];
+
+  if (basePhoto.startsWith("avatar")) {
+    // uložit čisté id avatara
+    finalPhotoUri = basePhoto;
+  } else {
+    // jedná se o file:// nebo path v documentDirectory
+    const docDir = FileSystem.documentDirectory ?? "";
+    // pokud už je uložené v docDir (např. newPath), nech to být, jinak zkopíruj
+    const sourceUri = basePhoto; // bez ?t
+    const newPath = `${docDir}${currentChild.id}.jpg`;
+    try {
+      if (sourceUri !== newPath) {
+        await FileSystem.deleteAsync(newPath, { idempotent: true });
+        await FileSystem.copyAsync({ from: sourceUri, to: newPath });
       }
+      finalPhotoUri = newPath;
+    } catch (err) {
+      console.error("Chyba při ukládání fotky:", err);
+      // případně fallback na anonym nebo původní currentChild.photo
+      finalPhotoUri = currentChild.photo || "anonym";
     }
+  }
+}
 
-    const photoChanged =
-      photoUri !== currentChild.photo &&
-      !(photoUri && photoUri.startsWith("avatar") && photoUri === currentChild.photo);
+    const photoChanged = photoUri !== currentChild.photo;
 
     const noChanges =
       name === currentChild.name &&
@@ -110,7 +117,7 @@ export default function ChildEdit() {
     });
 
     if (selectedChildIndex !== null) {
-      await setSelectedChildIndex(selectedChildIndex);
+      await setSelectedChildIndex(selectedChildIndex, true); // např. přidej parametr "refresh"
     }
 
     router.back();
@@ -132,7 +139,7 @@ export default function ChildEdit() {
       <MyTextInput placeholder="Jméno" value={name} onChangeText={setName} />
 
       <Subtitle style={{ marginTop: 10 }}>Datum narození</Subtitle>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <View style={{ width: "80%" }}>
           <ValidatedDateInput
             value={birthDate ? formatDateLocal(birthDate) : ""}
@@ -144,7 +151,16 @@ export default function ChildEdit() {
         </View>
         <DateSelector
           date={birthDate && !isNaN(birthDate.getTime()) ? birthDate : new Date()}
-          onChange={setBirthDate}
+           onChange={(newDate) => {
+            if (!newDate) {
+              // obnov původní datum narození
+              if (currentChild?.birthDate) {
+                setBirthDate(new Date(currentChild.birthDate));
+              }
+              return;
+            }
+            setBirthDate(newDate);
+          }}
         />
       </View>
 

@@ -6,25 +6,18 @@ import { StyleSheet } from "react-native";
 
 export default function NotFoundScreen() {
   return (
-    <>
-      <ThemedView style={styles.container}>
-        <ThemedText style={styles.title}>Jejda 🤯</ThemedText>
-        <ThemedText style={styles.title}>Stránka nebyla nalezena</ThemedText>
-        <Link href="/" style={styles.link}>
-          <ThemedText type="link" style={{fontSize: 23}}>Zpět na úvodní obrazovku</ThemedText>
-        </Link>
-      </ThemedView>
-    </>
+    <ThemedView style={styles.container}>
+      <ThemedText style={styles.title}>Jejda 🤯{"\n"}Stránka nebyla nalezena</ThemedText>
+      <Link href="/" style={styles.link}>
+        <ThemedText type="link" style={styles.linkText}>
+          Zpět na úvodní obrazovku
+        </ThemedText>
+      </Link>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-    fontSize: 20,
-    textAlign: "center",
-  },
   container: {
     flex: 1,
     justifyContent: "center",
@@ -37,5 +30,13 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginBottom: 30,
     paddingTop: 10,
+  },
+  link: {
+    marginTop: 15,
+    paddingVertical: 15,
+  },
+  linkText: {
+    fontSize: 23,
+    textAlign: "center",
   },
 });

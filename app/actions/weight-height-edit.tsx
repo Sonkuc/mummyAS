@@ -3,7 +3,7 @@ import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
 import HideButton from "@/components/HideButton";
-import { formatDateToCzech, toIsoDate } from "@/components/IsoFormatDate";
+import { formatDateLocal, formatDateToCzech, toIsoDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import { WeightHeight } from "@/components/storage/SaveChildren";
@@ -19,7 +19,8 @@ import { Alert, ScrollView, View } from "react-native";
 export default function WeightHeightEdit() {
   const { whIndex } = useLocalSearchParams();
   const router = useRouter();
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(formatDateLocal(new Date()));   
+  const [originalDate, setOriginalDate] = useState<string | null>(null);
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [head, setHead] = useState("");
@@ -33,36 +34,16 @@ export default function WeightHeightEdit() {
   const HIDE_MODE_KEY = "hideMode";
 
   const validateNumberInput = (text: string) => {
-    // povolena čísla + jeden oddělovač (tečka nebo čárka)
-    let cleaned = text.replace(/[^0-9.,]/g, "");
-
-    // pokud má víc než jednu tečku/čárku, zůstává jen první
-    const parts = cleaned.split(/[,\.]/);
-    if (parts.length > 2) {
-      cleaned = parts[0] + "." + parts[1]; // první část + jedna desetinná
-    } else if (parts.length === 2) {
-      cleaned = parts[0] + "." + parts[1]; // normalizace na tečku
-    }
-
-    if (cleaned.startsWith(".") || cleaned.startsWith(",")) {
-      cleaned = "0" + cleaned.replace(",", ".");
-    }
-    return cleaned;
+    let cleaned = text.replace(/[^0-9.,]/g, "").replace(",", ".");
+    const [integer, decimal] = cleaned.split(".");
+    cleaned = integer + (decimal !== undefined ? "." + decimal.slice(0, 2) : "");
+    return cleaned.startsWith(".") ? "0" + cleaned : cleaned;
   };
 
   useEffect(() => {
-    const loadHideMode = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(HIDE_MODE_KEY);
-        if (stored !== null) {
-          setHideMode(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.error("Chyba při načítání hideMode:", e);
-      }
-    };
-
-    loadHideMode();
+    AsyncStorage.getItem(HIDE_MODE_KEY)
+      .then(stored => stored && setHideMode(JSON.parse(stored)))
+      .catch(e => console.error("Chyba při načítání hideMode:", e));
   }, []);
 
   const toggleHideMode = async () => {
@@ -75,25 +56,27 @@ export default function WeightHeightEdit() {
     }
   };
 
-  useEffect(() => {
-    if (
-      selectedChildIndex !== null &&
-      whIndex !== undefined &&
-      allChildren[selectedChildIndex]?.wh
-    ) {
-      const idx = Number(whIndex);
-      const WeightHeight = allChildren[selectedChildIndex].wh[idx];
-      if (WeightHeight) {
-        setDate(toIsoDate(WeightHeight.date));
-        setWeight(WeightHeight.weight || "");
-        setHeight(WeightHeight.height || "");
-        setHead(WeightHeight.head || "");
-        setFoot(WeightHeight.foot || "");
-        setClothes(WeightHeight.clothes || "");
-      }
-    }
+  useEffect(() => { 
+    if ( 
+      selectedChildIndex !== null && 
+      whIndex !== undefined && 
+      allChildren[selectedChildIndex]?.wh 
+    ) { 
+      const idx = Number(whIndex); 
+      const whRecord = allChildren[selectedChildIndex].wh[idx]; 
+      if (whRecord) { 
+        const isoDate = toIsoDate(whRecord.date); 
+        setDate(isoDate); 
+        setOriginalDate(isoDate); 
+        setWeight(whRecord.weight || ""); 
+        setHeight(whRecord.height || ""); 
+        setHead(whRecord.head || ""); 
+        setFoot(whRecord.foot || ""); 
+        setClothes(whRecord.clothes || ""); 
+      } 
+    } 
   }, [whIndex, selectedChildIndex, allChildren]);
-
+        
   const handleSave = () => {
     if (selectedChildIndex === null || selectedChildIndex === undefined) return;
     
@@ -142,17 +125,22 @@ export default function WeightHeightEdit() {
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Upravit záznam</Title>
         <Subtitle>Datum</Subtitle>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ width: "80%" }}>
             <ValidatedDateInput
               value={date}
-              onChange={setDate}
-              birthISO={selectedChild ? selectedChild.birthDate : null}
+              onChange={(val) => val && setDate(val)}
+              birthISO={selectedChild?.birthDate ?? null}
+              fallbackOnError="original"
+              originalValue={originalDate ?? undefined}
             />
           </View>
           <DateSelector
             date={new Date(date)}
-            onChange={(newDate) => setDate(newDate.toISOString().slice(0, 10))}
+            onChange={(newDate) => {
+              setDate(formatDateLocal(newDate));
+            }}
+            birthISO={selectedChild ? selectedChild.birthDate : null}
           />
         </View>
 

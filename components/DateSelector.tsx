@@ -1,19 +1,33 @@
 import { COLORS } from "@/constants/MyColors";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Calendar } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal, Platform, Pressable, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 type Props = {
-  date: Date;
+  date: string | Date;
   onChange: (date: Date) => void;
+  birthISO?: string | null;
 };
 
-export default function DateSelector({ date, onChange }: Props) {
+export default function DateSelector({ date, onChange, birthISO }: Props) {
   const [show, setShow] = useState(false);
   const [tempDate, setTempDate] = useState(date);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
+
+  useEffect(() => {
+    if (date instanceof Date && !isNaN(date.getTime())) {
+      setTempDate(date);
+    }
+  }, [date]);
+
+  const safeDate =
+    date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+  const safeTempDate =
+    tempDate instanceof Date && !isNaN(tempDate.getTime())
+      ? tempDate
+      : safeDate;
 
   return (
     <View style={styles.wrapper}>
@@ -26,7 +40,7 @@ export default function DateSelector({ date, onChange }: Props) {
         <View style={styles.modalContainer}>
           <View style={[styles.modalContent, { backgroundColor: isDark ? "#222" : "#fff" }]}>
             <DateTimePicker
-              value={tempDate}
+              value={safeTempDate}
               mode="date"
               display={Platform.OS === "ios" ? "spinner" : "default"}
                 onChange={(event, selectedDate) => {
@@ -41,6 +55,7 @@ export default function DateSelector({ date, onChange }: Props) {
             themeVariant={isDark ? "dark" : "light"}
             style={{ width: "100%" }}
             maximumDate={new Date()}
+            minimumDate={birthISO ? new Date(birthISO) : undefined}
             />
             <View style={styles.buttonRow}>
               <Pressable onPress={() => setShow(false)} style={styles.cancelButton}>
@@ -48,7 +63,7 @@ export default function DateSelector({ date, onChange }: Props) {
               </Pressable>
               <Pressable
                 onPress={() => {
-                  onChange(tempDate);
+                  onChange(safeTempDate);
                   setShow(false);
                 }}
                 style={styles.confirmButton}

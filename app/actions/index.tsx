@@ -18,8 +18,7 @@ type Action = {
 
 export default function Actions() {
   const router = useRouter();
-  const { selectedChild, selectedChildIndex } = useChild();
-  const sex = selectedChild?.sex || "";
+  const { selectedChild, selectedChildIndex, reloadChildren } = useChild();  const sex = selectedChild?.sex || "";
   const [version, setVersion] = useState(0);
 
   const actions: Action[] = [
@@ -46,6 +45,7 @@ export default function Actions() {
       setVersion(v => v + 1);
     }, [selectedChild?.photo])
   );
+
 
   return (
     <MainScreenContainer contentContainerStyle={{ position: "relative" }}>
@@ -106,7 +106,6 @@ export default function Actions() {
 const styles = StyleSheet.create({
   buttonContainer: {
     marginTop: 20,
-    gap: 1,
     alignItems: "center",
   },
   avatarContainer: {

@@ -5,9 +5,10 @@ import { Pressable, StyleSheet } from "react-native";
 
 type Props = {
   targetPath: string;
+  style?: object;
 };  
 
-export default function AddButton({ targetPath }: Props) {
+export default function AddButton({ targetPath, style }: Props) {
   const router = useRouter();
 
   const handlePress = () => {
@@ -15,7 +16,7 @@ export default function AddButton({ targetPath }: Props) {
     };
 
   return (
-    <Pressable style={styles.button} onPress={handlePress}>
+    <Pressable style={[styles.button, style]} onPress={handlePress}>
        <Plus color="white" size={30} />
     </Pressable>
   );
