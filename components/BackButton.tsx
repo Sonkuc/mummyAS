@@ -5,18 +5,28 @@ import { Pressable, StyleSheet } from "react-native";
 
 type BackButtonProps = {
   targetPath?: string;
+  onPress?: () => void;
 };
 
-export default function BackButton({ targetPath }: BackButtonProps) {
+export default function BackButton({ targetPath, onPress }: BackButtonProps) {
   const router = useRouter();
 
-  const handlePress = () => {
-    if (typeof targetPath === "string") {
-    router.push(targetPath);
-  } else {
-    router.back();
-  }
-};
+  const handlePress = async () => {
+    if (onPress) {
+      await onPress();
+      if (typeof targetPath === "string") {
+        router.push(targetPath);
+      } else {
+        router.back();
+      }
+    } else {
+      if (typeof targetPath === "string") {
+        router.push(targetPath);
+      } else {
+        router.back();
+      }
+    }
+  };
 
   return (
     <Pressable style={styles.backButton} onPress={handlePress}>

@@ -2,7 +2,6 @@ import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import MyButton from "@/components/MyButton";
 import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -153,7 +152,7 @@ export default function SleepEdit() {
 
   return (
     <MainScreenContainer>
-      <CustomHeader backTargetPath="/actions/sleep" />
+      <CustomHeader backTargetPath="/actions/sleep" onPress={saveChanges}/>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Upravit záznam</Title>
         <Subtitle style={{ textAlign: "center" }}>{formatDateToCzech(String(date))}</Subtitle>
@@ -220,10 +219,6 @@ export default function SleepEdit() {
             <Text style={styles.icon}>✅</Text>
           </Pressable>
         </GroupSection>
-
-        <View style={{ marginTop: 30 }}>
-          <MyButton title="Uložit" onPress={saveChanges} />
-        </View>
       </ScrollView>
     </MainScreenContainer>
   );

@@ -6,12 +6,13 @@ import BackButton from "./BackButton";
 type CustomHeaderProps = {
   children?: React.ReactNode;
   backTargetPath?: string;
+  onPress?: () => void;
 };
 
-export default function CustomHeader({ children, backTargetPath  }: CustomHeaderProps) {
+export default function CustomHeader({ children, backTargetPath, onPress  }: CustomHeaderProps) {
   return (
     <View style={styles.header}>
-      <BackButton targetPath={backTargetPath}/>
+      <BackButton targetPath={backTargetPath} onPress={onPress}/>
       { children }
     </View>
   );

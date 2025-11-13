@@ -58,7 +58,7 @@ export interface RecordTypeSleep {
 
 export type Word = {
   name: string;
-  entries: { date: string; note: string }[];
+  entries: { date: string; note?: string }[];
 };
 
 export type ToothDates = Record<string, string>;
@@ -75,6 +75,7 @@ export interface Child {
   teethDates?: ToothDates;
   wh?: WeightHeight[];
   foodDates?: FoodDates;
+  foodCategories?: Record<string, string>;
   sleepRecords?: SleepRecord[];
   currentModeSleep?: {
     mode: "awake" | "sleep";

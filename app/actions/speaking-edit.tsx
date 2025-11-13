@@ -4,7 +4,6 @@ import DeleteButton from "@/components/DeleteButton";
 import GroupSection from "@/components/GroupSection";
 import { formatDateLocal, formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDate";
@@ -73,7 +72,7 @@ export default function SpeakingEdit() {
 
   return (
     <MainScreenContainer>
-      <CustomHeader>
+      <CustomHeader backTargetPath="/actions/speaking" onPress={handleSave}>
         {selectedChildIndex !== null && wordIndex !== undefined && (
           <DeleteButton type="word" index={Number(wordIndex)} 
             onDeleteSuccess={() => router.replace("/actions/speaking")}
@@ -124,9 +123,6 @@ export default function SpeakingEdit() {
             <Plus size={24} color="white" />
           </Pressable>
         </GroupSection>
-        <View style={{ marginTop: 30 }}>
-          <MyButton title="Uložit" onPress = {handleSave} />
-        </View>
       </ScrollView>
     </MainScreenContainer>
   );

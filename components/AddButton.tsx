@@ -4,16 +4,21 @@ import { Plus } from "lucide-react-native";
 import { Pressable, StyleSheet } from "react-native";
 
 type Props = {
-  targetPath: string;
+  targetPath?: string;
   style?: object;
+  onPress?: () => void;
 };  
 
-export default function AddButton({ targetPath, style }: Props) {
+export default function AddButton({ targetPath, onPress, style }: Props) {
   const router = useRouter();
 
   const handlePress = () => {
-        router.push(targetPath);
-    };
+    if (onPress) {
+      onPress();
+    } else if (targetPath) {
+      router.push(targetPath);
+    }
+  };
 
   return (
     <Pressable style={[styles.button, style]} onPress={handlePress}>

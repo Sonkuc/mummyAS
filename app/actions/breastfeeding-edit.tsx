@@ -2,7 +2,6 @@ import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import MyButton from "@/components/MyButton";
 import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
@@ -153,7 +152,7 @@ export default function BreastfeedingEdit() {
 
   return (
     <MainScreenContainer>
-      <CustomHeader backTargetPath="/actions/breastfeeding" />
+      <CustomHeader backTargetPath="/actions/breastfeeding" onPress={saveChanges} />
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Upravit záznam</Title>
         <Subtitle style={{ textAlign: "center" }}>{formatDateToCzech(String(date))}</Subtitle>
@@ -217,15 +216,10 @@ export default function BreastfeedingEdit() {
               }
             }}
           />
-
           <Pressable onPress={addRecord}>
             <Text style={styles.icon}>✅</Text>
           </Pressable>
         </GroupSection>
-
-        <View style={{ marginTop: 30 }}>
-          <MyButton title="Uložit" onPress={saveChanges} />
-        </View>
       </ScrollView>
     </MainScreenContainer>
   );

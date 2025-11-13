@@ -4,21 +4,35 @@ import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
+import SortButton from "@/components/SortButton";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
-import React from "react";
+import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Speaking() {
   const { selectedChild } = useChild();
   const [isEditMode, setIsEditMode] = React.useState(false);
+  const [sortOn, setSortOn] = useState<"abc" | "dated">("abc");
 
-  const sortedWords = selectedChild?.words
-    ? selectedChild.words
+  const toggleSortOn = () => {
+    setSortOn((prev) => (prev === "abc" ? "dated" : "abc"));
+  };
+
+   const sortedWords = selectedChild?.words
+    ? [...selectedChild.words]
         .map((word, index) => ({ word, originalIndex: index }))
-        .sort((a, b) => a.word.name.localeCompare(b.word.name, "cs", { sensitivity: "base" }))
+        .sort((a, b) => {
+          if (sortOn === "abc") {
+            return a.word.name.localeCompare(b.word.name, "cs", { sensitivity: "base" });
+          } else {
+            const dateA = a.word.entries?.[0]?.date || "";
+            const dateB = b.word.entries?.[0]?.date || "";
+            return dateA.localeCompare(dateB); // od nejstaršího po nejnovější
+          }
+        })
     : [];
 
   return (
@@ -61,6 +75,10 @@ export default function Speaking() {
         color="white"
         circle
         editMode={isEditMode}
+      />
+      <SortButton 
+        sortOn={sortOn}
+        onPress={toggleSortOn}
       />
     </MainScreenContainer>
   );

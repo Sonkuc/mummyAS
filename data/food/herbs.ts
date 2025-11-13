@@ -3,7 +3,6 @@ export const HERBS = [
   { month: 0, label: "Heřmánek" },
   { month: 0, label: "Kmín" },
   { month: 5, label: "Anýz" },
-  { month: 7, label: "Bazalka" },
   { month: 7, label: "Bobkový list" },
   { month: 7, label: "Bazalka" },
   { month: 9, label: "Červená paprika" },

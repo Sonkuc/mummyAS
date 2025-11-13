@@ -2,6 +2,7 @@ import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import { getPhotoSource } from "@/components/PhotoFunctions";
+import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
@@ -18,7 +19,8 @@ type Action = {
 
 export default function Actions() {
   const router = useRouter();
-  const { selectedChild, selectedChildIndex, reloadChildren } = useChild();  const sex = selectedChild?.sex || "";
+  const { selectedChild, selectedChildIndex, reloadChildren, setSelectedChildIndex } = useChild();  
+  const sex = selectedChild?.sex || "";
   const [version, setVersion] = useState(0);
 
   const actions: Action[] = [
@@ -33,10 +35,13 @@ export default function Actions() {
 
   useFocusEffect(
     useCallback(() => {
-      if (selectedChild) {
-        // třeba trigger nějaký useState, aby se přegenerovalo ?t=...
+      if (selectedChildIndex !== null) {
+        reloadChildren().then(() => {
+          // zajistí, že selectedChild bude odpovídat reálně uloženým datům
+          setSelectedChildIndex(selectedChildIndex);
+        });
       }
-    }, [selectedChild])
+    }, [selectedChildIndex])
   );
 
   // aby se aktualizovala fotka v inicialCircle
@@ -46,6 +51,45 @@ export default function Actions() {
     }, [selectedChild?.photo])
   );
 
+// Počet dní do příštích narozenin (0 = dnes, záporné hodnoty = už po)
+  function getBirthdayMessage(birthDateISO?: string, childName?: string): string | null {
+    if (!birthDateISO) return null;
+
+    const birthDate = new Date(birthDateISO);
+    const today = new Date();
+
+    // Porovnávat jen datum (kvůli posunu časových pásem)
+    today.setHours(0, 0, 0, 0);
+    birthDate.setHours(0, 0, 0, 0);
+
+    // letošní narozeniny
+    const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+
+    // pokud už proběhly, přejdi na příští rok
+    const nextBirthday =
+      thisYearBirthday < today
+        ? new Date(today.getFullYear() + 1, birthDate.getMonth(), birthDate.getDate())
+        : thisYearBirthday;
+
+    const diffTime = nextBirthday.getTime() - today.getTime();
+    const days = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    const name = selectedChild?.name || "Dítě";
+
+    if (days === 0) {
+      return `${name} má dnes narozeniny! 🎉`;
+    } else if (days === 1) {
+      return `Do narozenin zbývá 1 den 🎂`;
+    } else if (days >= 2 && days <= 4) {
+      return `Do narozenin zbývají ${days} dny 🎈`;
+    } else if (days <= 30) {
+      return `Do narozenin zbývá ${days} dní 🎁`;
+    } else {
+      return null;
+    }
+  }
+  
+  const message = getBirthdayMessage(selectedChild?.birthDate);
 
   return (
     <MainScreenContainer contentContainerStyle={{ position: "relative" }}>
@@ -98,6 +142,13 @@ export default function Actions() {
             icon={action.icon}
           />
         ))}
+      </View>
+      <View>
+        {message && (
+          <Subtitle style={{ marginTop: 20, textAlign: "center", color: COLORS.primary }}>
+            {message}
+          </Subtitle>
+        )}
       </View>
     </MainScreenContainer>
   );

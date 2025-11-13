@@ -104,7 +104,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     },
     [allChildren, selectedChildIndex]
   );
-
+  
   const saveAllChildren = useCallback(
     async (children: Child[]) => {
       await AsyncStorage.setItem("children", JSON.stringify(children));
