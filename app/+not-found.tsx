@@ -8,7 +8,7 @@ export default function NotFoundScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedText style={styles.title}>Jejda 🤯{"\n"}Stránka nebyla nalezena</ThemedText>
-      <Link href="/" style={styles.link}>
+      <Link href="/home" style={styles.link}>
         <ThemedText type="link" style={styles.linkText}>
           Zpět na úvodní obrazovku
         </ThemedText>

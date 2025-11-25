@@ -13,18 +13,16 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  if (!loaded) {
-    return null;
-  }
+  if (!loaded) null;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <ChildProvider>
+        <StatusBar style="auto" />
         <Stack
           screenOptions={{
             headerShown: false,
           }}/>
-        <StatusBar style="auto" />
       </ChildProvider>
     </ThemeProvider>
   );
