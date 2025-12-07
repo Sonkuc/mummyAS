@@ -23,8 +23,7 @@ export default function Home() {
     gender === "chlapec" ? COLORS.boyIcon :       
     gender === "divka"   ? COLORS.girlIcon :      
     "gray";   
-
-  return (
+    return (
     <MainScreenContainer scrollable contentContainerStyle={{ alignItems: "center" }}>
       <View style={{ justifyContent: "center", alignItems: "center", marginTop: 60, marginBottom: 30}}>
         <Text style={styles.title}>Milá maminko, </Text>
