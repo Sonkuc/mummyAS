@@ -14,6 +14,7 @@ import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import uuid from "react-native-uuid";
 
 type DisplayBreastfeedingRecord = BreastfeedingRecord & { label: string };
 
@@ -111,9 +112,10 @@ export default function BreastfeedingAdd() {
       return;
     }
 
-    const newRec: BreastfeedingRecord = { date: newDate, time: norm, state: newState };
+    const newRec: BreastfeedingRecord = { id: uuid.v4(), date: newDate, time: norm, state: newState };
 
     const allRecords = [...records.map(r => ({
+      id: r.id,
       date: r.date,
       time: r.time,
       state: r.state
@@ -142,7 +144,7 @@ export default function BreastfeedingAdd() {
         Alert.alert("Chybný čas", "Některý z časů není ve formátu HH:MM nebo je mimo rozsah.");
         return;
       }
-      normalized.push({ date: rec.date, time: norm, state: rec.state });
+      normalized.push({ ...rec, time: norm });
     }
 
     const updatedChildren = [...allChildren];

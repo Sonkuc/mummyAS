@@ -1,9 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface Milestone {
-  milId: string;       
-  name: string;
-  date: string; // ve formátu YYYY-MM-DD
+  name: string;               // zobrazovaný text
+  date: string;
   note?: string;
 };
 
@@ -17,6 +16,7 @@ export interface WeightHeight {
 };
 
 export interface BreastfeedingRecord {
+  id: string;
   date: string;
   time: string;
   state: "start" | "stop";
@@ -36,6 +36,7 @@ export interface RecordTypeFeed {
 };
 
 export interface SleepRecord {
+  id: string;
   date: string;
   time: string;
   state: "awake" | "sleep";

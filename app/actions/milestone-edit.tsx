@@ -6,7 +6,6 @@ import { formatDateLocal, formatDateToCzech, toIsoDate } from "@/components/IsoF
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
-import { Milestone } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDate";
@@ -19,19 +18,22 @@ import { ScrollView, View } from "react-native";
 export default function EditMilestone() {
   const { milId } = useLocalSearchParams<{ milId: string }>();
   const router = useRouter();
+  
   const [name, setName] = useState("");
   const [selectedMilestone, setSelectedMilestone] = useState("");
   const [date, setDate] = useState(formatDateLocal(new Date()));
   const [originalDate, setOriginalDate] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
   const selectedChild =
     selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
 
   useEffect(() => {
-    if (!selectedChild || !milId) return;
+    if (!selectedChild || milId === undefined) return;
 
-    const milestone = selectedChild.milestones?.find((m) => m.milId === milId);
+    const idx = Number(milId);
+    const milestone = selectedChild.milestones?.[idx];
     if (milestone) {
       const isoDate = toIsoDate(milestone.date); 
       setName(milestone.name);
@@ -43,29 +45,27 @@ export default function EditMilestone() {
     }
   }, [milId, selectedChild]);
 
-    const handleSave = () => {
-      if (!selectedChild || !milId) return;
+  const handleSave = () => {
+    if (selectedChildIndex === null || milId === undefined) return;
 
-    const finalName = name.trim() !== "" 
-      ? name 
-      : MILESTONES.find(m => m.id === selectedMilestone)?.label || "";
+    const idx = Number(milId);
+    const finalName = name.trim();
+    
+    if (!finalName) return; // Ochrana proti prázdnému názvu
 
-    const updatedMilestone: Milestone = {
-      milId: milId as string,
+    const updatedChildren = [...allChildren];
+    const child = updatedChildren[selectedChildIndex];
+    const milestones = [...(child.milestones ?? [])];
+    
+    // Aktualizace konkrétního milníku na daném indexu
+    milestones[idx] = {
+      ...milestones[idx], // zachová případná data, která needitujeme
       name: finalName,
       date: formatDateToCzech(date),
       note,
     };
-
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex!];
-    const milestones = child.milestones ?? [];
-    const idx = milestones.findIndex((m) => m.milId === milId);
-    if (idx >= 0) {
-      milestones[idx] = updatedMilestone;
-    }
+    
     child.milestones = milestones;
-
     saveAllChildren(updatedChildren);
     router.back();
   };
@@ -73,8 +73,8 @@ export default function EditMilestone() {
   return (
     <MainScreenContainer>
       <CustomHeader>
-        {selectedChildIndex !== null && milId && (
-          <DeleteButton type="milestone" id={milId as string} 
+        {selectedChildIndex !== null && milId !== undefined && (
+          <DeleteButton type="milestone" index={Number(milId)} 
           onDeleteSuccess={() => router.replace("/actions/milestone")}/>
         )}
       </CustomHeader>
@@ -86,7 +86,7 @@ export default function EditMilestone() {
             value={name}
             onChangeText={text => {
               setName(text);
-              setSelectedMilestone(""); // zruší výběr z pickeru, pokud píšu vlastní text
+              if (text !== "") setSelectedMilestone("");
             }}
           />
           <MyPicker

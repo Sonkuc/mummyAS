@@ -14,7 +14,6 @@ import { MILESTONES } from "@/data/milestones";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { ScrollView, View } from "react-native";
-import uuid from "react-native-uuid";
 
 export default function AddMilestone() {
   const router = useRouter();
@@ -22,17 +21,19 @@ export default function AddMilestone() {
   const [selectedMilestone, setSelectedMilestone] = useState("");
   const [date, setDate] = useState(formatDateLocal(new Date()));
   const [note, setNote] = useState("");
+  
   const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
   const selectedChild =
     selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
   
   const handleAdd = () => {
-    const finalName = name.trim() !== "" 
-      ? name 
-      : MILESTONES.find(m => m.id === selectedMilestone)?.label || "";
+    // Prioritu má ručně psaný název, jinak se vezme label z pickeru
+    let finalName = name.trim();
+    
+    // Pokud je i po tomhle jméno prázdné, nic neukládáme
+    if (!finalName) return; 
 
     const newMilestone: Milestone = {
-      milId: uuid.v4() as string,
       name: finalName,
       date: formatDateToCzech(date),
       note,
@@ -62,7 +63,7 @@ export default function AddMilestone() {
             value={name}
             onChangeText={text => {
               setName(text);
-              setSelectedMilestone(""); // zruší výběr z pickeru, pokud píšu vlastní text
+              if (text !== "") setSelectedMilestone(""); // zruší výběr z pickeru, pokud píšu vlastní text
             }}
           />
           <MyPicker

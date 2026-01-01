@@ -19,9 +19,11 @@ export default function Milestone() {
     return new Date(`${year}-${month}-${day}`) || new Date(0);
   };
 
-  const sortedMilestones = [...(selectedChild?.milestones || [])].sort(
-  (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
-  );
+  const sortedMilestones = (selectedChild?.milestones || [])
+    // 1. Přidáme k milníkům jejich původní index z pole v databázi
+    .map((m, originalIndex) => ({ ...m, originalIndex }))
+    // 2. Pak teprve seřadíme podle data
+    .sort((a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime());
 
   return (
     <MainScreenContainer>
@@ -32,27 +34,33 @@ export default function Milestone() {
         <Title>Už umím</Title>
         <View>
           {sortedMilestones.length > 0 ? (
-            sortedMilestones.map((m, milId) => (
-              <GroupSection key={milId}>
-                <View style={{ flexDirection: "row", alignItems: "center"}}>
-                  {isEditMode && (
-                    <EditPencil 
-                      targetPath={`/actions/milestone-edit?milId=${m.milId}`}
-                      color={COLORS.primary}
-                    />
+            sortedMilestones.map((m) => {
+              // Definice unikátního klíče pro aktuální prvek
+              const tempKey = `${m.name}-${m.date}-${m.originalIndex}`;
+
+              return (
+                <GroupSection key={tempKey}>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    {isEditMode && (
+                      <EditPencil
+                        // Použijeme index v poli pro editaci, dokud nemáme DB ID
+                        targetPath={`/actions/milestone-edit?milId=${m.originalIndex}`}
+                        color={COLORS.primary}
+                      />
+                    )}
+                    <Text style={styles.item}>
+                      {m.date}
+                    </Text>
+                    <Text style={{ fontSize: 16, marginLeft: 10 }}>
+                      {m.name}
+                    </Text>
+                  </View>
+                  {m.note?.trim() !== "" && (
+                    <Text style={styles.note}>  {m.note}</Text>
                   )}
-                  <Text style={styles.item}>
-                    {m.date}
-                  </Text>
-                  <Text style={{fontSize: 16, marginLeft: 10}}>
-                    {m.name}
-                  </Text>
-                </View> 
-                {m.note?.trim() !== "" && (
-                  <Text style={styles.note}>  {m.note}</Text>
-                )}
-            </GroupSection> 
-            ))
+                </GroupSection>
+              );
+            })
           ) : (
             <Subtitle style={{ textAlign: "center" }}>
               Žádné milníky zatím nebyly uloženy.

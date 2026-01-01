@@ -15,14 +15,9 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight, ChartColumn, Milk, MilkOff } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import uuid from "react-native-uuid";
 
-type DisplayBreastfeedingRecord = BreastfeedingRecord & { label?: string };
-
-type GroupedFeed = {
-  date: string;
-  totalFeedMinutes: number;
-  records: (DisplayBreastfeedingRecord & { extra?: string })[];
-};
+type DisplayBreastfeedingRecord = BreastfeedingRecord & { label?: string, extra?: string; };
 
 export default function Breastfeeding() {
   const [records, setRecords] = useState<DisplayBreastfeedingRecord[]>([]);
@@ -73,7 +68,7 @@ export default function Breastfeeding() {
     const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
     const date = now.toISOString().slice(0, 10); // vždy ISO YYYY-MM-DD
 
-    const newRecord: DisplayBreastfeedingRecord = { date, time, state: newMode};
+    const newRecord: DisplayBreastfeedingRecord = { id: uuid.v4(), date, time, state: newMode};
 
     setRecords((prev) => [...prev, newRecord]);
 
@@ -85,7 +80,7 @@ export default function Breastfeeding() {
       const updated = [...allChildren];
       updated[selectedChildIndex].breastfeedingRecords = [
         ...(updated[selectedChildIndex].breastfeedingRecords || []),
-        { date, time, state: newMode },
+        newRecord,
       ];
       updated[selectedChildIndex].currentModeFeed = {
         mode: newMode,
@@ -190,22 +185,6 @@ export default function Breastfeeding() {
       });
   }, [records]);
 
-  useEffect(() => {
-    if (selectedChildIndex !== null) {
-      const updated = [...allChildren];
-      updated[selectedChildIndex].groupedFeed = grouped.map(g => ({
-        date: g.date,
-        totalFeedMinutes: g.totalFeedMinutes,
-        records: g.records.map(r => ({
-          date: r.date,
-          time: r.time,
-          state: r.state,
-        }))
-      }));
-      saveAllChildren(updated);
-    }
-  }, [records]);
-
   const getLastMode = (): "start" | "stop" | null => {
     if (selectedChild?.currentModeFeed?.mode) {
       return selectedChild.currentModeFeed.mode;
@@ -296,7 +275,7 @@ export default function Breastfeeding() {
             </View>
             {records.map((rec, recIdx) => (
               <Text
-                key={`rec-${date}-${rec.time}-${recIdx}`}
+                key={rec.id}
                 style={styles.recordText}
               >
                 {rec.label}{rec.extra ?? ""}

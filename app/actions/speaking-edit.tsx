@@ -22,7 +22,7 @@ export default function SpeakingEdit() {
     selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
 
   const [name, setName] = useState("");
-  const [entries, setEntries] = useState<{ date: string; note: string }[]>([]);
+  const [entries, setEntries] = useState<{ date: string; note?: string }[]>([]);
   const [newDate, setDate] = useState(formatDateLocal(new Date()));
   const [newNote, setNewNote] = useState("");
 
@@ -50,8 +50,10 @@ export default function SpeakingEdit() {
     };
 
     const updatedChildren = [...allChildren];
+    const child = updatedChildren[selectedChildIndex];
+    child.words = child.words || [];  // Initialize if undefined
     const idx = Number(wordIndex);
-    updatedChildren[selectedChildIndex].words[idx] = updatedWord;
+    child.words[idx] = updatedWord;
     saveAllChildren(updatedChildren);
     router.back();
   };

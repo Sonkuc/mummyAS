@@ -32,6 +32,8 @@ export default function WeightHeightEdit() {
 
   const [hideMode, setHideMode] = useState(false);
   const HIDE_MODE_KEY = "hideMode";
+  const idx = Number(whIndex);
+  if (isNaN(idx)) return;
 
   const validateNumberInput = (text: string) => {
     let cleaned = text.replace(/[^0-9.,]/g, "").replace(",", ".");
@@ -61,8 +63,7 @@ export default function WeightHeightEdit() {
       selectedChildIndex !== null && 
       whIndex !== undefined && 
       allChildren[selectedChildIndex]?.wh 
-    ) { 
-      const idx = Number(whIndex); 
+    ) {  
       const whRecord = allChildren[selectedChildIndex].wh[idx]; 
       if (whRecord) { 
         const isoDate = toIsoDate(whRecord.date); 
@@ -80,7 +81,6 @@ export default function WeightHeightEdit() {
   const handleSave = () => {
     if (selectedChildIndex === null || selectedChildIndex === undefined) return;
     
-    const idx = Number(whIndex);
     const updatedChildren = [...allChildren];
     const child = updatedChildren[selectedChildIndex];
     const existingWh = child.wh || [];

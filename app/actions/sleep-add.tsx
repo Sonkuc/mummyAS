@@ -13,8 +13,10 @@ import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import uuid from "react-native-uuid";
 
 type StoredSleepRecord = {
+  id: string;
   date: string;
   time: string;
   state: "sleep" | "awake";
@@ -118,7 +120,7 @@ export default function SleepAdd() {
       return;
     }
 
-    const newRec: StoredSleepRecord = { date: newDate, time: norm, state: newState };
+    const newRec: StoredSleepRecord = { id: uuid.v4(), date: newDate, time: norm, state: newState };
 
     const withoutLabels: StoredSleepRecord[] = records.map(({ label, ...rest }) => rest);
     const allRecords = [...withoutLabels, newRec].sort((a, b) => a.time.localeCompare(b.time));
@@ -147,7 +149,7 @@ export default function SleepAdd() {
         Alert.alert("Chybný čas", "Některý z časů není ve formátu HH:MM nebo je mimo rozsah.");
         return;
       }
-      normalized.push({ date: rec.date, time: norm, state: rec.state });
+      normalized.push({ ...rec, time: norm });
     }
 
     const updatedChildren = [...allChildren];

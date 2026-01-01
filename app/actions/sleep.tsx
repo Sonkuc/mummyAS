@@ -5,7 +5,7 @@ import GroupSection from "@/components/GroupSection";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import { clearStateGeneric, formatDuration, getLastModeGeneric, toTimestamp } from "@/components/SleepBfFunctions";
-import type { GroupedSleepRecord, RecordTypeSleep } from "@/components/storage/SaveChildren";
+import type { GroupedSleepRecord, RecordTypeSleep, SleepRecord } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import { ChartColumn, Eye, EyeClosed } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import uuid from "react-native-uuid";
 
 export default function Sleep() {
   const [records, setRecords] = useState<RecordTypeSleep[]>([]);
@@ -41,9 +42,16 @@ export default function Sleep() {
     const now = new Date();
     const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
     const date = now.toISOString().slice(0, 10);
-    const newRecord: RecordTypeSleep = { date, time, state: newMode, label };
+    const newRecord: SleepRecord = { id: uuid.v4(), date, time, state: newMode };
 
-    setRecords((prev) => [...prev, newRecord]);
+    const newUIRecord: RecordTypeSleep = {
+      label,
+      date,
+      time,
+      state: newMode,
+    };    
+
+    setRecords((prev) => [...prev, newUIRecord]);
 
     const startTimestamp = toTimestamp(date, time);
     setMode(newMode);
@@ -53,7 +61,7 @@ export default function Sleep() {
       const updated = [...allChildren];
       updated[selectedChildIndex].sleepRecords = [
         ...(updated[selectedChildIndex].sleepRecords || []),
-        { date, time, state: newMode },
+        newRecord,
       ];
       updated[selectedChildIndex].currentModeSleep = {
         mode: newMode,

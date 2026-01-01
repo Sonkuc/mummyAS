@@ -11,6 +11,7 @@ import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import uuid from "react-native-uuid";
 
 type DisplayBreastfeedingRecord = BreastfeedingRecord & { label: string };
 
@@ -49,7 +50,7 @@ export default function BreastfeedingEdit() {
           const s = String(r.state).toLowerCase();
           state = s.includes("Zač") ? "start" : "stop";
         }
-        return { date: r.date, time: r.time, state };
+        return { id: r.id, date: r.date, time: r.time, state };
       });
 
     // nevnucuje se oprava uložených nevalidních časů automaticky,
@@ -100,6 +101,7 @@ export default function BreastfeedingEdit() {
     }
 
     const newRec: BreastfeedingRecord = {
+      id: uuid.v4(),
       date: date!,
       time: norm,
       state: newState,
@@ -136,7 +138,7 @@ export default function BreastfeedingEdit() {
         Alert.alert("Chybný čas", `Záznam č. ${i + 1} obsahuje neplatný čas. Oprav ho prosím.`);
         return;
       }
-      normalized.push({ date: r.date, time: norm, state: r.state });
+      normalized.push({ id: r.id, date: r.date, time: norm, state: r.state });
     }
 
     // uložíme normalized (správné) časy
@@ -158,7 +160,7 @@ export default function BreastfeedingEdit() {
         <Subtitle style={{ textAlign: "center" }}>{formatDateToCzech(String(date))}</Subtitle>
 
         {records.map((rec, idx) => (
-          <GroupSection key={idx} style={styles.row}>
+          <GroupSection key={rec.id} style={styles.row}>
             <Text style={{ flex: 1 }}>{rec.label}</Text>
             <TextInput
               style={styles.input}
