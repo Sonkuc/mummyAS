@@ -6,27 +6,28 @@ import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
-import { useFocusEffect, useRouter } from "expo-router";
+import { Href, useFocusEffect, useRouter } from "expo-router";
 import { Apple, Baby, Heart, MessageCircle, Moon, Ruler, Star } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Action = {
   title: string;
-  route: string;
+  route: Href;
   icon: React.ReactNode;
 };
 
 export default function Actions() {
   const router = useRouter();
-  const { selectedChild, selectedChildIndex, reloadChildren, setSelectedChildIndex } = useChild();  
+  const { selectedChild, selectedChildId, reloadChildren } = useChild();  
+
   const sex = selectedChild?.sex || "";
   const [version, setVersion] = useState(0);
 
   const actions: Action[] = [
     { title: "Spánek", route: "/actions/sleep", icon: <Moon color="white" size={20} /> },
     { title: "Kojení", route: "/actions/breastfeeding", icon: <Heart color="white" size={20} /> },
-    { title: "Výška/váha", route: "/actions/weight-height", icon: <Ruler color="white" size={20} /> },
+    { title: "Růst", route: "/actions/weight-height", icon: <Ruler color="white" size={20} /> },
     { title: "Milníky", route: "/actions/milestone", icon: <Star color="white" size={20} /> },
     { title: "Zoubky", route: "/actions/teeth", icon: <Baby color="white" size={20} /> },
     { title: "Mluvení", route: "/actions/speaking", icon: <MessageCircle color="white" size={20} /> },
@@ -35,13 +36,10 @@ export default function Actions() {
 
   useFocusEffect(
     useCallback(() => {
-      if (selectedChildIndex !== null) {
-        reloadChildren().then(() => {
-          // zajistí, že selectedChild bude odpovídat reálně uloženým datům
-          setSelectedChildIndex(selectedChildIndex);
-        });
+      if (selectedChildId) {
+        reloadChildren();
       }
-    }, [selectedChildIndex])
+    }, [selectedChildId])
   );
 
   // aby se aktualizovala fotka v inicialCircle
@@ -93,13 +91,16 @@ export default function Actions() {
 
   return (
     <MainScreenContainer contentContainerStyle={{ position: "relative" }}>
-      <CustomHeader backTargetPath="/">
+      <CustomHeader backTargetPath="/home">
         <Pressable
           style={styles.avatarContainer}
           hitSlop={20}
           onPress={() => {
-            if (selectedChildIndex !== null) {
-              router.push("../child-edit");
+            if (selectedChildId) {
+              router.push({
+                pathname: "/child-edit",
+                params: { id: selectedChildId }
+              });
             }
           }}
         >

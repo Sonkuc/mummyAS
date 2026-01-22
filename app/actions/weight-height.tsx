@@ -3,6 +3,7 @@ import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import FilterButton from "@/components/FilterButton";
 import GroupSection from "@/components/GroupSection";
+import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -23,109 +24,63 @@ export default function WeightHeight() {
     "foot",
   ]);
 
-  const parseDate = (dateStr: string) => {
-    const [day, month, year] = dateStr.split(".");
-    return new Date(Number(year), Number(month) - 1, Number(day));
+  const toSafeDate = (dateStr: string) => {
+    if (!dateStr) return new Date(0);
+    // Pokud je to ISO (2025-01-01)
+    if (dateStr.includes("-")) return new Date(dateStr);
+    // Pokud je to CZ (01.01.2025)
+    const [day, month, year] = dateStr.split(".").map(Number);
+    return new Date(year, month - 1, day);
   };
-
-  const sortedNotes = [...(selectedChild?.wh || [])].sort(
-    (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
-  );
-
-    useEffect(() => {
-    if (!selectedChild) return;
-
-    const FILTERS_KEY = `filters-${selectedChild.id}`;
-
-    const loadFilterSettings  = async () => {
-      try {
-        const storedFilters = await AsyncStorage.getItem(FILTERS_KEY);
-        if (storedFilters !== null) {
-          setFilters(JSON.parse(storedFilters));
-        ;}
-      } catch (e) {
-        console.error("Chyba při načítání filtrů:", e);
-      }
-    };
-
-
-    loadFilterSettings();
+  
+  const sortedNotes = React.useMemo(() => {
+      return (selectedChild?.wh || [])
+        .slice()
+        .sort((a: any, b: any) => toSafeDate(b.date).getTime() - toSafeDate(a.date).getTime());
   }, [selectedChild]);
 
   useEffect(() => {
-    if (!selectedChild) return;
-
+    if (!selectedChild?.id) return;
     const FILTERS_KEY = `filters-${selectedChild.id}`;
+    AsyncStorage.getItem(FILTERS_KEY).then(stored => {
+      if (stored) setFilters(JSON.parse(stored));
+    });
+  }, [selectedChild?.id]);
 
-    const saveFilters = async () => {
-      try {
-        await AsyncStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
-      } catch (e) {
-        console.error("Chyba při ukládání filtrů:", e);
-      }
-    };
+  useEffect(() => {
+    if (!selectedChild?.id) return;
+    const FILTERS_KEY = `filters-${selectedChild.id}`;
+    AsyncStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+  }, [filters, selectedChild?.id]);
 
-    saveFilters();
-  }, [filters]);
-
-  function getLastValue(
-    arr: { date: string; weight?: string; height?: string; head?: string }[],
-    currentDate: string,
-    field: "weight" | "height" | "head"
-  ) {
-    const currentTime = parseDate(currentDate).getTime();
-
+  function getLastValue(arr: any[], currentDate: string, field: string) {
+    const currentTime = toSafeDate(currentDate).getTime();
     return arr
-      .filter(
-        (item) =>
-          parseDate(item.date).getTime() < currentTime &&
-          item[field] &&
-          item[field]?.trim() !== ""
+      .filter(item => 
+        toSafeDate(item.date).getTime() < currentTime && 
+        item[field] && item[field].toString().trim() !== ""
       )
-      .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime())[0]; // ⬅️ RETURN výsledku
+      .sort((a, b) => toSafeDate(b.date).getTime() - toSafeDate(a.date).getTime())[0];
   }
 
-  function renderDifference(
-    arr: { date: string; weight?: string; height?: string; head?: string }[],
-    currentDate: string,
-    field: "weight" | "height" | "head",
-    unit: string
-  ) {
-    const currentEntry = arr.find(
-      (item) =>
-        item.date === currentDate &&
-        item[field] &&
-        item[field].trim() !== ""
-    );
-    if (!currentEntry || !currentEntry[field] || currentEntry[field].trim() === "") {
-      return null;
-    }
+  function renderDifference(arr: any[], currentDate: string, field: string, unit: string) {
+    const currentEntry = arr.find(item => item.date === currentDate);
+    if (!currentEntry?.[field]) return null;
 
     const last = getLastValue(arr, currentDate, field);
     if (!last) return null;
 
-    const prev = parseFloat(last[field]!.replace(",", "."));
-    const current = parseFloat(currentEntry[field]!.replace(",", "."));
+    const prev = parseFloat(last[field].toString().replace(",", "."));
+    const current = parseFloat(currentEntry[field].toString().replace(",", "."));
     if (isNaN(prev) || isNaN(current)) return null;
 
     const diff = current - prev;
-    const date1 = parseDate(last.date);
-    const date2 = parseDate(currentDate);
-    const daysDiff = Math.round((date2.getTime() - date1.getTime()) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.round((toSafeDate(currentDate).getTime() - toSafeDate(last.date).getTime()) / (1000 * 60 * 60 * 24));
 
-    if (diff === 0) return `nezměněna ${daysDiff} ${daysDiff === 1 ? "den" 
-      : daysDiff >= 2 && daysDiff <= 4 ? "dny"
-      : "dní"}`;
-
-    return (
-      <Text style={{ color: diff > 0 ? "green" : "red" }}>
-        {diff > 0 ? "+" : ""}
-        {(diff.toFixed(1)).replace(".", ",")} {unit} za {daysDiff}{" "}
-        {daysDiff === 1 ? "den" 
-        : daysDiff >= 2 && daysDiff <= 4 ? "dny"
-        : "dní"}
-      </Text>
-    );
+    return {
+      label: diff === 0 ? "(beze změny)" : `${diff > 0 ? "+" : ""}${diff.toFixed(1).replace(".", ",")} ${unit} (za ${daysDiff} d.)`,
+      color: diff === 0 ? "gray" : diff > 0 ? "green" : "red"
+    };
   }
 
   return (
@@ -133,67 +88,72 @@ export default function WeightHeight() {
       <CustomHeader backTargetPath="/actions">
         <AddButton targetPath="/actions/weight-height-add" />
       </CustomHeader>
+
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Jak rostu</Title>
-        <View>
-          <FilterButton selected={filters} onChange={setFilters} />
-        </View>
-        <View>
+        <FilterButton selected={filters} onChange={setFilters} />
+
+        <View style={{ marginTop: 20 }}>
           {sortedNotes.length > 0 ? (
-            sortedNotes.map((wh) => {
-              const originalIndex =
-                selectedChild?.wh?.findIndex((item) => item.date === wh.date) ?? -1;
-              
-              const isVisible =
-                (filters.includes("weight") && wh.weight) ||
-                (filters.includes("height") && wh.height) ||
-                (filters.includes("head") && wh.head) ||
-                (filters.includes("clothes") && wh.clothes) ||
-                (filters.includes("foot") && wh.foot);
+            sortedNotes.map((wh: any) => {
+              const whId = wh.id || wh.date;
+
+              const isVisible = filters.some(f => wh[f] && wh[f].toString().trim() !== "");
               if (!isVisible) return null;
 
               return (
-                <GroupSection key={wh.date} style={styles.whRow}>
-                  {isEditMode && originalIndex !== -1 && (
+                <GroupSection key={whId} style={styles.whRow}>
+                  {isEditMode && (
                     <EditPencil
-                      targetPath={`/actions/weight-height-edit?whIndex=${originalIndex}`}
+                      targetPath={`/actions/weight-height-edit?whId=${whId}`}
                       color={COLORS.primary}
                     />
                   )}
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.item}> {wh.date} </Text>
-                    {filters.includes("weight") && wh.weight ? (
-                      <Text style={styles.note}>
-                        ⚖️ {wh.weight} kg {renderDifference(sortedNotes, wh.date, "weight", "kg")}
-                      </Text>
-                    ) : null}
-                    {filters.includes("height") && wh.height ? (
-                      <Text style={styles.note}>
-                        📏 {wh.height} cm {renderDifference(sortedNotes, wh.date, "height", "cm")}
-                      </Text>
-                    ) : null}
-                    {filters.includes("head") && wh.head ? (
-                      <Text style={styles.note}>
-                        👶 {wh.head} cm {renderDifference(sortedNotes, wh.date, "head", "cm")}
-                      </Text>
-                    ) : null}
-                    {filters.includes("clothes") && wh.clothes ? (
+                    <Text style={styles.item}>{formatDateToCzech(wh.date)}</Text>
+                    {filters.includes("weight") && wh.weight ? (() => {
+                      const diff = renderDifference(sortedNotes, wh.date, "weight", "kg");
+                      return (
+                        <Text style={styles.note}>
+                          <Text>⚖️ {wh.weight} kg </Text>
+                          {diff && <Text style={{ color: diff.color, fontSize: 12 }}>{diff.label}</Text>}
+                        </Text>
+                      );
+                    })() : null}
+                    {filters.includes("height") && wh.height ? (() => {
+                      const diff = renderDifference(sortedNotes, wh.date, "height", "cm");
+                      return (
+                        <Text style={styles.note}>
+                          <Text>📏 {wh.height} cm </Text>
+                          {diff && <Text style={{ color: diff.color, fontSize: 12 }}>{diff.label}</Text>}
+                        </Text>
+                      );
+                    })() : null}
+                    {filters.includes("head") && wh.head ? (() => {
+                      const diff = renderDifference(sortedNotes, wh.date, "head", "cm");
+                      return (
+                        <Text style={styles.note}>
+                          <Text>👶 {wh.head} cm </Text>
+                          {diff && <Text style={{ color: diff.color, fontSize: 12 }}>{diff.label}</Text>}
+                        </Text>
+                      );
+                    })() : null}
+                    {filters.includes("clothes") && wh.clothes && (
                       <Text style={styles.note}>👕 {wh.clothes}</Text>
-                    ) : null}
-                    {filters.includes("foot") && wh.foot ? (
+                    )}
+                    {filters.includes("foot") && wh.foot && (
                       <Text style={styles.note}>🦶 {wh.foot}</Text>
-                    ) : null}
+                    )}
                   </View>
                 </GroupSection>
               );
             })
           ) : (
-            <Subtitle style={{ textAlign: "center" }}>
-              Žádné záznamy zatím nebyly uloženy.
-            </Subtitle>
+            <Subtitle style={{ textAlign: "center" }}>Žádné záznamy</Subtitle>
           )}
         </View>
       </ScrollView>
+
       <EditPencil
         onPress={() => setIsEditMode(!isEditMode)}
         color="white"

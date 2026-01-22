@@ -5,10 +5,11 @@ import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
+import * as api from "@/components/storage/api";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
-import ValidatedDateInput from "@/components/ValidDate";
+import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
@@ -31,8 +32,7 @@ const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecor
 
 export default function BreastfeedingAdd() {
   const router = useRouter();
-  const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } =
-    useChild();
+  const { selectedChildId, selectedChild, reloadChildren } = useChild();
 
   const now = new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
   const today = new Date().toISOString().slice(0, 10);
@@ -41,7 +41,7 @@ export default function BreastfeedingAdd() {
   const [newTime, setNewTime] = useState(now);
   const [newState, setNewState] = useState<"start" | "stop">("start");
   const [errorMessage, setErrorMessage] = useState("");
-
+  const [isSaving, setIsSaving] = useState(false); // Indikátor ukládání
 
   const checkDuplicateDate = (date: string) => {
     if (!selectedChild) return false;
@@ -128,40 +128,41 @@ export default function BreastfeedingAdd() {
     setNewState(last.state === "start" ? "stop" : "start");
   };
 
-  const saveChanges = () => {
-    if (selectedChildIndex === null) return;
+  // --- LOGIKA UKLÁDÁNÍ NA BACKEND ---
+  const saveChanges = async () => {
+    if (!selectedChildId || records.length === 0) {
+      Alert.alert("Chyba", "Nebyl přidán žádný záznam.");
+      return;
+    }
 
     if (errorMessage) {
       Alert.alert("Chyba", errorMessage);
       return;
     }
 
-    // znormalizovat a ověřit všechny časy
-    const normalized: BreastfeedingRecord[] = [];
-    for (const rec of records) {
-      const norm = normalizeTime(rec.time);
-      if (!norm) {
-        Alert.alert("Chybný čas", "Některý z časů není ve formátu HH:MM nebo je mimo rozsah.");
-        return;
-      }
-      normalized.push({ ...rec, time: norm });
+    setIsSaving(true);
+    try {
+      // Příprava dat pro backend
+      // Odesíláme pole záznamů pro jeden konkrétní den
+      const payload = records.map(r => ({
+        date: newDate,
+        time: r.time,
+        state: r.state
+      }));
+
+      // Volání API (předpokládám funkci v api.ts)
+      // Pokud posíláš více záznamů najednou, backend by měl mít endpoint pro bulk insert
+      // nebo to pošli jako aktualizaci celého dne.
+      await api.createBreastfeedingRecord(selectedChildId, payload);
+
+      await reloadChildren(); // Obnova dat v globálním kontextu
+      router.back();
+    } catch (error) {
+      console.error("Chyba při ukládání kojení:", error);
+      Alert.alert("Chyba", "Nepodařilo se uložit záznamy na server.");
+    } finally {
+      setIsSaving(false);
     }
-
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-
-    // proti–duplicitní kontrola dne
-    const existingForDay = (child.breastfeedingRecords || []).some(r => r.date === newDate);
-    if (existingForDay) {
-      Alert.alert("Duplicitní den", "Pro tento den už existují záznamy. Otevři je v režimu úprav.");
-      return;
-    }
-
-    const otherDays = (child.breastfeedingRecords || []).filter((r) => r.date !== newDate);
-    child.breastfeedingRecords = [...otherDays, ...normalized];
-
-    saveAllChildren(updatedChildren);
-    router.back();
   };
 
   return (
@@ -222,7 +223,7 @@ export default function BreastfeedingAdd() {
             }}
           />
           <Pressable onPress={addRecord}>
-            <Text style={styles.icon}>✅</Text>
+            <Text style={[styles.icon, isSaving && { opacity: 0.5 }]}>✅</Text>
           </Pressable>
         </GroupSection>
 
@@ -250,8 +251,9 @@ export default function BreastfeedingAdd() {
 
         <View style={{ marginTop: 30 }}>
           <MyButton 
-            title="Uložit" 
+            title={isSaving ? "Ukládám..." : "Uložit"} // Vizuální zpětná vazba
             onPress={saveChanges}
+            disabled={isSaving || records.length === 0} // Zamezení vícenásobnému kliknutí
           />
         </View>
       </ScrollView>

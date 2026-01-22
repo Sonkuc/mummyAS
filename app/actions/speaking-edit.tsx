@@ -5,57 +5,57 @@ import GroupSection from "@/components/GroupSection";
 import { formatDateLocal, formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
+import * as api from "@/components/storage/api";
 import Title from "@/components/Title";
-import ValidatedDateInput from "@/components/ValidDate";
+import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function SpeakingEdit() {
-  const { wordIndex } = useLocalSearchParams();
+  const { wordId } = useLocalSearchParams();
   const router = useRouter();
-  const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
-  const selectedChild =
-    selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
+  const { selectedChildId, selectedChild, reloadChildren } = useChild();
 
   const [name, setName] = useState("");
-  const [entries, setEntries] = useState<{ date: string; note?: string }[]>([]);
+  const [entries, setEntries] = useState<{ id?: string; date: string; note?: string }[]>([]);
   const [newDate, setDate] = useState(formatDateLocal(new Date()));
   const [newNote, setNewNote] = useState("");
 
+  const currentWord = selectedChild?.words?.find((w: any) => w.id === wordId);
+
   useEffect(() => {
-    if (
-      selectedChildIndex !== null &&
-      wordIndex !== undefined &&
-      allChildren[selectedChildIndex]?.words
-    ) {
-      const idx = Number(wordIndex);
-      const word = allChildren[selectedChildIndex].words[idx];
-      if (word) {
-        setName(word.name);
-        setEntries(word.entries ?? []);
-      }
+    if (currentWord) {
+      setName(currentWord.name);
+      setEntries(currentWord.entries ?? []);
     }
-  }, [wordIndex, selectedChildIndex, allChildren]);
+  }, [currentWord]);
 
-  const handleSave = () => {
-    if (selectedChildIndex === null || wordIndex === undefined) return;
-    
-    const updatedWord = {
-      name: name.trim(),
-      entries: entries.filter(e => e.date.trim() !== ""),
-    };
+  const handleSave = async () => {
+    if (!selectedChildId || !wordId) return;
 
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-    child.words = child.words || [];  // Initialize if undefined
-    const idx = Number(wordIndex);
-    child.words[idx] = updatedWord;
-    saveAllChildren(updatedChildren);
-    router.back();
+    try {
+      const payload = {
+        name: name.trim(),
+        // Posíláme aktuální stav entries zpět na server
+        entries: entries.map(e => ({
+          date: e.date,
+          note: e.note?.trim() || ""
+        })),
+      };
+
+      // API volání
+      await api.updateWord(selectedChildId, String(wordId), payload);
+      
+      await reloadChildren();
+      router.back();
+    } catch (error) {
+      console.error("Chyba při ukládání:", error);
+      Alert.alert("Chyba", "Nepodařilo se uložit změny.");
+    }
   };
 
   const removeEntry = (index: number) => {
@@ -75,11 +75,14 @@ export default function SpeakingEdit() {
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions/speaking" onPress={handleSave}>
-        {selectedChildIndex !== null && wordIndex !== undefined && (
-          <DeleteButton type="word" index={Number(wordIndex)} 
+        {selectedChildId ? (
+          <DeleteButton 
+            type="word" 
+            childId={selectedChildId} 
+            recordId={currentWord?.id}
             onDeleteSuccess={() => router.replace("/actions/speaking")}
           />
-        )}
+        ) : null}
       </CustomHeader>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>{name}</Title>
@@ -111,13 +114,14 @@ export default function SpeakingEdit() {
             />
           </View>
 
-          <Text style={styles.entryLabel}>Výslovnost</Text>
+          <Text style={styles.entryLabel}>Pokrok ve výslovnosti</Text>
           <View style={styles.inputRow}>
             <View style={{ flex: 1 }}>
               <MyTextInput
                 placeholder="Např. Aoj"
                 value={newNote}
                 onChangeText={setNewNote}
+                autoCapitalize="sentences"
               />
             </View>
           </View>

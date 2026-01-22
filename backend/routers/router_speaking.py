@@ -18,32 +18,33 @@ def create_word(
     speaking_data: SpeakingCreate,
     session: Session = Depends(get_session)
 ):
-    # OPRAVENO: Nyní volá správný název funkce z CRUDu
+    # Tento CRUD teď rozebere payload na Slovo + Historii
     return cspeak.create_word(session, child_id, speaking_data)
 
-@router.get("/children/{child_id}/words/{word_id}", response_model=SpeakingRead)
-def get_word(child_id: str, word_id: str, session: Session = Depends(get_session)):
-    w = cspeak.get_word(session, word_id)
-    if not w or w.child_id != child_id:
-        raise HTTPException(status_code=404, detail="Word not found")
-    return w
-
-@router.put("/children/{child_id}/words/{word_id}", response_model=SpeakingRead)
-def update_word(child_id: str, word_id: str, word_data: SpeakingUpdate, session: Session = Depends(get_session)):
+# Pokud chceš endpoint pro přidání nové výslovnosti k existujícímu slovu:
+@router.post("/children/{child_id}/words/{word_id}/entries")
+def add_entry(
+    child_id: str,
+    word_id: str,
+    entry_data: dict, # Zde můžeš vytvořit WordEntryCreate model
+    session: Session = Depends(get_session)
+):
     w = cspeak.get_word(session, word_id)
     if not w or w.child_id != child_id:
         raise HTTPException(status_code=404, detail="Word not found")
     
-    updated = cspeak.update_word(session, word_id, word_data)
-    if updated is None:
-        raise HTTPException(status_code=400, detail="Update failed")
-    return updated
+    return cspeak.add_word_entry(session, word_id, entry_data)
 
-@router.delete("/children/{child_id}/words/{word_id}")
-def delete_word(child_id: str, word_id: str, session: Session = Depends(get_session)):
+@router.put("/children/{child_id}/words/{word_id}", response_model=SpeakingRead)
+def update_word(
+    child_id: str, 
+    word_id: str, 
+    word_data: SpeakingUpdate, # Pozor: SpeakingUpdate musí v models.py obsahovat entries!
+    session: Session = Depends(get_session)
+):
     w = cspeak.get_word(session, word_id)
     if not w or w.child_id != child_id:
         raise HTTPException(status_code=404, detail="Word not found")
         
-    cspeak.delete_word(session, word_id)
-    return {"status": "deleted", "word_id": word_id}
+    updated = cspeak.update_word(session, word_id, word_data)
+    return updated

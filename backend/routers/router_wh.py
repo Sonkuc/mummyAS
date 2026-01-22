@@ -19,7 +19,7 @@ def list_wh(child_id: str, session: Session = Depends(get_session)):
 
 
 @router.post(
-    "/children/{child_id}/wh",
+    "/children/{child_id}/weight-height",
     response_model=WeightHeightRead
 )
 def create_wh(

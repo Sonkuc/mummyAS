@@ -3,6 +3,7 @@ import GroupSection from "@/components/GroupSection";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
+import * as api from "@/components/storage/api";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
@@ -10,7 +11,6 @@ import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import uuid from "react-native-uuid";
 
 type StoredSleepRecord = {
   id: string;
@@ -21,6 +21,7 @@ type StoredSleepRecord = {
 
 type EditableRecord = StoredSleepRecord & {
   label: string;
+  isNew?: boolean; // Co poslat na POST a co na PUT
 };
 
 const renumberSleeps = (records: StoredSleepRecord[]): EditableRecord[] => {
@@ -37,9 +38,10 @@ const renumberSleeps = (records: StoredSleepRecord[]): EditableRecord[] => {
 export default function SleepEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const router = useRouter();
-  const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } = useChild();
+  const { selectedChildId, selectedChild, reloadChildren } = useChild();
 
   const [records, setRecords] = useState<EditableRecord[]>([]);
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [newTime, setNewTime] = useState("");
   const [newState, setNewState] = useState<"awake" | "sleep">("awake");
 
@@ -51,107 +53,92 @@ export default function SleepEdit() {
       });
     };
   
-    const deleteRecord = (index: number) => {
-      Alert.alert("Smazat záznam?", "Opravdu chceš tento záznam smazat?", [
-        { text: "Zrušit", style: "cancel" },
-        {
-          text: "Smazat",
-          style: "destructive",
-          onPress: () => {
-            setRecords((prev) => {
-              const withoutDeleted: StoredSleepRecord[] = prev
-                .filter((_, i) => i !== index)
-                .map(({ label, ...rest }) => rest);
-              return renumberSleeps(withoutDeleted);
-            });
-          },
+  const deleteRecord = (index: number) => {
+    const recToDelete = records[index];
+    Alert.alert("Smazat záznam?", "Změna se projeví až po uložení.", [
+      { text: "Zrušit", style: "cancel" },
+      {
+        text: "Smazat",
+        style: "destructive",
+        onPress: () => {
+          if (!recToDelete.isNew) {
+            setDeletedIds(prev => [...prev, recToDelete.id]);
+          }
+          setRecords(prev => renumberSleeps(prev.filter((_, i) => i !== index)));
         },
-      ]);
-    };
+      },
+    ]);
+  };
 
   // Načtení záznamů pro dané datum
   useEffect(() => {
-    if (!selectedChild || !selectedChild.sleepRecords || typeof date !== "string") return;
+    if (!selectedChild?.sleepRecords || !date) return;
 
-    const dayRecords: StoredSleepRecord[] = selectedChild.sleepRecords
-      .filter(r => r.date === date)
-      .map(r => ({
-        id: r.id,
-        date: r.date,
-        time: r.time,
-        state: ["sleep", "awake"].includes(r.state) ? r.state : r.state.toLowerCase().includes("spán") ? "sleep" : "awake",
-      }));
+    const dayRecords = selectedChild.sleepRecords
+      .filter((r: any) => r.date === date)
+      .sort((a: any, b: any) => a.time.localeCompare(b.time));
 
-    // Pozn.: nevnucujeme opravu uložených nevalidních časů automaticky,
-    // ale při editaci je uživatel musí opravit (onBlur / save zablokuje).
-    setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
     setRecords(renumberSleeps(dayRecords));
-    // Pokud existuje poslední záznam, nastavíme opačný stav
+    setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
+    
     if (dayRecords.length > 0) {
       const lastState = dayRecords[dayRecords.length - 1].state;
       setNewState(lastState === "sleep" ? "awake" : "sleep");
-    } else {
-      setNewState("sleep");
     }
   }, [selectedChild, date]);
 
   const addRecord = () => {
-    // normalizace newTime před přidáním
     const norm = normalizeTime(newTime);
     if (!norm) {
-      Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
+      Alert.alert("Chyba", "Zadejte platný čas.");
       return;
     }
 
-    const newRec: StoredSleepRecord = {
-      id: uuid.v4(),
+    const newRec: EditableRecord = {
+      id: Math.random().toString(), // Dočasné ID pro UI
       date: date!,
       time: norm,
       state: newState,
+      label: "",
+      isNew: true,
     };
 
-    setRecords((prev) => {
-      const withoutLabels: StoredSleepRecord[] = prev.map(({ label, ...rest }) => rest);
-      const updated = [...withoutLabels, newRec].sort((a, b) => a.time.localeCompare(b.time));
-      const renumbered = renumberSleeps(updated);
+    const updated = [...records, newRec].sort((a, b) => a.time.localeCompare(b.time));
+    setRecords(renumberSleeps(updated));
 
-      // Najít poslední stav a přepnout na opačný
-      const lastState = updated[updated.length - 1].state;
-      setNewState(lastState === "awake" ? "sleep" : "awake");
+    const nextState = newState === "sleep" ? "awake" : "sleep";
+    setNewState(nextState);
 
-      // Předvyplnit aktuální čas
-      const now = new Date();
-      const currentTime = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
-      setNewTime(currentTime);
-
-      return renumbered;
+    const now = new Date().toLocaleTimeString("cs-CZ", { 
+      hour: "2-digit", 
+      minute: "2-digit" 
     });
+    setNewTime(now);
+
+    setNewState(newState === "sleep" ? "awake" : "sleep");
   };
 
-  const saveChanges = () => {
-    if (selectedChildIndex === null) return;
+  const saveChanges = async () => {
+    if (!selectedChildId || !date) return;
 
-    // znormalizovat a ověřit všechny časy; pokud některý nevalidní -> zablokovat uložení
-    const normalized: StoredSleepRecord[] = [];
-    for (let i = 0; i < records.length; i++) {
-      const r = records[i];
-      const norm = normalizeTime(r.time);
-      if (!norm) {
-        Alert.alert("Chybný čas", `Záznam č. ${i + 1} obsahuje neplatný čas. Oprav ho prosím.`);
-        return;
-      }
-      normalized.push({ id: r.id, date: r.date, time: norm, state: r.state });
+    try {
+      // Příprava dat: vezmeme aktuální records z UI a vyčistíme je pro backend
+      const dataToSave = records.map(rec => ({
+        date: rec.date,
+        time: normalizeTime(rec.time),
+        state: rec.state,
+        // id a label backend při tomto hromadném uložení nepotřebuje
+      })).filter(r => r.time); // odstraní záznamy s chybným časem
+
+      // JEDINÉ VOLÁNÍ: Přepíšeme celý den
+      await api.updateSleepDay(selectedChildId, date, dataToSave);
+
+      await reloadChildren();
+      router.back();
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Chyba", "Nepodařilo se uložit změny.");
     }
-
-    // uložit normalized (správné) časy
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-
-    const otherDays = (child.sleepRecords || []).filter(r => r.date !== date);
-    child.sleepRecords = [...otherDays, ...normalized];
-
-    saveAllChildren(updatedChildren);
-    router.back();
   };
 
   return (
@@ -162,7 +149,7 @@ export default function SleepEdit() {
         <Subtitle style={{ textAlign: "center" }}>{formatDateToCzech(String(date))}</Subtitle>
 
         {records.map((rec, idx) => (
-          <GroupSection key={idx} style={styles.row}>
+          <GroupSection key={rec.id} style={styles.row}>
             <Text style={{ flex: 1 }}>{rec.label}</Text>
             <TextInput
               style={styles.input}

@@ -12,7 +12,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function Home() {
   const router = useRouter();
-  const { setSelectedChildIndex, allChildren } = useChild();
+  const { allChildren, setSelectedChildId } = useChild();
 
   const getCardColor = (gender: string) =>
     gender === "chlapec" ? COLORS.boyCard :
@@ -41,12 +41,11 @@ export default function Home() {
       ) : (
         allChildren.map((kid, idx) => (
           <Pressable 
-            onPress={() => {
-              setSelectedChildIndex(idx);
-              router.push({
-                pathname: "/actions" });
+            onPress={async () => {
+              await setSelectedChildId(kid.id);
+              router.push("/actions");
             }} 
-            key={kid.id || idx}
+            key={kid.id}
             style={[
               styles.childCard, 
               { backgroundColor: getCardColor(kid.sex)},
@@ -62,9 +61,14 @@ export default function Home() {
               <Text style={styles.name}>{kid.name}</Text>
             </View>
             <EditPencil
-              targetPath="/child-edit"
               color={getIconColor(kid.sex)}
-              onPress={() => setSelectedChildIndex(idx)}
+              onPress={async () => {
+                await setSelectedChildId(kid.id);
+                router.push({
+                  pathname: "/child-edit",
+                  params: { id: kid.id }
+                });
+              }}
             />
           </Pressable>
         ))

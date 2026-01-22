@@ -1,6 +1,6 @@
 import { COLORS } from "@/constants/MyColors";
 import { Dimensions, Text } from "react-native";
-import { BarChart } from "react-native-chart-kit";
+import { BarChart as BarChartComponent } from "react-native-chart-kit";
 
 type Props = {
   title: string;
@@ -11,7 +11,7 @@ type Props = {
 
 export function MyBarChart({ title, data, dayMode = "day" }: Props) {
   const screenWidth = Dimensions.get("window").width;
-
+  const BarChart = BarChartComponent as any;
   const maxHours = Math.max(...data.map((d) => d.hours), 0);
 
   const segments =
@@ -34,26 +34,26 @@ export function MyBarChart({ title, data, dayMode = "day" }: Props) {
         fromZero
         yAxisInterval={1}
         segments={segments}
-        formatYLabel={(v: string) => {
-          const num = parseFloat(v);
-          if (isNaN(num)) return "";
-          if (dayMode === "day") {
-            // zobrazit s 1 desetinným místem
-            return `${num.toFixed(1)}h`;
-          } else {
-            // zobrazit celé číslo
-            return `${Math.round(num)}h`;
-          }
-        }}
-        chartConfig={{
-          backgroundColor: "#fff",
-          backgroundGradientFrom: COLORS.backgroundContainer,
-          backgroundGradientTo: COLORS.backgroundContainer,
-          decimalPlaces: dayMode === "day" ? 1 : 0,
-          color: (opacity = 1) => `rgba(153, 55, 105, ${opacity})`,
-          labelColor: () => "#333",
-          style: { borderRadius: 16 },
-        }}
+        chartConfig={
+          {
+            backgroundColor: "#fff",
+            backgroundGradientFrom: COLORS.backgroundContainer,
+            backgroundGradientTo: COLORS.backgroundContainer,
+            decimalPlaces: dayMode === "day" ? 1 : 0,
+            color: (opacity = 1) => `rgba(153, 55, 105, ${opacity})`,
+            labelColor: () => "#333",
+            style: { borderRadius: 16 },
+            formatYLabel: ((v: string) => {
+              const num = parseFloat(v);
+              if (isNaN(num)) return "";
+              if (dayMode === "day") {
+                return `${num.toFixed(1)} h`;
+              } else {
+                return `${Math.round(num)} h`;
+              }
+            }) as any,
+          } as any
+        }
         style={{
           borderRadius: 16,
           alignSelf: "center",
@@ -63,4 +63,3 @@ export function MyBarChart({ title, data, dayMode = "day" }: Props) {
     </>
   );
 }
-

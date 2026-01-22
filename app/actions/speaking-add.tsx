@@ -5,10 +5,10 @@ import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
-import { Word } from "@/components/storage/SaveChildren";
+import * as api from "@/components/storage/api";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
-import ValidatedDateInput from "@/components/ValidDate";
+import ValidatedDateInput from "@/components/ValidDateInput";
 import { useChild } from "@/contexts/ChildContext";
 import { WORDS } from "@/data/words";
 import { useRouter } from "expo-router";
@@ -21,47 +21,54 @@ export default function SpeakingAdd() {
   const [selectedWord, setSelectedWord] = useState("");
   const [date, setDate] = useState(formatDateLocal(new Date()));
   const [note, setNote] = useState("");
-  const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
-
-  const selectedChild =
-  selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
+  const { selectedChildId, selectedChild, reloadChildren } = useChild();
   
-  const handleAdd = () => {
-    const finalName = (name || selectedWord).trim();
+  const handleAdd = async () => {
+    let finalName = name.trim();
+    if (!selectedChildId) {
+      Alert.alert("Chyba", "Není vybráno dítě.");
+      return;
+    }
 
     if (!finalName) {
       Alert.alert("Chyba", "Zadej nebo vyber slovo.");
       return;
     }
 
-    if (selectedChildIndex === null) return;
-
-    const child = allChildren[selectedChildIndex];
-    const existingWords = child.words || [];
-
-    // DUPLICITNÍ KONTROLA (case insensitive)
+    const existingWords = selectedChild?.words || [];
     const nameExists = existingWords.some(
-      (w) => w.name.toLowerCase() === finalName.toLowerCase()
+      (w: any) => w.name.toLowerCase() === finalName.toLowerCase()
     );
-    if (nameExists) return Alert.alert("Toto slovo už existuje.");
 
-    const newWord: Word = {
+    if (nameExists) {
+      Alert.alert("Info", "Toto slovo už v seznamu existuje.");
+      return;
+    }
+
+  try {
+    // 1. Odeslání dat na server
+    const payload = {
       name: finalName,
       entries: [
         {
-          date,
-          note,
+          date: date,
+          // Pokud je note prázdný, pošli raději null nebo ho vynech, 
+          // pokud ho backend nevyžaduje jako string
+          note: note.trim() || "" 
         },
       ],
     };
 
-    const updatedChildren = [...allChildren];
-    updatedChildren[selectedChildIndex].words = [...existingWords, newWord];
+    await api.createWord(selectedChildId, payload);
 
-    saveAllChildren(updatedChildren);
-
+    // 2. Refresh globálních dat v kontextu
+    await reloadChildren();
     router.back();
-  };
+      } catch (error) {
+        console.error("Chyba při ukládání slova:", error);
+        Alert.alert("Chyba", "Nepodařilo se uložit slovo.");
+      }
+  }; 
 
   return (
     <MainScreenContainer>
@@ -76,6 +83,7 @@ export default function SpeakingAdd() {
               setName(text);
               setSelectedWord(""); // zruší výběr z pickeru v případě vlastního textu
             }}
+            autoCapitalize="sentences"
           />
           <MyPicker
             data={WORDS.map((w, index) => ({ id: `${w.label}-${index}`, label: w.label }))}
@@ -104,6 +112,7 @@ export default function SpeakingAdd() {
           placeholder="Např. Oj"
           value={note}
           onChangeText={setNote}
+          autoCapitalize="sentences"
         />
         <CheckButton onPress = {handleAdd} />
       </ScrollView>

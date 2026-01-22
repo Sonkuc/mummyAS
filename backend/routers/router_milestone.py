@@ -18,7 +18,7 @@ def list_milestones(child_id: str, session: Session = Depends(get_session)):
     return cm.get_milestones_for_child(session, child_id)
 
 @router.post(
-    "/children/{child_id}/milestone",
+    "/children/{child_id}/milestones",
     response_model=MilestoneRead
 )
 def create_milestone(

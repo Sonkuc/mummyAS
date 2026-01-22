@@ -2,16 +2,22 @@ import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
+import { createTeethRecord, deleteTeethRecord } from "@/components/storage/api";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Teeth() {
   const [selectedTooth, setSelectedTooth] = useState<null | string>(null);
-  const { selectedChild, selectedChildIndex, allChildren, saveAllChildren } = useChild();
+  const { reloadChildren, selectedChildId, allChildren } = useChild();
+  
+  const selectedChild = useMemo(() => 
+    allChildren.find(c => c.id === selectedChildId),
+    [allChildren, selectedChildId]
+  );
 
   const teeth = [
     { id: "U1", name: "Levý prostřední řezák", x: "36.7%", y: "8.7%", jaw: "upper"},
@@ -37,6 +43,55 @@ export default function Teeth() {
     { id: "L10", name: "Levá druhá stolička", x: "2.9%",  y: "16.9%", jaw: "lower" }
   ];
 
+  // Převede pole [ {tooth_id: "U1", date: "..."}, ... ] na objekt { "U1": "..." }
+  const toothMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    selectedChild?.teethRecords?.forEach((record: any) => {
+      map[record.tooth_id] = record.date;
+    });
+    return map;
+  }, [selectedChild]);
+
+  const handleDateChange = async (toothId: string, date: Date) => {
+    if (!selectedChild) return;
+    
+    // Zajištění, že bereme datum podle lokálního času, ne UTC
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const localIsoDate = `${year}-${month}-${day}`;
+
+    try {
+      await createTeethRecord(selectedChild.id, {
+        tooth_id: toothId,
+        date: localIsoDate
+      });
+      await reloadChildren();
+    } catch (error) {
+      console.error("Chyba při ukládání zubu:", error);
+    }
+  };
+
+  const handleDateDelete = async () => {
+    if (!selectedChild || !selectedTooth) return;
+
+    // Najdeme v datech z backendu ten konkrétní záznam pro daný zub, abychom znali jeho ID
+    const recordToDelete = selectedChild.teethRecords?.find(
+      (r: any) => r.tooth_id === selectedTooth
+    );
+
+    if (!recordToDelete) return;
+
+    try {
+      // Smažeme podle technického ID (UUID)
+      await deleteTeethRecord(selectedChild.id, recordToDelete.id);
+      await reloadChildren();
+      setSelectedTooth(null); // Zavřeme detail zubu
+    } catch (error) {
+      console.error("Chyba při mazání zubu:", error);
+    }
+  };
+
   const TeethJawSection = ({ jaw, label }: { jaw: "upper" | "lower", label: string }) => (
     <GroupSection>
       <Subtitle style={{ marginLeft: 10, marginTop: 5, marginBottom: -5 }}>{label}</Subtitle>
@@ -50,7 +105,7 @@ export default function Teeth() {
         {teeth.filter(t => t.jaw === jaw).map(tooth => (
           <TouchableOpacity
             key={tooth.id}
-            style={[styles.toothHotspot, { left: tooth.x, top: tooth.y }]}
+            style={[styles.toothHotspot, { left: tooth.x, top: tooth.y } as any ]}
             onPress={() => setSelectedTooth(tooth.id)}
           />
         ))}
@@ -58,40 +113,15 @@ export default function Teeth() {
     </GroupSection>
   );
 
-  const handleDateChange = async (toothId: string, date: Date) => {
-    if (selectedChildIndex === null) return;
-
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-
-    const isoDate = date.toISOString().slice(0, 10);
-    const updatedTeethDates = {
-      ...(child.teethDates || {}),
-      [toothId]: isoDate,
-    };
-
-    updatedChildren[selectedChildIndex] = {
-      ...child,
-      teethDates: updatedTeethDates,
-    };
-
-    await saveAllChildren(updatedChildren);
-  };
-
-  const handleDateDelete = async () => {
-    if (selectedChildIndex === null || !selectedTooth) return;
-
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-
-    const { [selectedTooth]: _, ...remainingToothDates } = child.teethDates || {};
-    updatedChildren[selectedChildIndex] = {
-      ...child,
-      teethDates: remainingToothDates,
-    };
-
-    await saveAllChildren(updatedChildren);
-  };
+  const currentToothDate = useMemo(() => {
+    // Pokud zub existuje v mapě, použijeme jeho datum
+    if (selectedTooth && toothMap[selectedTooth]) {
+      const d = new Date(toothMap[selectedTooth]);
+      return isNaN(d.getTime()) ? new Date() : d;
+    }
+    // Pokud ne, nastavíme dnešek
+    return new Date();
+  }, [selectedTooth, toothMap]); // toothMap se změní až po reloadChildren()
 
   return (
     <MainScreenContainer>
@@ -106,23 +136,18 @@ export default function Teeth() {
               {teeth.find(t => t.id === selectedTooth)?.name}
             </Subtitle>
             <DateSelector
-              date={
-                selectedChild?.teethDates?.[selectedTooth]
-                ? new Date(selectedChild.teethDates[selectedTooth])
-                : new Date()
-              }
-              onChange={(date) => { handleDateChange(selectedTooth, date); }}
-              birthISO={selectedChild ? selectedChild.birthDate : null}
+              date={currentToothDate}
+              onChange={(date) => handleDateChange(selectedTooth!, date)}
+              birthISO={selectedChild?.birthDate}
             />
           </View>
-          {selectedChild?.teethDates?.[selectedTooth] && (
+          {toothMap[selectedTooth] && (
             <View style={styles.row}>
-              <Pressable style={{ justifyContent: "center", marginRight: 8 }} onPress={handleDateDelete}>
+              <Pressable onPress={handleDateDelete}>
                 <Text style={{ fontSize: 14 }}>🚮</Text>
               </Pressable>
               <Text style={styles.dateText}>
-                Datum prořezání:{" "}
-                {new Date(selectedChild.teethDates[selectedTooth]).toLocaleDateString("cs-CZ")}
+                Datum prořezání: {new Date(toothMap[selectedTooth]).toLocaleDateString("cs-CZ")}
               </Text>
             </View>
           )}

@@ -43,19 +43,27 @@ export default function DateSelector({ date, onChange, birthISO }: Props) {
               value={safeTempDate}
               mode="date"
               display={Platform.OS === "ios" ? "spinner" : "default"}
-                onChange={(event, selectedDate) => {
-                  if (selectedDate) {
-                setShow(Platform.OS === "android" ? false : true);
-                setTempDate(selectedDate);
-                onChange(selectedDate);
-              } else {
-                setShow(false);
-              }
-            }}
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  // PRO ANDROID: Schováme picker a hned uložíme (standardní chování)
+                  if (Platform.OS === "android") {
+                    setShow(false);
+                    setTempDate(selectedDate);
+                    onChange(selectedDate); // Tady je to pro Android OK
+                  } else {
+                    // PRO IOS: Jen aktualizujeme vnitřní stav modálu, neukládáme na backend!
+                    setTempDate(selectedDate);
+                  }
+                } else if (Platform.OS === "android") {
+                  setShow(false);
+                }
+              }}
             themeVariant={isDark ? "dark" : "light"}
             style={{ width: "100%" }}
             maximumDate={new Date()}
-            minimumDate={birthISO ? new Date(birthISO) : undefined}
+            minimumDate={birthISO && !isNaN(new Date(birthISO).getTime())
+              ? new Date(birthISO) 
+              : new Date(1950, 0, 1)}
             />
             <View style={styles.buttonRow}>
               <Pressable onPress={() => setShow(false)} style={styles.cancelButton}>
@@ -63,7 +71,7 @@ export default function DateSelector({ date, onChange, birthISO }: Props) {
               </Pressable>
               <Pressable
                 onPress={() => {
-                  onChange(safeTempDate);
+                  onChange(safeTempDate); 
                   setShow(false);
                 }}
                 style={styles.confirmButton}

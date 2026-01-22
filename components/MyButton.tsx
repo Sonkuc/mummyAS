@@ -7,14 +7,18 @@ type Props = {
   icon?: React.ReactNode;
   backgroundColor?: string;
   style?: ViewStyle;
+  disabled?: boolean;
 };
 
-export default function MyButton({ title, onPress, icon, style, backgroundColor }: Props) {
+export default function MyButton({ title, onPress, icon, style, backgroundColor, disabled }: Props) {
   return (
-    <Pressable onPress={onPress} style={[styles.button, style, backgroundColor && { backgroundColor }]}>
+    <Pressable 
+      onPress={disabled ? undefined : onPress} 
+      style={[styles.button, style, backgroundColor && { backgroundColor }, disabled && styles.disabled]}
+    >
       <View style={styles.content}>
         {icon && <View style={styles.icon}>{icon}</View>}
-      <Text style={styles.text}>{title}</Text>
+      <Text style={[styles.text, disabled && styles.disabledText]}>{title}</Text>
       </View>
     </Pressable>
   );
@@ -40,5 +44,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+  },
+  disabled: {
+    opacity: 0.5,
+    backgroundColor: "#ccc",
+  },
+  disabledText: {
+    color: "#999",
   },
 });

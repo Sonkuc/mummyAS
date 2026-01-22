@@ -3,6 +3,7 @@ import GroupSection from "@/components/GroupSection";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
+import * as api from "@/components/storage/api";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -30,7 +31,7 @@ const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecor
 export default function BreastfeedingEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const router = useRouter();
-  const { selectedChild, allChildren, selectedChildIndex, saveAllChildren, setSelectedChild } = useChild();
+  const { selectedChildId, selectedChild, reloadChildren } = useChild();
 
   const [records, setRecords] = useState<DisplayBreastfeedingRecord[]>([]);
   const [newTime, setNewTime] = useState("");
@@ -38,27 +39,20 @@ export default function BreastfeedingEdit() {
 
   // Načtení záznamů pro dané datum
   useEffect(() => {
-    if (!selectedChild || !selectedChild.breastfeedingRecords || typeof date !== "string") return;
+    if (!selectedChild?.breastfeedingRecords || typeof date !== "string") return;
 
     const dayRecords: BreastfeedingRecord[] = selectedChild.breastfeedingRecords
       .filter((r) => r.date === date)
-      .map((r) => {
-        let state: "start" | "stop";
-        if (r.state === "start" || r.state === "stop") {
-          state = r.state;
-        } else {
-          const s = String(r.state).toLowerCase();
-          state = s.includes("Zač") ? "start" : "stop";
-        }
-        return { id: r.id, date: r.date, time: r.time, state };
-      });
+      .map((r) => ({
+        id: r.id,
+        date: r.date,
+        time: r.time,
+        state: r.state as "start" | "stop"
+      }));
 
-    // nevnucuje se oprava uložených nevalidních časů automaticky,
-    // ale při editaci je uživatel musí opravit (onBlur / save zablokuje).
     setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
     setRecords(renumberFeed(dayRecords));
 
-    // Pokud existuje poslední záznam, nastaví se opačný stav
     if (dayRecords.length > 0) {
       const lastState = dayRecords[dayRecords.length - 1].state;
       setNewState(lastState === "start" ? "stop" : "start");
@@ -126,30 +120,32 @@ export default function BreastfeedingEdit() {
   };
 
   // Uložení změn
-  const saveChanges = () => {
-    if (selectedChildIndex === null) return;
+  const saveChanges = async () => {
+    if (!selectedChildId) return;
 
-    // znormalizují se a ověřují všechny časy; pokud některý nevalidní -> zablokuje uložení
-    const normalized: BreastfeedingRecord[] = [];
+    // Validace všech časů
+    const normalized: Omit<BreastfeedingRecord, "id">[] = [];
     for (let i = 0; i < records.length; i++) {
       const r = records[i];
       const norm = normalizeTime(r.time);
       if (!norm) {
-        Alert.alert("Chybný čas", `Záznam č. ${i + 1} obsahuje neplatný čas. Oprav ho prosím.`);
+        Alert.alert("Chybný čas", `Záznam č. ${i + 1} obsahuje neplatný čas.`);
         return;
       }
-      normalized.push({ id: r.id, date: r.date, time: norm, state: r.state });
+      normalized.push({ date: r.date, time: norm, state: r.state });
     }
 
-    // uložíme normalized (správné) časy
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-
-    const otherDays = (child.breastfeedingRecords || []).filter(r => r.date !== date);
-    child.breastfeedingRecords = [...otherDays, ...normalized];
-
-    saveAllChildren(updatedChildren);
-    router.back();
+    try {
+      // Zavoláme nový API endpoint, který nahradí záznamy pro daný den
+      // Tento endpoint si musíš přidat do api.ts (viz níže)
+      await api.updateBreastfeedingDay(selectedChildId, date!, normalized);
+      
+      await reloadChildren(); // Refresh globálního stavu
+      router.back();
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Chyba", "Nepodařilo se uložit změny.");
+    }
   };
 
   return (

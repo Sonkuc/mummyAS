@@ -2,82 +2,89 @@ import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
-import { formatDateLocal, formatDateToCzech, toIsoDate } from "@/components/IsoFormatDate";
+import { formatDateLocal, toIsoDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
+import * as api from "@/components/storage/api";
+import { Milestone } from "@/components/storage/SaveChildren";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
-import ValidatedDateInput from "@/components/ValidDate";
+import ValidatedDateInput from "@/components/ValidDateInput";
 import { useChild } from "@/contexts/ChildContext";
 import { MILESTONES } from "@/data/milestones";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { ScrollView, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { Alert, ScrollView, View } from "react-native";
 
 export default function EditMilestone() {
   const { milId } = useLocalSearchParams<{ milId: string }>();
   const router = useRouter();
-  
+  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+
   const [name, setName] = useState("");
   const [selectedMilestone, setSelectedMilestone] = useState("");
   const [date, setDate] = useState(formatDateLocal(new Date()));
   const [originalDate, setOriginalDate] = useState<string | null>(null);
   const [note, setNote] = useState("");
   
-  const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
-  const selectedChild =
-    selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
-
-  useEffect(() => {
-    if (!selectedChild || milId === undefined) return;
-
-    const idx = Number(milId);
-    const milestone = selectedChild.milestones?.[idx];
-    if (milestone) {
-      const isoDate = toIsoDate(milestone.date); 
-      setName(milestone.name);
-      setDate(toIsoDate(milestone.date));
-      setOriginalDate(isoDate); 
-      setNote(milestone.note || "");
-      const found = MILESTONES.find((m) => m.label === milestone.name);
-      if (found) setSelectedMilestone(found.id);
-    }
+  const currentMilestone = useMemo(() => {
+    return selectedChild?.milestones?.find((m: Milestone) => m.id === milId);
   }, [milId, selectedChild]);
 
-  const handleSave = () => {
-    if (selectedChildIndex === null || milId === undefined) return;
+  useEffect(() => {
+    if (currentMilestone) {
+      setName(currentMilestone.name);
+      
+      let rawDate = currentMilestone.date;
+      
+      // 1. Ošetření lomítek a teček hned na startu
+      if (rawDate.includes("/") || rawDate.includes(".")) {
+        rawDate = toIsoDate(rawDate);
+      }
+      
+      // 2. Kontrola validity, aby se nezobrazovalo dnešní datum
+      if (!rawDate || rawDate.includes("undefined")) {
+        rawDate = new Date().toISOString().slice(0, 10);
+      }
 
-    const idx = Number(milId);
+      setDate(rawDate);
+      setOriginalDate(rawDate);
+      setNote(currentMilestone.note || "");
+    }
+  }, [currentMilestone]);
+
+  const handleSave = async () => {
     const finalName = name.trim();
-    
-    if (!finalName) return; // Ochrana proti prázdnému názvu
+    if (!finalName || !selectedChildId || !milId) return;
 
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-    const milestones = [...(child.milestones ?? [])];
-    
-    // Aktualizace konkrétního milníku na daném indexu
-    milestones[idx] = {
-      ...milestones[idx], // zachová případná data, která needitujeme
-      name: finalName,
-      date: formatDateToCzech(date),
-      note,
-    };
-    
-    child.milestones = milestones;
-    saveAllChildren(updatedChildren);
-    router.back();
+    try {
+      await api.updateMilestone(selectedChildId, milId, {
+        name: finalName,
+        date: date,
+        note: note,
+      });
+
+      await reloadChildren();
+      router.back();
+    } catch (error) {
+      console.error("Chyba při ukládání:", error);
+      Alert.alert("Chyba", "Nepodařilo se uložit změny.");
+    }
   };
-
+  
   return (
     <MainScreenContainer>
       <CustomHeader>
-        {selectedChildIndex !== null && milId !== undefined && (
-          <DeleteButton type="milestone" index={Number(milId)} 
-          onDeleteSuccess={() => router.replace("/actions/milestone")}/>
-        )}
-      </CustomHeader>
+      {selectedChildId ? (
+        <DeleteButton 
+          type="milestone" 
+          childId={selectedChildId} 
+          recordId={currentMilestone?.id}
+          onDeleteSuccess={() => router.replace("/actions/milestone")}
+        />
+      ) : null}
+    </CustomHeader>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Upravit milník</Title>
         <View style={{marginTop: 10}}>
@@ -88,6 +95,7 @@ export default function EditMilestone() {
               setName(text);
               if (text !== "") setSelectedMilestone("");
             }}
+            autoCapitalize="sentences"
           />
           <MyPicker
             data={MILESTONES}
@@ -101,16 +109,20 @@ export default function EditMilestone() {
           <View style={{ width: "80%" }}>
             <ValidatedDateInput
               value={date}
-              onChange={(d) => d && setDate(d)}
-              birthISO={selectedChild ? selectedChild.birthDate : null}
+              onChange={(d) => {
+                if (d && d.length === 10 && !d.includes("undefined")) {
+                  setDate(d);
+                }
+              }}
+              birthISO={selectedChild?.birthDate}
               fallbackOnError="original"
               originalValue={originalDate ?? undefined}
             />
           </View>
           <DateSelector
-            date={new Date(date)}
+            date={isNaN(new Date(date).getTime()) ? new Date() : new Date(date)}
             onChange={(newDate) => setDate(formatDateLocal(newDate))}
-            birthISO={selectedChild ? selectedChild.birthDate : null}
+            birthISO={selectedChild?.birthDate}
           />
         </View>
         <Subtitle style={{marginTop: 10}}>Poznámka</Subtitle>
@@ -118,6 +130,7 @@ export default function EditMilestone() {
           placeholder="Např. u babičky"
           value={note}
           onChangeText={setNote}
+          autoCapitalize="sentences"
         />
         <CheckButton onPress = {handleSave} />
       </ScrollView>

@@ -1,23 +1,19 @@
-import { Child } from "@/components/storage/SaveChildren";
+import * as api from "@/components/storage/api";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
+import React from "react";
 import { Alert, Pressable, Text } from "react-native";
 
 type Props = {
-  type: "child" | "milestone" | "word" | "wh"; // rozšiř podle potřeby
-  index?: number;
-  id?: string;
+  type: "child" | "milestone" | "word" | "wh" | "tooth"; 
+  childId: string; 
+  recordId?: string;
   onDeleteSuccess?: () => void;
 };
 
-export default function DeleteButton({ type, index, id, onDeleteSuccess }: Props) {
+export default function DeleteButton({ type, childId, recordId, onDeleteSuccess }: Props) {
   const router = useRouter();
-  const {
-    selectedChildIndex,
-    setSelectedChildIndex,
-    allChildren,
-    saveAllChildren,
-  } = useChild();
+  const { selectedChildId, setSelectedChildId, reloadChildren } = useChild();
 
   const handleDelete = async () => {
     Alert.alert(
@@ -30,63 +26,41 @@ export default function DeleteButton({ type, index, id, onDeleteSuccess }: Props
           style: "destructive",
           onPress: async () => {
             try {
-              // Pokud mažu celé dítě
               if (type === "child") {
-                const updated = allChildren.filter((_, i) => i !== index);
-                await saveAllChildren(updated);
-
-                if (selectedChildIndex === index) {
-                  await setSelectedChildIndex(updated.length > 0 ? 0 : -1);
+                // 1. Smazání celého dítěte na serveru
+                await api.deleteChild(childId);
+                
+                // Pokud mažu právě vybrané dítě, zruším výběr v kontextu
+                if (selectedChildId === childId) {
+                  await setSelectedChildId(null);
                 }
-
-                router.replace("/");
-                //alert("Dítě bylo smazáno.");
+                
+                await reloadChildren();
+                router.replace("/home");
                 return;
               }
 
-              // Typy polí na dítěti
-              const fieldMap = {
-                milestone: "milestones",
-                word: "words",
-                wh: "wh",
-              } as const;
+              // 2. Smazání dílčích záznamů (milníky, zuby, slova...)
+              if (!recordId) return;
 
-              type FieldType = keyof typeof fieldMap; // "milestone" | "word" | "wh"
-              type FieldKey = typeof fieldMap[FieldType]; // "milestones" | "words" | "whs"
-
-              const fieldKey = fieldMap[type as FieldType] as FieldKey;
-
-              if (selectedChildIndex !== null && fieldKey) {
-                const selected = allChildren[selectedChildIndex];
-                const currentArray = (selected[fieldKey] ?? []) as any[];
-
-                let updatedArray: any[];
-
-                if (id) {
-                  // Mazání podle id (pro milníky)
-                  updatedArray = currentArray.filter((item) => item.milId !== id);
-                } else if (index !== undefined) {
-                  // Mazání podle indexu (pro slova, wh atd.)
-                  updatedArray = currentArray.filter((_, i) => i !== index);
-                } else {
-                  return;
-                }
-
-                const updatedChild: Child = {
-                  ...selected,
-                  [fieldKey]: updatedArray,
-                };
-
-                const updatedAll = allChildren.map((child, i) =>
-                  i === selectedChildIndex ? updatedChild : child
-                );
-
-                await saveAllChildren(updatedAll);
-                onDeleteSuccess?.();
-                //alert("Záznam byl smazán.");
+              if (type === "milestone") {
+                await api.deleteMilestone(childId, recordId);
+              } else if (type === "tooth") {
+                await api.deleteTeethRecord(childId, recordId);
+              } else if (type === "word") {
+                await api.deleteWord(childId, recordId);
+              } else if (type === "wh") {
+                await api.deleteWeightHeight(childId, recordId);
               }
+              // Přidat další typy dle api.ts
+
+              // Po smazání záznamu refreshneme data
+              await reloadChildren();
+              onDeleteSuccess?.();
+              
             } catch (err) {
-              alert("Chyba při mazání záznamu.");
+              console.error("Chyba při mazání:", err);
+              Alert.alert("Chyba", "Nepodařilo se záznam odstranit ze serveru.");
             }
           },
         },

@@ -1,12 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface Milestone {
-  name: string;               // zobrazovaný text
+  id: string;
+  child_id: string; 
+  name: string;
   date: string;
   note?: string;
 };
 
 export interface WeightHeight {
+  id: string;
   date: string;
   weight?: string;
   height?: string;
@@ -57,12 +60,28 @@ export interface RecordTypeSleep {
   extra?: string;
 };
 
+export type WordEntry = {
+  id: string;      // ID záznamu z DB
+  date: string;    // YYYY-MM-DD
+  note?: string;   // Volitelná poznámka
+};
+
 export type Word = {
+  id: string;      // ID slova z DB
+  child_id: string;
   name: string;
-  entries: { date: string; note?: string }[];
+  entries: WordEntry[]; // Pole objektů s vlastními ID
 };
 
 export type ToothDates = Record<string, string>;
+export interface TeethRecord {
+  id: string;  // Backend-generated UUID
+  tooth_id: string;
+  date: string;
+  child_id: string;
+  created_at: string;  // Optional, if needed
+};
+
 export type FoodDates = Record<string, string>;
 
 export interface Child {
@@ -74,6 +93,7 @@ export interface Child {
   milestones?: Milestone[];
   words?: Word[];
   teethDates?: ToothDates;
+  teethRecords?: TeethRecord[]; 
   wh?: WeightHeight[];
   foodDates?: FoodDates;
   foodCategories?: Record<string, string>;

@@ -5,10 +5,10 @@ import HideButton from "@/components/HideButton";
 import { formatDateLocal, formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
-import { WeightHeight } from "@/components/storage/SaveChildren";
+import * as api from "@/components/storage/api";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
-import ValidatedDateInput from "@/components/ValidDate";
+import ValidatedDateInput from "@/components/ValidDateInput";
 import { useChild } from "@/contexts/ChildContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -23,9 +23,7 @@ export default function WeightHeightAdd() {
   const [head, setHead] = useState("");
   const [foot, setFoot] = useState("");
   const [clothes, setClothes] = useState("");
-  const { selectedChildIndex, allChildren, saveAllChildren } = useChild();
-  const selectedChild =
-    selectedChildIndex !== null ? allChildren[selectedChildIndex] : null;
+  const { selectedChildId, selectedChild, reloadChildren } = useChild();
 
   const [hideMode, setHideMode] = useState(false);
   const HIDE_MODE_KEY = "hideMode";
@@ -53,35 +51,44 @@ export default function WeightHeightAdd() {
     }
   };
 
-  const handleAdd = () => {
-    if (selectedChildIndex === null) return;
+  const handleAdd = async () => {
+    // 1. Základní kontroly
+    if (!selectedChildId) {
+      Alert.alert("Chyba", "Není vybráno žádné dítě.");
+      return;
+    }
 
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-    const existingWh = child.wh || [];
+    // 3. Kontrola duplicity 
+    const formattedDateForCheck = formatDateToCzech(date);
+    const dateExists = selectedChild?.wh?.some(
+      (entry: any) => entry.date === formattedDateForCheck || entry.date === date
+    );
 
-    const formattedDate = formatDateToCzech(date);
-      const dateExists = existingWh.some(
-        (wh) => wh.date === formattedDate
-      );  
-      if (dateExists) {
-        Alert.alert("Záznam pro toto datum už existuje.");
-        return;
-      }
+    if (dateExists) {
+      Alert.alert("Chyba", "Záznam pro toto datum již existuje.");
+      return;
+    }
 
-    const newWh: WeightHeight = {
-      date: formatDateToCzech(date),
-      weight,
-      height,
-      head,
-      foot,
-      clothes,
-    };
-  
-    child.wh = [...existingWh, newWh];
-    saveAllChildren(updatedChildren);
+    const clean = (val: string) => (val.trim() === "" ? null : val);
 
-    router.replace("/actions/weight-height");
+    try {
+      const payload = {
+        date: date, // ISO formát YYYY-MM-DD
+        weight: clean(weight),
+        height: clean(height),
+        head: clean(head),
+        foot: clean(foot),
+        clothes: clean(clothes),
+      };
+
+      await api.createWeightHeight(selectedChildId, payload);
+      
+      await reloadChildren(); // Obnova dat v kontextu
+      router.back(); // Návrat na seznam
+    } catch (error) {
+      console.error("Chyba při ukládání WH:", error);
+      Alert.alert("Chyba", "Nepodařilo se uložit data.");
+    }
   };
 
   return (

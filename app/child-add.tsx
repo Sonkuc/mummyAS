@@ -5,9 +5,10 @@ import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import PhotoChooser from "@/components/PhotoChooser";
+import * as api from "@/components/storage/api";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
-import ValidatedDateInput from "@/components/ValidDate";
+import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import * as FileSystem from "expo-file-system/legacy";
@@ -22,7 +23,7 @@ export default function ChildAdd() {
   const [sex, setSex] = useState("");
   const [birthDate, setBirthDate] = useState<Date>(new Date());
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const { saveAllChildren, allChildren, setSelectedChildIndex } = useChild();
+  const { reloadChildren, setSelectedChildId, allChildren } = useChild();
 
   const childId = useMemo(() => uuid.v4() as string, []);
 
@@ -70,27 +71,30 @@ export default function ChildAdd() {
       }     
     }
 
-    const newChild = {
-      id: childId,
-      name,
-      sex,
+    const childData = {
+      name: name.trim(),
+      sex: sex,
       birthDate: formatDateLocal(birthDate),
       photo: finalPhotoUri,
-      milestones: [],
-      words: [],
-      teethDates: {},
-      wh: [],
     };
 
     try {
-      const updatedChildren = [...allChildren, newChild];
-      await saveAllChildren(updatedChildren);
+      // 1. Uložíme dítě a chytíme si odpověď z backendu
+      // Předpokládám, že createChild vrací objekt vytvořeného dítěte i s jeho ID
+      const savedChild = await api.createChild(childData);
 
-      await setSelectedChildIndex(updatedChildren.length - 1);
+      // 2. Refreshneme seznam dětí z backendu
+      await reloadChildren();
 
+      // 3. TADY použijeme setSelectedChildId
+      if (savedChild && savedChild.id) {
+        await setSelectedChildId(savedChild.id);
+      }
+      
       router.back();
     } catch (error) {
-      alert("Nastala neočekávaná chyba při ukládání.");
+      console.error(error);
+      alert("Nepodařilo se uložit dítě na server.");
     }
   };
 
@@ -103,6 +107,7 @@ export default function ChildAdd() {
       <MyTextInput
         placeholder="Jméno"
         value={name}
+        autoCapitalize="words"
         onChangeText={setName}
       />
 
@@ -112,14 +117,15 @@ export default function ChildAdd() {
           <ValidatedDateInput
             value={formatDateLocal(birthDate)}
             onChange={(val) => {
-              if (val) {
+              if (val && val.length === 10) {
                 const [y, m, d] = val.split("-").map(Number);
-                setBirthDate(new Date(y, m - 1, d));
-              } else {
-                setBirthDate(new Date());
+                const newD = new Date(y, m - 1, d);
+                if (!isNaN(newD.getTime())) setBirthDate(newD);
               }
             }}
-            allowPastDates
+            allowPastDates={true}
+            fallbackOnError="original"
+            originalValue={formatDateLocal(new Date())}
           />
         </View>
         <DateSelector

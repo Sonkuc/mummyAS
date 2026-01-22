@@ -4,7 +4,8 @@ import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import { clearStateGeneric, formatDuration, toTimestamp } from "@/components/SleepBfFunctions";
+import { formatDuration, toTimestamp } from "@/components/SleepBfFunctions";
+import * as api from "@/components/storage/api";
 import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
@@ -15,7 +16,6 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight, ChartColumn, Milk, MilkOff } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import uuid from "react-native-uuid";
 
 type DisplayBreastfeedingRecord = BreastfeedingRecord & { label?: string, extra?: string; };
 
@@ -30,10 +30,26 @@ export default function Breastfeeding() {
   const BREST_SIDE_KEY = "brestSideMode";
 
   const router = useRouter();
-  const { selectedChild, allChildren, selectedChildIndex, saveAllChildren } = useChild();
-
-  const clearState = () =>
-      clearStateGeneric("feed", setMode, setMinutesSinceStart, setMinutesSinceStop, setModeStart, selectedChildIndex, allChildren, saveAllChildren);
+  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+  
+  const clearState = async () => {
+    if (!selectedChildId) return;
+    
+    try {
+      // Vymažeme live stav na backendu
+      await api.updateChild(selectedChildId, { currentModeFeed: null });
+      
+      // Lokální reset
+      setMode("");
+      setModeStart(null);
+      setMinutesSinceStart(null);
+      setMinutesSinceStop(null);
+      
+      await reloadChildren();
+    } catch (error) {
+      Alert.alert("Chyba", "Nepodařilo se resetovat stav.");
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -59,34 +75,38 @@ export default function Breastfeeding() {
   };
 
   const addRecord = async (label: string, newMode: "start" | "stop") => {
-    if (!selectedChild) return;
-
-    if (newMode === "stop") setMinutesSinceStart(null);
-    if (newMode === "start") setMinutesSinceStop(null);
+    if (!selectedChildId) return;
 
     const now = new Date();
     const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
-    const date = now.toISOString().slice(0, 10); // vždy ISO YYYY-MM-DD
+    const date = now.toISOString().slice(0, 10);
+    const startTimestamp = Date.now();
 
-    const newRecord: DisplayBreastfeedingRecord = { id: uuid.v4(), date, time, state: newMode};
+    try {
+      // 1. Uložíme záznam do DB přes API
+      // Posíláme jako pole, aby to odpovídalo tvému bulk endpointu
+      await api.createBreastfeedingRecord(selectedChildId, [{
+        date,
+        time,
+        state: newMode
+      }]);
 
-    setRecords((prev) => [...prev, newRecord]);
+      await api.updateChild(selectedChildId, { 
+        currentModeFeed: { mode: newMode, start: startTimestamp } 
+      });
 
-    const startTimestamp = toTimestamp(date, time);
-    setMode(newMode);
-    setModeStart(startTimestamp);
+      // 3. Refresh dat z backendu, aby se projevilo seskupení (grouped)
+      await reloadChildren();
+      
+      // Lokální UI stavy pro čítač
+      setMode(newMode);
+      setModeStart(startTimestamp);
+      if (newMode === "stop") setMinutesSinceStart(null);
+      if (newMode === "start") setMinutesSinceStop(null);
 
-    if (selectedChildIndex !== null) {
-      const updated = [...allChildren];
-      updated[selectedChildIndex].breastfeedingRecords = [
-        ...(updated[selectedChildIndex].breastfeedingRecords || []),
-        newRecord,
-      ];
-      updated[selectedChildIndex].currentModeFeed = {
-        mode: newMode,
-        start: startTimestamp,
-      };
-      saveAllChildren(updated);
+    } catch (error) {
+      console.error("Chyba při ukládání:", error);
+      Alert.alert("Chyba", "Nepodařilo se uložit záznam.");
     }
   };
 
@@ -262,8 +282,8 @@ export default function Breastfeeding() {
           </Text>
         </View>
 
-        {grouped.map(({ date, totalFeedMinutes, records }, groupIdx) => (
-          <GroupSection key={`group-${date}-${groupIdx}`}>
+        {grouped.map(({ date, totalFeedMinutes, records }) => (
+          <GroupSection key={date}>
             <View style={styles.row}>
               {isEditMode && (
                 <EditPencil
@@ -273,7 +293,7 @@ export default function Breastfeeding() {
               )}
               <Text style={styles.dateTitle}>{formatDateToCzech(date)}</Text>
             </View>
-            {records.map((rec, recIdx) => (
+            {records.map((rec) => (
               <Text
                 key={rec.id}
                 style={styles.recordText}
