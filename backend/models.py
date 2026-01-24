@@ -13,6 +13,7 @@ class ChildBase(SQLModel):
     sex: str
     photo: Optional[str] = None
     currentModeFeed: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    currentModeSleep: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
 class ChildRead(ChildBase):
     id: str
@@ -258,9 +259,10 @@ class FoodCategory(str, Enum):
     other = "other"
 
 class FoodRecordBase(SQLModel):
-    category: FoodCategory  # "cereal", "fruit", "vegetable", "meat", "legume", "herbs", "other"
+    category: FoodCategory # "cereal", "fruit", "vegetable", "meat", "legume", "herbs", "other"
     food_name: str
-    date: str  # YYYY-MM-DD format
+    date: Optional[str] = "" # YYYY-MM-DD format
+
 
 class FoodRecordRead(FoodRecordBase):
     id: str

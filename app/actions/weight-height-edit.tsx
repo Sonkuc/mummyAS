@@ -7,7 +7,7 @@ import { formatDateLocal, toIsoDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import * as api from "@/components/storage/api";
-import { WeightHeight } from "@/components/storage/SaveChildren";
+import { WeightHeight } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";

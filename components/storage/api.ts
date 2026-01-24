@@ -326,40 +326,50 @@ export const deleteTeethRecord = async (childId: string, teethId: string) => {
 
 // ============ FOOD API FUNCTIONS ============
 
+// 1. Načtení všech záznamů o jídle pro dané dítě
 export const fetchFoodRecords = async (childId: string) => {
   const response = await fetch(`${BASE_URL}/children/${childId}/food`);
-  if (!response.ok) throw new Error('Failed to fetch food records');
+  
+  if (!response.ok) {
+    // Pokud server spadne, vypíšeme text chyby místo pokusu o parsování JSONu
+    const errorText = await response.text();
+    console.error("API Error (fetchFoodRecords):", errorText);
+    return []; // Vrátíme prázdné pole, aby kontext mohl pokračovat
+  }
+
   return response.json();
 };
 
-export const createFoodRecord = async (childId: string, foodData: any) => {
+// 2. UNIVERZÁLNÍ FUNKCE (Upsert): Přidá nebo aktualizuje datum u potraviny
+export const saveFoodRecord = async (childId: string, foodData: { label: string, date: string, category: string }) => {
   const response = await fetch(`${BASE_URL}/children/${childId}/food`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(foodData),
+    body: JSON.stringify({
+      food_name: foodData.label, // Převod na snake_case pro backend
+      date: foodData.date,       
+      category: foodData.category,
+    }),
   });
-  if (!response.ok) throw new Error('Failed to create food record');
+
+  if (!response.ok) {
+    // Pokud je to chyba 422, FastAPI pošle JSON, pokud 500, pošle text.
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const errorBody = await response.json();
+      console.error("FastAPI Validation Error:", JSON.stringify(errorBody, null, 2));
+    } else {
+      const errorText = await response.text();
+      console.error("Server Error (500):", errorText);
+    }
+    throw new Error('Failed to save food record');
+  }
   return response.json();
 };
 
-export const fetchFoodRecord = async (childId: string, foodId: string) => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/food/${foodId}`);
-  if (!response.ok) throw new Error('Failed to fetch food record');
-  return response.json();
-};
-
-export const updateFoodRecord = async (childId: string, foodId: string, foodData: any) => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/food/${foodId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(foodData),
-  });
-  if (!response.ok) throw new Error('Failed to update food record');
-  return response.json();
-};
-
-export const deleteFoodRecord = async (childId: string, foodId: string) => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/food/${foodId}`, {
+// 3. Smazání záznamu (Resetování potraviny)
+export const deleteFoodRecord = async (childId: string, foodLabel: string) => {
+  const response = await fetch(`${BASE_URL}/children/${childId}/food/${encodeURIComponent(foodLabel)}`, {
     method: 'DELETE',
   });
   if (!response.ok) throw new Error('Failed to delete food record');

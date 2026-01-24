@@ -27,7 +27,7 @@ export default function MyPicker({ data, selectedValue, onChange, setName, place
     ]}>
       <Picker
         selectedValue={selectedValue}
-        onValueChange={value => {
+        onValueChange={(value: string) => {
           onChange(value);
           const selectedLabel = data.find(item => item.id === value)?.label;
           if (selectedLabel) setName(selectedLabel);
@@ -35,6 +35,7 @@ export default function MyPicker({ data, selectedValue, onChange, setName, place
         dropdownIconColor={isDark ? "#fff" : "#000"}
         style={{ color: isDark ? "#fff" : "#000" }}
         themeVariant={isDark ? "dark" : "light"}
+        {...({ } as any)}
       >
         <Picker.Item label={placeholder} value="" enabled={false} />
         {[...data]

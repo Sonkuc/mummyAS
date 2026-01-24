@@ -12,7 +12,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 interface SleepStatEntry {
   date: string;
   total_minutes: number;
-  night_minutes?: number; // Backend spočítá noční spánek
+  night_minutes: number; // Backend spočítá noční spánek
 }
 
 export default function SleepStats() {
@@ -40,62 +40,78 @@ export default function SleepStats() {
 
   // 2. Zpracování dat pro graf (Logika agregace převzatá z kojení)
   const chartData = useMemo(() => {
-    if (!stats.length) return [];
+    if (stats.length === 0) return [];
 
-    // Získáme dnešní datum ve formátu YYYY-MM-DD
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    // 1. Seřazení od nejstaršího po nejnovější
+    let allData = [...stats].sort((a, b) => a.date.localeCompare(b.date));
 
-    const baseData = stats
+    // 2. OŘEZÁNÍ: Odstraníme první a úplně poslední záznam (neuzavřené dny)
+    // slice(1, -1) vezme vše od indexu 1 až po předposlední prvek
+    if (allData.length < 3) return []; // Potřebujeme aspoň 3 dny, aby po ořezu něco zbylo
+    let processed = allData.slice(1, -1);
+
+    const baseData = processed
       .filter(s => {
-        const hours = s.total_minutes / 60;
-        // 1. Vyřadíme dnešek
-        // 2. Vyřadíme nesmysly (více než 22h)
-        // 3. Vyřadíme nulové dny
-        return s.date !== todayStr && hours <= 22 && hours > 0;
+        const totalHours = s.total_minutes / 60;
+        const nightHours = (s.night_minutes || 0) / 60;
+        const dayHours = totalHours - nightHours;
+
+        // TVOJE FILTRY:
+        const isTooLongTotal = totalHours > 23;
+        const isTooLongDay = dayHours > 17;
+        const isEmpty = totalHours <= 0;
+
+        const isInvalid = isTooLongTotal || isTooLongDay || isEmpty;
+        
+        return !isInvalid;
       })
       .map(s => {
-        // Zásadní oprava: Zajistíme, aby night_minutes bylo číslo
         const total = s.total_minutes || 0;
         const night = s.night_minutes || 0;
-        
-        // Výpočet podle režimu
-        const finalMinutes = dayMode === "day" 
-          ? Math.max(0, total - night) 
-          : total;
+        const dayMinutes = total - night;
+
+        const finalMinutes = dayMode === "day" ? Math.max(0, dayMinutes) : total;
+
+        // FORMÁT DATA: Z "YYYY-MM-DD" uděláme "DD/MM"
+        const [year, month, day] = s.date.split("-");
+        const formattedLabel = `${day}/${month}`;
 
         return {
           date: s.date,
           hours: finalMinutes / 60,
-          // DD/MM (např. 21/01)
-          label: s.date.split("-").reverse().slice(0, 2).join("/"),
+          label: formattedLabel, // Nový formát DD/MM
         };
       });
 
-    // --- REŽIMY OBDOBÍ ---
-
+    // 3. OTOČENÍ: Pro grafy obvykle chceme nejnovější data vpravo, 
+    // ale pokud tvůj graf vykresluje zleva, ponech baseData.reverse()
+    const reversedData = baseData.reverse();
+    
+    // 4. VÝBĚR OBDOBÍ
     if (periodMode === "week") {
-      return baseData.slice(-7);
+      return reversedData.slice(0, 7);
     }
 
     if (periodMode === "month") {
-      const last30 = baseData.slice(-30);
+      const last30 = reversedData.slice(0, 30);
       const chunks = [];
       for (let i = 0; i < last30.length; i += 5) {
         const chunk = last30.slice(i, i + 5);
         if (chunk.length === 0) continue;
         const avg = chunk.reduce((sum, r) => sum + r.hours, 0) / chunk.length;
-        // Formát: od DD/MM
         chunks.push({ 
           hours: avg, 
-          label: `od ${chunk[0].label}` 
+          // Lepší label pro pětidenní průměr: zobrazí rozsah "Od-Do"
+          label: chunk.length > 1 
+            ? `${chunk[chunk.length-1].label}-${chunk[0].label}`
+            : chunk[0].label
         });
       }
       return chunks;
     }
 
     if (periodMode === "halfYear") {
-      const last180 = baseData.slice(-180);
+      const last180 = reversedData.slice(0, 180);
       const months: Record<string, { sum: number; count: number }> = {};
       
       last180.forEach(d => {
@@ -105,14 +121,19 @@ export default function SleepStats() {
         months[key].count++;
       });
 
-      return Object.entries(months).map(([key, val]) => ({
-        // Formát: MM/YY
-        label: `${key.split("-")[1]}/${key.split("-")[0].slice(2)}`,
-        hours: val.sum / val.count
-      }));
+      return Object.entries(months)
+        .map(([key, val]) => {
+          const [year, month] = key.split("-");
+          return {
+            label: `${month}/${year.slice(2)}`, // MM/YY
+            hours: val.sum / val.count,
+            key: key
+          };
+        })
+        .sort((a, b) => b.key.localeCompare(a.key));
     }
 
-    return baseData;
+    return reversedData;
   }, [stats, periodMode, dayMode]);
 
   return (

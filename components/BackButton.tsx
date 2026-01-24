@@ -1,6 +1,6 @@
 import { COLORS } from "@/constants/MyColors";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { Pressable, StyleSheet } from "react-native";
 
 type BackButtonProps = {
@@ -15,13 +15,13 @@ export default function BackButton({ targetPath, onPress }: BackButtonProps) {
     if (onPress) {
       await onPress();
       if (typeof targetPath === "string") {
-        router.push(targetPath);
+        router.push(targetPath as Href);
       } else {
         router.back();
       }
     } else {
       if (typeof targetPath === "string") {
-        router.push(targetPath);
+        router.push(targetPath as Href);
       } else {
         router.back();
       }

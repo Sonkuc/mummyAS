@@ -1,26 +1,3 @@
-export const clearStateGeneric = (
-  type: "sleep" | "feed",
-  setMode: (m: any) => void,
-  setMinutesSinceStart: (v: any) => void,
-  setMinutesSinceStop: (v: any) => void,
-  setModeStart: (v: any) => void,
-  selectedChildIndex: number | null,
-  allChildren: any[],
-  saveAllChildren: (ch: any) => void
-) => {
-  setMode("");
-  setMinutesSinceStart(null);
-  setMinutesSinceStop(null);
-  setModeStart(null);
-
-  if (selectedChildIndex !== null) {
-    const updated = [...allChildren];
-    if (type === "sleep") updated[selectedChildIndex].currentModeSleep = null;
-    if (type === "feed") updated[selectedChildIndex].currentModeFeed = null;
-    saveAllChildren(updated);
-  }
-};
-
 export const formatDuration = (minutes: number) => {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
@@ -38,27 +15,6 @@ export const toTimestamp = (dateStr: string, timeStr: string) => {
     const [hh, mm] = timeStr.split(":").map((s) => parseInt(s, 10));
     return new Date(year, month - 1, day, hh, mm).getTime();
   };
-
-export const getLastModeGeneric = (
-  type: "sleep" | "feed",
-  selectedChild: any
-): string | null => {
-  if (!selectedChild) return null;
-
-  if (type === "sleep") {
-    if (selectedChild?.currentModeSleep?.mode) return selectedChild.currentModeSleep.mode;
-    const last = selectedChild?.sleepRecords?.[selectedChild.sleepRecords.length - 1];
-    return last?.state ?? null;
-  }
-
-  if (type === "feed") {
-    if (selectedChild?.currentModeFeed?.mode) return selectedChild.currentModeFeed.mode;
-    const last = selectedChild?.breastfeedingRecords?.[selectedChild.breastfeedingRecords.length - 1];
-    return last?.state ?? null;
-  }
-
-  return null;
-};
 
 // povolit jen čísla a 1 dvojtečku, max délka 5
 export const handleTimeInput = (txt: string, set: (v: string) => void) => {

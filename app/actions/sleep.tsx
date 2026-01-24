@@ -6,6 +6,7 @@ import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import { formatDuration, toTimestamp } from "@/components/SleepBfFunctions";
 import * as api from "@/components/storage/api";
+import { SleepRecord } from "@/components/storage/interfaces";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
@@ -14,6 +15,9 @@ import { useRouter } from "expo-router";
 import { ChartColumn, Eye, EyeClosed } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+
+type DisplaySleepRecord = SleepRecord & { label?: string; extra?: string };
+type EnhancedRecord = DisplaySleepRecord & { ts: number };
 
 export default function Sleep() {
   const [records, setRecords] = useState<any[]>([]);
@@ -25,82 +29,7 @@ export default function Sleep() {
   const router = useRouter();
   const { selectedChildId, selectedChild, reloadChildren } = useChild();
 
-  // 1. NAČTENÍ DAT A SYNCHRONIZACE REŽIMU (stejně jako u kojení)
-  useFocusEffect(
-    useCallback(() => {
-      if (selectedChild?.sleepRecords) {
-        setRecords(
-          selectedChild.sleepRecords.map((rec: any) => ({
-            ...rec,
-            label: rec.state === "sleep" ? "Spánek od:" : "Vzhůru od:",
-          }))
-        );
-      }
-
-      // Synchronizace "Live" stavu z backendu (přidáme currentModeSleep do modelu Child)
-      if (selectedChild?.currentModeSleep) {
-        const { mode, start } = selectedChild.currentModeSleep;
-        setMode(mode);
-        setModeStart(start);
-        const diff = Math.floor((Date.now() - start) / 60000);
-        setMinutesSinceMode(diff);
-      } else {
-        // Fallback na poslední záznam, pokud currentModeSleep není nastaven
-        const sorted = [...(selectedChild?.sleepRecords || [])].sort(
-          (a, b) => toTimestamp(a.date, a.time) - toTimestamp(b.date, b.time)
-        );
-        const last = sorted.at(-1);
-        if (last) {
-          setMode(last.state);
-          const ts = toTimestamp(last.date, last.time);
-          setModeStart(ts);
-          setMinutesSinceMode(Math.floor((Date.now() - ts) / 60000));
-        }
-      }
-    }, [selectedChild])
-  );
-
-  // 2. TICKER
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
-    if (mode && modeStart) {
-      const tick = () => {
-        setMinutesSinceMode(Math.floor((Date.now() - modeStart) / 60000));
-      };
-      tick();
-      interval = setInterval(tick, 60000);
-    }
-    return () => { if (interval) clearInterval(interval); };
-  }, [mode, modeStart]);
-
-  // 3. AKCE: PŘIDÁNÍ ZÁZNAMU (Opravené API a Bulk)
-  const addRecord = async (newMode: "awake" | "sleep") => {
-    if (!selectedChildId) return;
-    
-    const now = new Date();
-    const timestamp = Date.now();
-    const payload = {
-      date: now.toISOString().slice(0, 10),
-      time: now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }),
-      state: newMode
-    };
-
-    try {
-      // Použijeme createSleepBulk (v api.ts) a pošleme pole
-      await api.createSleepBulk(selectedChildId, [payload]);
-
-      // Uložíme live stav do profilu dítěte (stejně jako u kojení)
-      await api.updateChild(selectedChildId, { 
-        currentModeSleep: { mode: newMode, start: timestamp } 
-      });
-
-      await reloadChildren(); 
-    } catch (e) {
-      Alert.alert("Chyba", "Nepodařilo se uložit záznam.");
-    }
-  };
-
-  // 4. AKCE: RESET (Smazání live stavu)
+  // RESET STAVU
   const clearState = async () => {
     if (!selectedChildId) return;
     try {
@@ -109,31 +38,100 @@ export default function Sleep() {
       setModeStart(null);
       setMinutesSinceMode(null);
       await reloadChildren();
-    } catch (e) {
+    } catch (error) {
       Alert.alert("Chyba", "Nepodařilo se resetovat stav.");
     }
   };
 
-  // 3. VÝPOČET GROUPED DAT (PRO ZOBRAZENÍ)
+  // NAČTENÍ DAT A SYNCHRONIZACE
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedChild?.sleepRecords) {
+        setRecords(
+          selectedChild.sleepRecords.map((rec) => ({
+            ...rec,
+            label: rec.state === "sleep" ? "Spánek od:" : "Vzhůru od:",
+          }))
+        );
+      }
+
+      if (selectedChild?.currentModeSleep) {
+        const { mode, start } = selectedChild.currentModeSleep;
+        setMode(mode as "awake" | "sleep");
+        setModeStart(start);
+        const diff = Math.floor((Date.now() - start) / 60000);
+        setMinutesSinceMode(diff);
+      }
+    }, [selectedChild])
+  );
+
+  // TICKER
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (mode && modeStart) {
+      const tick = () => {
+        const diffMinutes = Math.floor((Date.now() - modeStart) / 60000);
+        setMinutesSinceMode(diffMinutes);
+      };
+      tick();
+      interval = setInterval(tick, 60000);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [mode, modeStart]);
+
+  // POMOCNÁ FUNKCE PRO KONTROLU
+  const getLastMode = (): "awake" | "sleep" | null => {
+    if (selectedChild?.currentModeSleep?.mode) {
+      return selectedChild.currentModeSleep.mode as "awake" | "sleep";
+    }
+    const last = selectedChild?.sleepRecords?.[selectedChild.sleepRecords.length - 1];
+    return (last?.state as "awake" | "sleep") ?? null;
+  };
+
+  // PŘIDÁNÍ ZÁZNAMU
+  const addRecord = async (newMode: "awake" | "sleep") => {
+    if (!selectedChildId) return;
+
+    const now = new Date();
+    const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+    const date = now.toISOString().slice(0, 10);
+    const startTimestamp = Date.now();
+
+    try {
+      // Bulk create (pole)
+      await api.createSleepBulk(selectedChildId, [{ date, time, state: newMode }]);
+      // Live stav
+      await api.updateChild(selectedChildId, { 
+        currentModeSleep: { mode: newMode, start: startTimestamp } 
+      });
+
+      await reloadChildren();
+      setMode(newMode);
+      setModeStart(startTimestamp);
+    } catch (error) {
+      Alert.alert("Chyba", "Nepodařilo se uložit záznam.");
+    }
+  };
+
+  // VÝPOČET GROUPED DAT (PRO ZOBRAZENÍ)
   const grouped = useMemo(() => {
     if (!records.length) return [];
 
     // 1. Seskupení podle data
-    // Definujeme typ pro acc (akumulátor): objekt, kde klíč je string a hodnota je pole objektů
     const groupedMap = records.reduce((acc: Record<string, any[]>, rec: any) => {
       if (!acc[rec.date]) acc[rec.date] = [];
       acc[rec.date].push({ ...rec, ts: toTimestamp(rec.date, rec.time) });
       return acc;
     }, {});
 
-    // 2. Transformace na pole a výpočet durací
+    // 2. Transformace a výpočet denních úseků
     const groups = Object.entries(groupedMap)
-      .map(([date, recs]: [string, any[]]) => { // Přidán typ pro parametry map
-        const sortedAsc = [...recs].sort((a: any, b: any) => a.ts - b.ts); // Přidán typ a, b
+      .map(([date, recs]) => {
+        const sortedAsc = [...recs].sort((a, b) => a.ts - b.ts);
         let totalSleepMinutes = 0;
         let sleepCounter = 1;
 
-        const enhanced = sortedAsc.map((curr: any, i: number) => { // Přidán typ curr, i
+        const enhanced = sortedAsc.map((curr, i) => {
           const next = sortedAsc[i + 1];
           let extra = "";
           if (next) {
@@ -169,8 +167,6 @@ export default function Sleep() {
         const nightMinutes = Math.floor((firstAwakeToday.ts - lastSleepYesterday.ts) / 60000);
         if (nightMinutes > 0) {
           yesterday.totalSleepMinutes += nightMinutes;
-          (yesterday as any).nightSleepMinutes = nightMinutes;
-          // Aktualizace popisku u včerejšího posledního spánku
           const recIdx = yesterday.records.findIndex(r => r.id === lastSleepYesterday.id);
           if (recIdx !== -1) yesterday.records[recIdx].extra = ` → ${formatDuration(nightMinutes)}`;
         }
@@ -191,14 +187,32 @@ export default function Sleep() {
 
         <View style={styles.buttonsRow}>
           <Pressable
-            style={[styles.button, { backgroundColor: "white" }, mode === "awake" && styles.eyeButtonSelected]}
-            onPress={() => addRecord("awake")}
+            style={[
+              styles.button, { backgroundColor: "#fff" },
+              mode === "awake" && styles.eyeButtonSelected,
+            ]}
+            onPress={() => {
+              if (getLastMode() === "awake") {
+                Alert.alert(`${selectedChild?.name} už je vzhůru.`);
+                return;
+              }
+              addRecord("awake");
+            }}
           >
             <Eye size={28}/>
           </Pressable>
           <Pressable
-            style={[styles.button, { backgroundColor: "#000" }, mode === "sleep" && styles.eyeButtonSelected]}
-            onPress={() => addRecord("sleep")}
+            style={[
+              styles.button, { backgroundColor: "#000" },
+              mode === "sleep" && styles.eyeButtonSelected,
+            ]}
+            onPress={() => {
+              if (getLastMode() === "sleep") {
+                Alert.alert(`${selectedChild?.name} už spí.`);
+                return;
+              }
+              addRecord("sleep");
+            }}
           >
             <EyeClosed color="white" size={28}/>
           </Pressable>
@@ -218,26 +232,24 @@ export default function Sleep() {
         )}
 
         <View style={{ marginTop: 10 }}>
-          {grouped.map((group) => (
-            <GroupSection key={group.date}>
+          {grouped.map(({ date, totalSleepMinutes, records }) => (
+            <GroupSection key={date}>
               <View style={styles.row}>
                 {isEditMode && (
-                  <EditPencil 
-                    targetPath={`/actions/sleep-edit?date=${encodeURIComponent(group.date)}`} 
-                    color={COLORS.primary} 
+                  <EditPencil
+                    targetPath={`/actions/sleep-edit?date=${encodeURIComponent(date)}`}
+                    color={COLORS.primary}
                   />
                 )}
-                <Text style={styles.dateTitle}>{formatDateToCzech(group.date)}</Text>
+                <Text style={styles.dateTitle}>{formatDateToCzech(date)}</Text>
               </View>
-
-              {group.records.map((rec: any, idx: number) => (
-                <Text key={idx} style={styles.recordText}>
-                  {rec.label}{rec.extra}
+              {records.map((rec) => (
+                <Text key={rec.id} style={styles.recordText}>
+                  {rec.label}{rec.extra ?? ""}
                 </Text>
               ))}
-
               <Text style={styles.totalText}>
-                Celkem spánku: {Math.floor(group.totalSleepMinutes / 60)}h {group.totalSleepMinutes % 60}m
+                Celkem spánku: {Math.floor(totalSleepMinutes / 60)}h {totalSleepMinutes % 60}m
               </Text>
             </GroupSection>
           ))}

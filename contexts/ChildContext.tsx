@@ -1,5 +1,5 @@
-import { fetchChildren, updateChild as updateChildAPI } from "@/components/storage/api";
-import { Child } from "@/components/storage/SaveChildren";
+import { fetchChildren, fetchFoodRecords, updateChild as updateChildAPI } from "@/components/storage/api";
+import { Child, FoodDates } from "@/components/storage/interfaces";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -10,7 +10,7 @@ type ChildContextType = {
   allChildren: Child[];
   updateChild: (child: Child) => Promise<void>;
   reloadChildren: () => Promise<void>;
-  // saveAllChildren můžeme nechat pro masivní operace, ale většinou už nebude třeba
+  // saveAllChildren nechat pro masivní operace, ale většinou netřeba
   saveAllChildren: (children: Child[]) => Promise<void>;
 };
 
@@ -20,41 +20,59 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
   const [allChildren, setAllChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildIdState] = useState<string | null>(null);
 
-  // 1. Výpočet aktuálního dítěte podle ID
   const selectedChild = useMemo(() => {
     return allChildren.find(c => c.id === selectedChildId) || null;
   }, [allChildren, selectedChildId]);
 
-  // 2. Načtení dat při startu (API + ID z paměti)
+  const reloadChildren = useCallback(async () => {
+  try {
+    const childrenFromAPI = await fetchChildren();
+
+    const enrichedChildren = await Promise.all(
+      childrenFromAPI.map(async (child: Child) => {
+        try {
+          const foodRecords = await fetchFoodRecords(child.id);
+          
+          const foodDates: FoodDates = {};
+          const foodCategories: Record<string, string> = {};
+
+          foodRecords.forEach((rec: any) => {
+            foodDates[rec.food_name] = rec.date || "";
+            foodCategories[rec.food_name] = rec.category;
+          });
+
+          // DŮLEŽITÉ: Musíme zachovat vše, co přišlo z childrenFromAPI (včetně sleepRecords)
+          // a k tomu přidat ty ztransformované foodDates
+          return { 
+            ...child, 
+            foodDates, 
+            foodCategories 
+          };
+        } catch (e) {
+          console.warn(`Nepodařilo se načíst jídlo pro dítě ${child.id}`, e);
+          return child; // Vrátíme dítě tak, jak je, bez foodDates
+        }
+      })
+    );
+
+    setAllChildren(enrichedChildren);
+    await AsyncStorage.setItem("children", JSON.stringify(enrichedChildren));
+  } catch (error) {
+    console.error("Failed to reload children", error);
+    const stored = await AsyncStorage.getItem("children");
+    if (stored) setAllChildren(JSON.parse(stored));
+  }
+}, []);
+
+  // Inicializace
   useEffect(() => {
     const initData = async () => {
-      // Nejprve načteme děti
-      try {
-        const childrenFromAPI = await fetchChildren();
-        setAllChildren(childrenFromAPI);
-        await AsyncStorage.setItem("children", JSON.stringify(childrenFromAPI));
-      } catch (error) {
-        const stored = await AsyncStorage.getItem("children");
-        if (stored) setAllChildren(JSON.parse(stored));
-      }
-
-      // Pak načteme ID vybraného dítěte
+      await reloadChildren();
       const storedId = await AsyncStorage.getItem("selectedChildId");
       if (storedId) setSelectedChildIdState(storedId);
     };
-
     initData();
-  }, []);
-
-  const reloadChildren = useCallback(async () => {
-    try {
-      const children = await fetchChildren();
-      setAllChildren(children);
-      await AsyncStorage.setItem("children", JSON.stringify(children));
-    } catch (error) {
-      console.error("Failed to reload children", error);
-    }
-  }, []);
+  }, [reloadChildren]);
 
   const setSelectedChildId = useCallback(async (id: string | null) => {
     setSelectedChildIdState(id);

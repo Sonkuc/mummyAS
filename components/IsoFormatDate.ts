@@ -16,7 +16,7 @@ export const formatDateToCzech = (isoDate: string): string => {
 export const toIsoDate = (dateStr: string): string => {
   if (!dateStr || dateStr.includes("undefined")) return "";
   
-  // Nahradíme lomítka tečkami, abychom sjednotili vstup
+  // sjednocení vstupu / a .
   const cleanDate = dateStr.replace(/\//g, ".");
   const parts = cleanDate.split(".");
   

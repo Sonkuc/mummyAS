@@ -1,3 +1,4 @@
+import * as api from "@/components/storage/api";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import React, { useState } from "react";
@@ -24,10 +25,11 @@ type Props = {
 };
 
 export default function FoodCategoryScreen({ title, categoryKey, dataList }: Props) {
-  const { selectedChild, selectedChildIndex, allChildren, saveAllChildren } = useChild();
+  const { selectedChild, selectedChildId, reloadChildren } = useChild();
   const [selectedFood, setSelectedFood] = useState<null | string>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newFoodLabel, setNewFoodLabel] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const getChildAgeInMonths = (): number => {
     if (!selectedChild?.birthDate) return 0;
@@ -41,7 +43,10 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
 
   const introducedFoods = Object.entries(selectedChild?.foodDates || {})
     .filter(([_, date]) => !!date)
-    .filter(([label]) => dataList.some(item => item.label === label) || selectedChild?.foodCategories?.[label] === categoryKey);
+    .filter(([label]) => 
+      dataList.some(item => item.label === label) || 
+      selectedChild?.foodCategories?.[label] === categoryKey
+    );
 
   const myFoods = Object.entries(selectedChild?.foodDates || {})
     .filter(([_, date]) => date === "")
@@ -57,29 +62,49 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
     return !date && getChildAgeInMonths() < item.month;
   });
 
+  // 2. Změna data (Ukládání na backend)
   const handleDateChange = async (foodLabel: string, date: Date) => {
-    if (selectedChildIndex === null) return;
-    const child = allChildren[selectedChildIndex];
+    if (!selectedChildId) return;
+    
     const isoDate = date.toISOString().slice(0, 10);
-    if (child.foodDates?.[foodLabel] === isoDate) return;
-    const updatedChildren = [...allChildren];
-    updatedChildren[selectedChildIndex] = {
-      ...child,
-      foodDates: { ...(child.foodDates || {}), [foodLabel]: isoDate },
-    };
-    await saveAllChildren(updatedChildren);
+    // Pokud je datum stejné, neposíláme nic
+    if (selectedChild?.foodDates?.[foodLabel] === isoDate) return;
+
+    try {
+      setLoading(true);
+      // Volání backendu
+      await api.saveFoodRecord(selectedChildId, {
+        label: foodLabel,
+        date: isoDate,
+        category: categoryKey // Posíláme kategorii pro případ, že jde o novou potravinu
+      });
+      // Obnovíme data dítěte v kontextu
+      await reloadChildren();
+    } catch (err) {
+      console.error("Chyba při ukládání jídla:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // 3. Smazání data (Nastavení na prázdný string nebo null)
   const handleDateDelete = async () => {
-    if (selectedChildIndex === null || !selectedFood) return;
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-    updatedChildren[selectedChildIndex] = {
-      ...child,
-      foodDates: { ...(child.foodDates || {}), [selectedFood]: "" },
-    };
-    await saveAllChildren(updatedChildren);
-    setSelectedFood(null);
+    if (!selectedChildId || !selectedFood) return;
+
+    try {
+      setLoading(true);
+      await api.saveFoodRecord(selectedChildId, {
+        label: selectedFood,
+        date: "", // Vymaže datum, jídlo se přesune do "Moje" nebo zpět do "Navrženo"
+        category: categoryKey
+      });
+      await reloadChildren();
+      setSelectedFood(null);
+    } catch (err) {
+      console.error("Chyba při mazání data jídla:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const modalAdd = () => {
@@ -87,17 +112,26 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
     setShowAddModal(true);
   };
 
+  // 4. Přidání nové potraviny
   const handleAddNewFood = async () => {
-    if (!newFoodLabel.trim() || selectedChildIndex === null) return;
-    const updatedChildren = [...allChildren];
-    const child = updatedChildren[selectedChildIndex];
-    updatedChildren[selectedChildIndex] = {
-      ...child,
-      foodDates: { ...(child.foodDates || {}), [newFoodLabel.trim()]: "" },
-      foodCategories: { ...(child.foodCategories || {}), [newFoodLabel.trim()]: categoryKey },
-    };
-    await saveAllChildren(updatedChildren);
-    setShowAddModal(false);
+    const label = newFoodLabel.trim();
+    if (!label || !selectedChildId) return;
+
+    try {
+      setLoading(true);
+      await api.saveFoodRecord(selectedChildId, {
+        label: label,
+        date: "", // Přidá potravinu bez data
+        category: categoryKey
+      });
+      await reloadChildren();
+      setShowAddModal(false);
+      setNewFoodLabel("");
+    } catch (err) {
+      console.error("Chyba při přidávání potraviny:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -176,6 +210,7 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
               placeholder="Název potraviny"
               value={newFoodLabel}
               onChangeText={setNewFoodLabel}
+              autoCapitalize="sentences"
             />
             <View style={styles.titleRow}>
               <Pressable onPress={handleAddNewFood}>

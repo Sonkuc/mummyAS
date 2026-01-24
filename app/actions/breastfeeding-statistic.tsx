@@ -12,62 +12,90 @@ export default function BreastfeedingStats() {
   const [periodMode, setPeriodMode] = useState<"week" | "month" | "halfYear">("week");
   const [stats, setStats] = useState<{ date: string; total_minutes: number }[]>([]);
   const { selectedChildId } = useChild();
+  const [loading, setLoading] = useState(true);
 
-  // 1. Načtení předpočítaných dat z backendu
   useEffect(() => {
     if (selectedChildId) {
+      setLoading(true);
       api.fetchBreastfeedingStats(selectedChildId)
-        .then(setStats)
-        .catch(err => console.error("Chyba při načítání statistik:", err));
+        .then((data) => {
+          setStats(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Chyba při načítání statistik kojení:", err);
+          setLoading(false);
+        });
     }
   }, [selectedChildId]);
 
-  // 2. Zpracování dat pro graf (filtrování a průměrování)
   const chartData = useMemo(() => {
-    if (!stats.length) return [];
+    if (stats.length === 0) return [];
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    
-    // Převedeme na základní formát pro grafy a vynecháme dnešek (neúplná data)
-    const baseData = stats
-      .filter(s => s.date !== todayStr)
-      .map(s => ({
-        date: s.date,
-        hours: s.total_minutes / 60,
-        label: `${s.date.split("-")[2]}/${s.date.split("-")[1]}`, // DD/MM
-      }));
+    // 1. Seřazení od nejstaršího po nejnovější
+    let allData = [...stats].sort((a, b) => a.date.localeCompare(b.date));
+
+    const baseData = allData
+      .map(s => {
+        // FORMÁT DATA: DD/MM
+        const [year, month, day] = s.date.split("-");
+        const formattedLabel = `${day}/${month}`;
+
+        return {
+          date: s.date,
+          hours: s.total_minutes / 60,
+          label: formattedLabel,
+        };
+      });
+
+    // 3. OTOČENÍ: Pro výběr období slice-ujeme od nejnovějších
+    const reversedData = baseData.reverse();
 
     if (periodMode === "week") {
-      return baseData.slice(-7);
+      return reversedData.slice(0, 7);
     }
 
     if (periodMode === "month") {
-      const last30 = baseData.slice(-30);
+      const last30 = reversedData.slice(0, 30);
       const chunks = [];
       for (let i = 0; i < last30.length; i += 5) {
         const chunk = last30.slice(i, i + 5);
+        if (chunk.length === 0) continue;
         const avg = chunk.reduce((sum, r) => sum + r.hours, 0) / chunk.length;
-        chunks.push({ hours: avg, label: chunk[0].label });
+        chunks.push({ 
+          hours: avg, 
+          label: chunk.length > 1 
+            ? `${chunk[chunk.length - 1].label}-${chunk[0].label}` 
+            : chunk[0].label 
+        });
       }
       return chunks;
     }
 
     if (periodMode === "halfYear") {
-      const last180 = baseData.slice(-180);
+      const last180 = reversedData.slice(0, 180);
       const months: Record<string, { sum: number; count: number }> = {};
+      
       last180.forEach(d => {
-        const key = d.date.slice(0, 7); // YYYY-MM
+        const key = d.date.slice(0, 7);
         if (!months[key]) months[key] = { sum: 0, count: 0 };
         months[key].sum += d.hours;
         months[key].count++;
       });
-      return Object.entries(months).map(([key, val]) => ({
-        label: `${key.split("-")[1]}/${key.split("-")[0].slice(2)}`,
-        hours: val.sum / val.count
-      }));
+
+      return Object.entries(months)
+        .map(([key, val]) => {
+          const [year, month] = key.split("-");
+          return {
+            label: `${month}/${year.slice(2)}`,
+            hours: val.sum / val.count,
+            key: key
+          };
+        })
+        .sort((a, b) => b.key.localeCompare(a.key));
     }
 
-    return baseData;
+    return reversedData;
   }, [stats, periodMode]);
 
   return (
@@ -75,19 +103,15 @@ export default function BreastfeedingStats() {
       <CustomHeader backTargetPath="/actions/breastfeeding" />
       <Title>Statistika kojení</Title>
 
-      {/* Tvoje styly zachovány */}
       <View style={styles.row}>
-        {(["week", "month", "halfYear"] as const).map((mode) => (
+        {(["week", "month", "halfYear"] as const).map((m) => (
           <Pressable
-            key={mode}
-            style={[
-              styles.periodButton,
-              periodMode === mode && styles.activeButton,
-            ]}
-            onPress={() => setPeriodMode(mode)}
+            key={m}
+            style={[styles.periodButton, periodMode === m && styles.activeButton]}
+            onPress={() => setPeriodMode(m)}
           >
             <Text style={styles.buttonText}>
-              {mode === "week" ? "Týden" : mode === "month" ? "Měsíc" : "Půlrok"}
+              {m === "week" ? "Týden" : m === "month" ? "Měsíc" : "Půlrok"}
             </Text>
           </Pressable>
         ))}
@@ -108,7 +132,9 @@ export default function BreastfeedingStats() {
             dayMode="day"
           />
         ) : (
-          <Text style={styles.noData}>Zatím nemáte dostatek dat.</Text>
+          <Text style={styles.noData}>
+            {loading ? "Načítám data..." : "Zatím nemáte dostatek dat."}
+          </Text>
         )}
       </View>
     </MainScreenContainer>

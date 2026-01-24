@@ -1,6 +1,6 @@
 import { COLORS } from "@/constants/MyColors";
 import { FontAwesome } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { Pressable, StyleSheet } from "react-native";
 
 type Props = {
@@ -19,7 +19,7 @@ export default function EditPencil({ targetPath, color, circle = false, onPress,
       if (onPress) {
         onPress();
       } if (targetPath) {
-        router.push(targetPath);
+        router.push(targetPath as Href);
         }
     };
     

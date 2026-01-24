@@ -6,6 +6,7 @@ import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
 import * as api from "@/components/storage/api";
+import { SleepRecord } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
@@ -14,15 +15,11 @@ import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import uuid from 'react-native-uuid';
 
-type LocalRecord = {
-  date: string;
-  time: string;
-  state: "sleep" | "awake";
-  label: string;
-};
+type DisplaySleepRecord = SleepRecord & { label: string };
 
-const renumberSleeps = (records: Omit<LocalRecord, 'label'>[]): LocalRecord[] => {
+const renumberSleeps = (records: SleepRecord[]): DisplaySleepRecord[] => {
   let sleepCount = 0;
   return records.map((r) => {
     if (r.state === "sleep") {
@@ -39,7 +36,7 @@ export default function SleepAdd() {
   
   const now = new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });  
   const [newDate, setNewDate] = useState(formatDateLocal(new Date()));  
-  const [records, setRecords] = useState<LocalRecord[]>([]);
+  const [records, setRecords] = useState<DisplaySleepRecord[]>([]);
   const [newTime, setNewTime] = useState(now);
   const [newState, setNewState] = useState<"sleep" | "awake">("awake");
   const [errorMessage, setErrorMessage] = useState("");
@@ -79,10 +76,20 @@ export default function SleepAdd() {
   };
 
   const deleteRecord = (index: number) => {
-    setRecords(prev => {
-      const filtered = prev.filter((_, i) => i !== index);
-      return renumberSleeps(filtered.map(({ label, ...rest }) => rest));
-    });
+    Alert.alert("Smazat záznam?", "Opravdu chceš tento záznam smazat?", [
+      { text: "Zrušit", style: "cancel" },
+      {
+        text: "Smazat",
+        style: "destructive",
+        onPress: () => {
+          setRecords((prev) => {
+            const filtered = prev.filter((_, i) => i !== index);
+            // Při přečíslování čisté SleepRecord (bez labelu)
+            return renumberSleeps(filtered.map(({ label, ...rest }) => rest));
+          });
+        },
+      },
+    ]);
   };
 
   const addRecord = () => {
@@ -97,15 +104,19 @@ export default function SleepAdd() {
       return;
     }
 
-    const newRec = { date: newDate, time: norm, state: newState };
-    const all = [...records.map(({ label, ...rest }) => rest), newRec]
+    const newRec: SleepRecord = { 
+      id: uuid.v4() as string, 
+      date: newDate, 
+      time: norm, 
+      state: newState 
+    };    
+    
+    const allRecords = [...records.map(({ label, ...rest }) => rest), newRec]
       .sort((a, b) => a.time.localeCompare(b.time));
 
-    setRecords(renumberSleeps(all));
+    setRecords(renumberSleeps(allRecords));
     
-    // Automatické přepnutí stavu pro další záznam
-    const last = all[all.length - 1];
-    setNewState(last.state === "sleep" ? "awake" : "sleep");
+    setNewState(newState === "sleep" ? "awake" : "sleep");
     setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
   };
 
@@ -118,11 +129,14 @@ export default function SleepAdd() {
 
     setIsSaving(true);
     try {
-      // PŘÍPRAVA DAT PRO BACKEND (odstranění labelu)
-      const dataToSave = records.map(({ label, ...rest }) => rest);
+      // Očistíme data o label před odesláním na backend
+      const payload = records.map(({ label, ...rest }) => ({
+        date: rest.date,
+        time: rest.time,
+        state: rest.state
+      }));
 
-      await api.createSleepBulk(selectedChildId, dataToSave);
-
+      await api.createSleepBulk(selectedChildId, payload);
       await reloadChildren();
       router.back();
     } catch (e) {

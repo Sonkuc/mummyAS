@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from ..crud import crud_sleep as cs
 from ..models import SleepRecord, SleepRecordCreate, SleepRecordUpdate, SleepRecordRead
 from ..db import get_session
+import datetime
 
 router = APIRouter()
 
@@ -34,59 +35,56 @@ def create_sleep_bulk(
 
 
 # Pomocná funkce pro výpočet minut (můžeš ji dát i do jiného souboru)
-def to_minutes(time_str: str):
-    try:
-        h, m = map(int, time_str.split(':'))
-        return h * 60 + m
-    except:
-        return 0
-    
 @router.get("/children/{child_id}/sleep/stats")
 def get_sleep_stats(child_id: str, session: Session = Depends(get_session)):
-    # 1. Načtení dat přímo ze session
     statement = select(SleepRecord).where(SleepRecord.child_id == child_id)
     records = session.exec(statement).all()
-    
-    if not records:
-        return []
+    if not records: return []
 
-    # 2. Seskupení podle data
-    days = {}
-    for r in records:
-        if r.date not in days:
-            days[r.date] = []
-        days[r.date].append(r)
+    all_sorted = sorted(records, key=lambda x: (x.date, x.time))
     
-    stats = []
-    sorted_dates = sorted(days.keys())
-    
-    for date in sorted_dates:
-        # Seřadíme záznamy v daném dni podle času
-        day_records = sorted(days[date], key=lambda x: x.time)
-        total_minutes = 0
-        night_minutes = 0
-        
-        # Procházíme páry sleep -> awake
-        for i in range(len(day_records) - 1):
-            curr = day_records[i]
-            nxt = day_records[i+1]
-            
+    days_map = {}
+    for r in all_sorted:
+        if r.date not in days_map:
+            days_map[r.date] = []
+        days_map[r.date].append(r)
+
+    sorted_dates = sorted(days_map.keys())
+    daily_results = {d: {"total_minutes": 0, "night_minutes": 0} for d in sorted_dates}
+
+    # 1. Výpočet denních spánků (bez limitů, aby se to shodovalo s frontendem)
+    for d in sorted_dates:
+        recs = days_map[d]
+        for i in range(len(recs) - 1):
+            curr = recs[i]
+            nxt = recs[i+1]
             if curr.state == "sleep":
-                duration = to_minutes(nxt.time) - to_minutes(curr.time)
-                if duration > 0:
-                    total_minutes += duration
-                    # Toto určuje, co je NOC:
-                    hour = int(curr.time.split(':')[0])
-                    if hour >= 19 or hour < 7:  # Pokud spánek začal mezi 19h večer a 7h ráno
-                        night_minutes += duration
+                start_dt = datetime.datetime.strptime(f"{curr.date} {curr.time}", "%Y-%m-%d %H:%M")
+                end_dt = datetime.datetime.strptime(f"{nxt.date} {nxt.time}", "%Y-%m-%d %H:%M")
+                diff = int((end_dt - start_dt).total_seconds() // 60)
+                # POZOR: Odstraněna horní hranice 1080, ponecháno jen diff > 0
+                if diff > 0:
+                    daily_results[d]["total_minutes"] += diff
+
+    # 2. Logika nočního spánku (přesah mezi dny)
+    for i in range(len(sorted_dates) - 1):
+        d_today = sorted_dates[i]
+        d_tomorrow = sorted_dates[i+1]
         
-        stats.append({
-            "date": date,
-            "total_minutes": total_minutes,
-            "night_minutes": night_minutes
-        })
-        
-    return stats
+        last_sleep_today = next((r for r in reversed(days_map[d_today]) if r.state == "sleep"), None)
+        first_awake_tomorrow = next((r for r in days_map[d_tomorrow] if r.state == "awake"), None)
+
+        if last_sleep_today and first_awake_tomorrow:
+            t1 = datetime.datetime.strptime(f"{last_sleep_today.date} {last_sleep_today.time}", "%Y-%m-%d %H:%M")
+            t2 = datetime.datetime.strptime(f"{first_awake_tomorrow.date} {first_awake_tomorrow.time}", "%Y-%m-%d %H:%M")
+            
+            night_diff = int((t2 - t1).total_seconds() // 60)
+            
+            if night_diff > 0:
+                daily_results[d_today]["total_minutes"] += night_diff
+                daily_results[d_today]["night_minutes"] = night_diff
+
+    return [{"date": d, **v} for d, v in sorted(daily_results.items())]
 
 @router.get("/children/{child_id}/sleep/{sleep_id}", response_model=SleepRecordRead)
 def get_sleep(child_id: str, sleep_id: str, session: Session = Depends(get_session)):

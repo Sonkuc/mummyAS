@@ -4,7 +4,7 @@ import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
 import * as api from "@/components/storage/api";
-import type { BreastfeedingRecord } from "@/components/storage/SaveChildren";
+import type { BreastfeedingRecord } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";

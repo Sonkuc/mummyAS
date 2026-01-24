@@ -1,10 +1,10 @@
 import { COLORS } from "@/constants/MyColors";
 import React from "react";
-import { StyleSheet, Text, TextStyle, ViewStyle } from "react-native";
+import { StyleSheet, Text, TextStyle } from "react-native";
 
 type Props = {
   children: React.ReactNode;
-  style?: TextStyle | ViewStyle;
+  style?: TextStyle;
 };
 
 export default function Subtitle({ children, style }: Props) {

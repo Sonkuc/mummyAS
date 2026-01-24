@@ -5,20 +5,28 @@ from ..models import FoodRecord, FoodRecordCreate, FoodRecordUpdate
 
 # ============ FOOD CRUD OPERATIONS ============
 
-def create_food_record(
-    session: Session,
-    child_id: str,
-    data: FoodRecordCreate
-):
-    rec = FoodRecord(
-        **data.dict(),
-        child_id=child_id
+def save_food_record(session: Session, child_id: str, data: FoodRecordCreate):
+    # OPRAVA: Musíme hledat podle food_name, ne label
+    statement = select(FoodRecord).where(
+        FoodRecord.child_id == child_id, 
+        FoodRecord.food_name == data.food_name  # Změněno z .label
     )
-    session.add(rec)
-    session.commit()
-    session.refresh(rec)
-    return rec
+    existing_rec = session.exec(statement).first()
 
+    if existing_rec:
+        existing_rec.date = data.date
+        existing_rec.category = data.category
+        session.add(existing_rec)
+        session.commit()
+        session.refresh(existing_rec)
+        return existing_rec
+    else:
+        rec = FoodRecord(**data.dict(), child_id=child_id)
+        session.add(rec)
+        session.commit()
+        session.refresh(rec)
+        return rec
+    
 def get_food_record(session: Session, food_id: str) -> Optional[FoodRecord]:
     """Return a food record by its primary id."""
     return session.get(FoodRecord, food_id)

@@ -7,7 +7,7 @@ import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
 import * as api from "@/components/storage/api";
-import { Milestone } from "@/components/storage/SaveChildren";
+import { Milestone } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";

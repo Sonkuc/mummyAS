@@ -1,5 +1,5 @@
 import { COLORS } from "@/constants/MyColors";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { Plus } from "lucide-react-native";
 import { Pressable, StyleSheet } from "react-native";
 
@@ -16,7 +16,7 @@ export default function AddButton({ targetPath, onPress, style }: Props) {
     if (onPress) {
       onPress();
     } else if (targetPath) {
-      router.push(targetPath);
+      router.push(targetPath as Href);
     }
   };
 
