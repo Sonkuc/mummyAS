@@ -48,3 +48,26 @@ def update_word(
         
     updated = cspeak.update_word(session, word_id, word_data)
     return updated
+
+@router.delete("/children/{child_id}/words/{word_id}")
+def delete_word(
+    child_id: str, 
+    word_id: str, 
+    session: Session = Depends(get_session)
+):
+    # 1. Nejprve ověříme, zda slovo existuje a patří danému dítěti
+    w = cspeak.get_word(session, word_id)
+    
+    if not w:
+        raise HTTPException(status_code=404, detail="Word not found")
+        
+    if str(w.child_id) != child_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this word")
+
+    # 2. Volání CRUD funkce pro smazání
+    success = cspeak.delete_word(session, word_id)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete word from database")
+
+    return {"message": "Word deleted successfully"}

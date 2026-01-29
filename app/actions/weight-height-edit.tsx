@@ -118,8 +118,6 @@ export default function WeightHeightEdit() {
       }
   };
 
-  console.log(currentWhRecord)
-
   return (
     <MainScreenContainer>
       <CustomHeader>

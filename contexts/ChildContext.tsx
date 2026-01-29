@@ -1,4 +1,4 @@
-import { fetchChildren, fetchFoodRecords, updateChild as updateChildAPI } from "@/components/storage/api";
+import * as api from "@/components/storage/api";
 import { Child, FoodDates } from "@/components/storage/interfaces";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -25,35 +25,35 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
   }, [allChildren, selectedChildId]);
 
   const reloadChildren = useCallback(async () => {
-  try {
-    const childrenFromAPI = await fetchChildren();
+    try {
+      const childrenFromAPI = await api.fetchChildren();
 
-    const enrichedChildren = await Promise.all(
-      childrenFromAPI.map(async (child: Child) => {
-        try {
-          const foodRecords = await fetchFoodRecords(child.id);
-          
-          const foodDates: FoodDates = {};
-          const foodCategories: Record<string, string> = {};
+      const enrichedChildren = await Promise.all(
+        childrenFromAPI.map(async (child: Child) => {
+          try {
+            // Paralelní načítání jídla (nebo jiných detailů, pokud nejsou v hlavním objektu)
+            const foodRecords = await api.fetchFoodRecords(child.id);
+            
+            const foodDates: FoodDates = {};
+            const foodCategories: Record<string, string> = {};
 
-          foodRecords.forEach((rec: any) => {
-            foodDates[rec.food_name] = rec.date || "";
-            foodCategories[rec.food_name] = rec.category;
-          });
+            foodRecords.forEach((rec: any) => {
+              foodDates[rec.food_name] = rec.date || "";
+              foodCategories[rec.food_name] = rec.category;
+            });
 
-          // DŮLEŽITÉ: Musíme zachovat vše, co přišlo z childrenFromAPI (včetně sleepRecords)
-          // a k tomu přidat ty ztransformované foodDates
-          return { 
-            ...child, 
-            foodDates, 
-            foodCategories 
-          };
-        } catch (e) {
-          console.warn(`Nepodařilo se načíst jídlo pro dítě ${child.id}`, e);
-          return child; // Vrátíme dítě tak, jak je, bez foodDates
-        }
-      })
-    );
+            return { 
+              ...child, 
+              foodDates, 
+              foodCategories 
+              // Důležité: child.sleepRecords a breastfeedingRecords už musí mít ID z DB
+            };
+          } catch (e) {
+            console.warn(`Nepodařilo se načíst jídlo pro dítě ${child.id}`, e);
+            return child; 
+          }
+        })
+      );
 
     setAllChildren(enrichedChildren);
     await AsyncStorage.setItem("children", JSON.stringify(enrichedChildren));
@@ -67,9 +67,11 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
   // Inicializace
   useEffect(() => {
     const initData = async () => {
-      await reloadChildren();
       const storedId = await AsyncStorage.getItem("selectedChildId");
       if (storedId) setSelectedChildIdState(storedId);
+      
+      // Reload až po nastavení ID, aby aplikace hned věděla, co zobrazit
+      await reloadChildren();
     };
     initData();
   }, [reloadChildren]);
@@ -83,20 +85,23 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  // Místo celého objektu Child často jen změny
   const updateChild = useCallback(
     async (updatedChild: Child) => {
       try {
-        await updateChildAPI(updatedChild.id, updatedChild);
+        // Nejprve API volání
+        await api.updateChild(updatedChild.id, updatedChild);
+        // Poté reload, aby se projevily i změny, které mohl vypočítat server
         await reloadChildren();
       } catch (e) {
-        const newChildren = allChildren.map(c =>
-          c.id === updatedChild.id ? updatedChild : c
-        );
-        setAllChildren(newChildren);
-        await AsyncStorage.setItem("children", JSON.stringify(newChildren));
+        // Optimistický update v případě výpadku (offline)
+        setAllChildren(prev => prev.map(c => 
+          c.id === updatedChild.id ? { ...c, ...updatedChild } : c
+        ));
+        console.error("Update failed, using local fallback", e);
       }
     },
-    [allChildren, reloadChildren]
+    [reloadChildren]
   );
 
   const saveAllChildren = useCallback(

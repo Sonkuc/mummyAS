@@ -8,6 +8,7 @@ import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
 import * as api from "@/components/storage/api";
 import { SleepRecord } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
+import TimeSelector from "@/components/TimeSelector";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
@@ -190,12 +191,10 @@ export default function SleepAdd() {
               </Text>
             </Pressable>
           </View>
-          <TextInput 
-            placeholder="HH:MM" 
-            style={[styles.input, { width: 75, marginLeft: 10 }]} 
-            value={newTime} 
-            onChangeText={(txt) => handleTimeInput(txt, setNewTime)}
-          />
+          <TimeSelector 
+  time={newTime} 
+  onChange={setNewTime}
+/>
           <Pressable onPress={addRecord}>
             <Text style={styles.icon}>✅</Text>
           </Pressable>

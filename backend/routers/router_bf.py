@@ -39,30 +39,38 @@ def get_bf(child_id: str, bf_id: str, session: Session = Depends(get_session)):
     return bf
 
 
-@router.put("/children/{child_id}/breastfeeding/day/{date}") # Přidáno /day/ pro jasné rozlišení
+@router.put("/children/{child_id}/breastfeeding/day/{date}", response_model=List[BreastfeedingRecordRead])
 def update_bf_day(
     child_id: str, 
     date: str, 
     bf_data: List[BreastfeedingRecordCreate], 
     session: Session = Depends(get_session)
 ):
-    # 1. Najdeme staré záznamy pro tento konkrétní den
+    # 1. Najdeme a smažeme staré záznamy pro tento konkrétní den
     statement = select(BreastfeedingRecord).where(
         BreastfeedingRecord.child_id == child_id,
         BreastfeedingRecord.date == date
     )
     existing_records = session.exec(statement).all()
-    
     for record in existing_records:
         session.delete(record)
     
-    # 2. Vložíme nové záznamy ze seznamu
-    for item in bf_data:
+    # 2. Seřadíme nová data podle času (prevence chaosu v ID/pořadí)
+    sorted_data = sorted(bf_data, key=lambda x: x.time)
+    
+    # 3. Vložíme nové záznamy
+    new_records = []
+    for item in sorted_data:
         new_rec = BreastfeedingRecord(**item.dict(), child_id=child_id)
         session.add(new_rec)
+        new_records.append(new_rec)
     
     session.commit()
-    return {"status": "success", "date": date}
+    # 4. Refreshneme záznamy, aby měly ID z databáze pro návrat
+    for r in new_records:
+        session.refresh(r)
+        
+    return new_records
 
 @router.delete("/children/{child_id}/breastfeeding/{bf_id}")
 def delete_bf(child_id: str, bf_id: str, session: Session = Depends(get_session)):

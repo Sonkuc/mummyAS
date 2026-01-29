@@ -58,9 +58,12 @@ export default function SpeakingEdit() {
     }
   };
 
-  const removeEntry = (index: number) => {
-    setEntries(prev => prev.filter((_, i) => i !== index));
-  };
+  const removeEntry = (entryToRemove: { date: string; note?: string }) => {
+  setEntries(prev => prev.filter(e => 
+    // Mažeme ten, který se neshoduje v datu i poznámce zároveň
+    !(e.date === entryToRemove.date && e.note === entryToRemove.note)
+  ));
+};
 
   const addEntry = () => {
     if (!newDate.trim()) return;
@@ -79,7 +82,7 @@ export default function SpeakingEdit() {
           <DeleteButton 
             type="word" 
             childId={selectedChildId} 
-            recordId={currentWord?.id}
+            recordId={wordId as string}
             onDeleteSuccess={() => router.replace("/actions/speaking")}
           />
         ) : null}
@@ -87,12 +90,12 @@ export default function SpeakingEdit() {
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>{name}</Title>
         {sortedEntries.map((entry, index) => (
-          <GroupSection key={index} style={{ flexDirection: "row" }}>
+          <GroupSection key={`${entry.date}-${index}`} style={{ flexDirection: "row" }}>
             <View style={{ flex: 1 }}>
               <Text style={styles.entryText}>Datum: {formatDateToCzech(entry.date)}</Text>
               <Text style={styles.entryText}>Poznámka: {entry.note}</Text>
             </View>
-            <TouchableOpacity onPress={() => removeEntry(index)}>
+            <TouchableOpacity onPress={() => removeEntry(entry)}>
               <Text style={styles.delete}>🚮</Text>
             </TouchableOpacity>
           </GroupSection>

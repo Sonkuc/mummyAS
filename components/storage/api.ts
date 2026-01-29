@@ -19,8 +19,6 @@ export const createChild = async (childData: any) => {
   });
 
   if (!response.ok) {
-    const errorDetail = await response.json(); // FastAPI vrací detaily o tom, co je špatně
-    console.log("Detail chyby z backendu:", JSON.stringify(errorDetail, null, 2));
     throw new Error('Failed to create child');
   }
   return response.json();
@@ -275,10 +273,16 @@ export const updateWord = async (childId: string, wordId: string, wordData: any)
 };
 
 export const deleteWord = async (childId: string, wordId: string) => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/words/${wordId}`, {
+  const url = `${BASE_URL}/children/${childId}/words/${wordId}`;
+  const response = await fetch(url, {
     method: 'DELETE',
   });
-  if (!response.ok) throw new Error('Failed to delete word');
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error("Detail chyby smazání:", errorData);
+    throw new Error('Failed to delete word');
+  }
   return response;
 };
 
