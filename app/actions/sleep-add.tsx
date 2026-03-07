@@ -1,12 +1,11 @@
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
+import { normalizeTime } from "@/components/HelperFunctions";
 import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
-import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
-import * as api from "@/components/storage/api";
-import { SleepRecord } from "@/components/storage/interfaces";
+import { Child, SleepRecord } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import TimeSelector from "@/components/TimeSelector";
 import Title from "@/components/Title";
@@ -15,7 +14,7 @@ import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from 'react-native-uuid';
 
 type DisplaySleepRecord = SleepRecord & { label: string };
@@ -31,14 +30,18 @@ const renumberSleeps = (records: SleepRecord[]): DisplaySleepRecord[] => {
   });
 };
 
+const getCleanTime = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
 export default function SleepAdd() {
   const router = useRouter();
-  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+  const { selectedChildId, selectedChild, updateChild } = useChild();
   
-  const now = new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });  
   const [newDate, setNewDate] = useState(formatDateLocal(new Date()));  
   const [records, setRecords] = useState<DisplaySleepRecord[]>([]);
-  const [newTime, setNewTime] = useState(now);
+  const [newTime, setNewTime] = useState(getCleanTime());
   const [newState, setNewState] = useState<"sleep" | "awake">("awake");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -56,9 +59,12 @@ export default function SleepAdd() {
 
   // Při načtení stránky zkontrolujeme dnešní datum
   useEffect(() => {
-    checkDuplicateDate(newDate);
-  }, [newDate, selectedChild]);
-
+    // Pokud právě ukládáme, kontrolu duplicity ignorujeme
+    if (!isSaving) {
+      checkDuplicateDate(newDate);
+    }
+  }, [newDate, selectedChild, isSaving]);
+  
   // Při změně data
   const handleDateChange = (d: Date) => {
     const formatted = formatDateLocal(d);
@@ -68,10 +74,10 @@ export default function SleepAdd() {
     }
   };
 
-  const updateTime = (index: number, newTime: string) => {
+  const updateTime = (index: number, t: string) => {
     setRecords((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], time: newTime };
+      updated[index] = { ...updated[index], time: t };
       return updated;
     });
   };
@@ -118,11 +124,12 @@ export default function SleepAdd() {
     setRecords(renumberSleeps(allRecords));
     
     setNewState(newState === "sleep" ? "awake" : "sleep");
-    setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
+    setNewTime(getCleanTime());
   };
 
   const saveChanges = async () => {
-    if (!selectedChildId || records.length === 0) return;
+    // 1. Validace
+    if (!selectedChildId || !selectedChild || records.length === 0) return;
     if (errorMessage) {
       Alert.alert("Chyba", errorMessage);
       return;
@@ -130,19 +137,32 @@ export default function SleepAdd() {
 
     setIsSaving(true);
     try {
-      // Očistíme data o label před odesláním na backend
-      const payload = records.map(({ label, ...rest }) => ({
+      // 2. Příprava čistých dat (včetně ID pro offline identifikaci)
+      const newDayRecords: SleepRecord[] = records.map(({ label, ...rest }) => ({
+        id: rest.id || (uuid.v4() as string), 
+        child_id: selectedChildId,
         date: rest.date,
-        time: rest.time,
+        time: rest.time, // Zde jsou časy z tvého state 'records'
         state: rest.state
       }));
 
-      await api.createSleepBulk(selectedChildId, payload);
-      await reloadChildren();
+      // 3. Odstranění starých záznamů pro TENTO den z lokální kopie
+      const otherDaysRecords = (selectedChild.sleepRecords || []).filter(
+        (r) => r.date !== newDate
+      );
+
+      // 4. Vytvoření finálního objektu dítěte
+      const updatedChild: Child = {
+        ...selectedChild,
+        sleepRecords: [...otherDaysRecords, ...newDayRecords]
+      };
+
+      await updateChild(updatedChild);
+
       router.back();
     } catch (e) {
-      console.error(e);
-      Alert.alert("Chyba", "Nepodařilo se uložit záznamy na server.");
+      console.error("Chyba při ukládání spánku:", e);
+      Alert.alert("Chyba", "Záznamy se nepodařilo uložit.");
     } finally {
       setIsSaving(false);
     }
@@ -192,9 +212,9 @@ export default function SleepAdd() {
             </Pressable>
           </View>
           <TimeSelector 
-  time={newTime} 
-  onChange={setNewTime}
-/>
+            time={newTime} 
+            onChange={setNewTime}
+          />
           <Pressable onPress={addRecord}>
             <Text style={styles.icon}>✅</Text>
           </Pressable>
@@ -203,10 +223,9 @@ export default function SleepAdd() {
         {records.map((r, i) => (
           <GroupSection key={i} style={styles.row}>
             <Text style={{ flex: 1 }}>{r.label}</Text>
-            <TextInput
-              style={[styles.input, { width: 75, marginRight: 15 }]}
-              value={r.time}
-              onChangeText={(txt) => handleTimeInput(txt, (t) => updateTime(i, t))}
+            <TimeSelector 
+              time={r.time} 
+              onChange={(t) => updateTime(i, t)}
             />
             <Pressable onPress={() => deleteRecord(i)}>
               <Text style={styles.icon}>🚮</Text>

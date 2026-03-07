@@ -5,7 +5,7 @@ import HideButton from "@/components/HideButton";
 import { formatDateLocal, formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
-import * as api from "@/components/storage/api";
+import { WeightHeight } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
@@ -23,7 +23,8 @@ export default function WeightHeightAdd() {
   const [head, setHead] = useState("");
   const [foot, setFoot] = useState("");
   const [clothes, setClothes] = useState("");
-  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const [isSaving, setIsSaving] = useState(false);
 
   const [hideMode, setHideMode] = useState(false);
   const HIDE_MODE_KEY = "hideMode";
@@ -52,15 +53,16 @@ export default function WeightHeightAdd() {
   };
 
   const handleAdd = async () => {
-    // 1. Základní kontroly
-    if (!selectedChildId) {
+    if (isSaving) return;
+
+    if (!selectedChildId || !selectedChild) {
       Alert.alert("Chyba", "Není vybráno žádné dítě.");
       return;
     }
 
-    // 3. Kontrola duplicity 
+    // Kontrola duplicity (pro jistotu kontrolujeme oba formáty)
     const formattedDateForCheck = formatDateToCzech(date);
-    const dateExists = selectedChild?.wh?.some(
+    const dateExists = selectedChild.wh?.some(
       (entry: any) => entry.date === formattedDateForCheck || entry.date === date
     );
 
@@ -69,11 +71,14 @@ export default function WeightHeightAdd() {
       return;
     }
 
-    const clean = (val: string) => (val.trim() === "" ? null : val);
-
+    setIsSaving(true);
     try {
-      const payload = {
-        date: date, // ISO formát YYYY-MM-DD
+      const clean = (val: string) => (val.trim() === "" ? undefined : val);
+
+      // 1. Vytvoříme nový záznam (objekt pro pole wh)
+      const newWHEntry: WeightHeight = {
+        id: `local-${Date.now()}`,
+        date: date,
         weight: clean(weight),
         height: clean(height),
         head: clean(head),
@@ -81,13 +86,21 @@ export default function WeightHeightAdd() {
         clothes: clean(clothes),
       };
 
-      await api.createWeightHeight(selectedChildId, payload);
-      
-      await reloadChildren(); // Obnova dat v kontextu
-      router.back(); // Návrat na seznam
+      // 2. Připravíme aktualizovaný objekt dítěte - CELÉ dítě s upraveným polem 'wh'
+      const updatedChildData = {
+        ...selectedChild,
+        wh: [...(selectedChild.wh || []), newWHEntry]
+      };
+
+      // 3. Použijeme updateChild z Provideru! 
+      await updateChild(updatedChildData);
+
+      router.back(); 
     } catch (error) {
       console.error("Chyba při ukládání WH:", error);
       Alert.alert("Chyba", "Nepodařilo se uložit data.");
+    } finally {
+      setIsSaving(false); // Resetujeme stav (důležité pro případ chyby)
     }
   };
 
@@ -160,7 +173,7 @@ export default function WeightHeightAdd() {
             />
           </>
         )}
-        <CheckButton onPress={handleAdd} />
+        <CheckButton onPress={handleAdd} disabled={isSaving} style={{ opacity: isSaving ? 0.5 : 1 }} />
       </ScrollView>
     </MainScreenContainer>
   );

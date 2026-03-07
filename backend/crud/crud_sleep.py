@@ -3,7 +3,6 @@ from typing import List, Optional
 
 from ..models import SleepRecord, SleepRecordCreate, SleepRecordUpdate
 
-# ============ SLEEP CRUD OPERATIONS ============
 
 def create_sleep_record(
     session: Session,
@@ -31,13 +30,13 @@ def get_sleep_for_child(session: Session, child_id: str, date: Optional[str] = N
     return session.exec(query).all()
 
 def find_sleep_by_date(session: Session, child_id: str, date: str) -> List[SleepRecord]:
-    """Find sleep records for a child on an exact date (useful to check duplicates)."""
+    """Find sleep records for a child on an exact date."""
     return session.exec(
         select(SleepRecord).where(SleepRecord.child_id == child_id, SleepRecord.date == date)
     ).all()
 
 def update_sleep_record(session: Session, sleep_id: str, sleep_data: SleepRecordUpdate) -> Optional[SleepRecord]:
-    """Update fields of an existing sleep record (partial update supported)."""
+    """Update fields of an existing sleep record."""
     sleep = session.get(SleepRecord, sleep_id)
     if not sleep:
         return None
@@ -52,7 +51,6 @@ def update_sleep_record(session: Session, sleep_id: str, sleep_data: SleepRecord
     return sleep
 
 def delete_sleep_record(session: Session, sleep_id: str) -> bool:
-    """Delete a sleep record by id. Returns True if deleted else False."""
     sleep = session.get(SleepRecord, sleep_id)
     if not sleep:
         return False

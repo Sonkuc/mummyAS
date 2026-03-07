@@ -1,4 +1,3 @@
-import * as api from "@/components/storage/api";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import React, { useState } from "react";
@@ -25,12 +24,38 @@ type Props = {
 };
 
 export default function FoodCategoryScreen({ title, categoryKey, dataList }: Props) {
-  const { selectedChild, selectedChildId, reloadChildren } = useChild();
+  const { selectedChild, selectedChildId, updateChild } = useChild();
   const [selectedFood, setSelectedFood] = useState<null | string>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newFoodLabel, setNewFoodLabel] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // --- POMOCNÁ FUNKCE PRO OPTIMISTICKÝ UPDATE ---
+  const saveFoodOffline = async (foodLabel: string, dateStr: string) => {
+    if (!selectedChild) return;
+
+    // 1. Vytvoříme kopii foodDates a foodCategories
+    const newFoodDates = { ...(selectedChild.foodDates || {}) };
+    const newFoodCategories = { ...(selectedChild.foodCategories || {}) };
+
+    // 2. Aktualizujeme hodnoty
+    newFoodDates[foodLabel] = dateStr;
+    newFoodCategories[foodLabel] = categoryKey;
+
+    // 3. Vytvoříme aktualizovaný objekt dítěte
+    const updatedChild = {
+      ...selectedChild,
+      foodDates: newFoodDates,
+      foodCategories: newFoodCategories,
+    };
+
+    try {
+      await updateChild(updatedChild);
+    } catch (err) {
+      console.error("Chyba při lokálním ukládání jídla:", err);
+    }
+  };
+  
   const getChildAgeInMonths = (): number => {
     if (!selectedChild?.birthDate) return 0;
     const birth = new Date(selectedChild.birthDate);
@@ -64,47 +89,18 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
 
   // 2. Změna data (Ukládání na backend)
   const handleDateChange = async (foodLabel: string, date: Date) => {
-    if (!selectedChildId) return;
-    
     const isoDate = date.toISOString().slice(0, 10);
-    // Pokud je datum stejné, neposíláme nic
     if (selectedChild?.foodDates?.[foodLabel] === isoDate) return;
 
-    try {
-      setLoading(true);
-      // Volání backendu
-      await api.saveFoodRecord(selectedChildId, {
-        label: foodLabel,
-        date: isoDate,
-        category: categoryKey // Posíláme kategorii pro případ, že jde o novou potravinu
-      });
-      // Obnovíme data dítěte v kontextu
-      await reloadChildren();
-    } catch (err) {
-      console.error("Chyba při ukládání jídla:", err);
-    } finally {
-      setLoading(false);
-    }
+    await saveFoodOffline(foodLabel, isoDate);
   };
 
   // 3. Smazání data (Nastavení na prázdný string nebo null)
   const handleDateDelete = async () => {
-    if (!selectedChildId || !selectedFood) return;
-
-    try {
-      setLoading(true);
-      await api.saveFoodRecord(selectedChildId, {
-        label: selectedFood,
-        date: "", // Vymaže datum, jídlo se přesune do "Moje" nebo zpět do "Navrženo"
-        category: categoryKey
-      });
-      await reloadChildren();
-      setSelectedFood(null);
-    } catch (err) {
-      console.error("Chyba při mazání data jídla:", err);
-    } finally {
-      setLoading(false);
-    }
+    if (!selectedFood) return;
+    // Nastavením na prázdný string jídlo "od-zavedeme"
+    await saveFoodOffline(selectedFood, "");
+    setSelectedFood(null);
   };
 
   const modalAdd = () => {
@@ -115,23 +111,11 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
   // 4. Přidání nové potraviny
   const handleAddNewFood = async () => {
     const label = newFoodLabel.trim();
-    if (!label || !selectedChildId) return;
+    if (!label) return;
 
-    try {
-      setLoading(true);
-      await api.saveFoodRecord(selectedChildId, {
-        label: label,
-        date: "", // Přidá potravinu bez data
-        category: categoryKey
-      });
-      await reloadChildren();
-      setShowAddModal(false);
-      setNewFoodLabel("");
-    } catch (err) {
-      console.error("Chyba při přidávání potraviny:", err);
-    } finally {
-      setLoading(false);
-    }
+    await saveFoodOffline(label, "");
+    setShowAddModal(false);
+    setNewFoodLabel("");
   };
 
   return (

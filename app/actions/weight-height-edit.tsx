@@ -6,7 +6,6 @@ import HideButton from "@/components/HideButton";
 import { formatDateLocal, toIsoDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
-import * as api from "@/components/storage/api";
 import { WeightHeight } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -28,7 +27,7 @@ export default function WeightHeightEdit() {
   const [head, setHead] = useState("");
   const [foot, setFoot] = useState("");
   const [clothes, setClothes] = useState("");
-  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+  const { selectedChildId, selectedChild, updateChild } = useChild();
 
   const [hideMode, setHideMode] = useState(false);
   const HIDE_MODE_KEY = "hideMode";
@@ -89,9 +88,9 @@ export default function WeightHeightEdit() {
   }, [currentWhRecord]);
         
   const handleSave = async () => {
-    if (!selectedChildId || !whId) return;
+    if (!selectedChildId || !whId || !selectedChild) return;
     
-    const dateExists = selectedChild?.wh?.some(
+    const dateExists = selectedChild.wh?.some(
       (wh: any) => wh.id !== whId && wh.date === date
     );   
 
@@ -100,34 +99,44 @@ export default function WeightHeightEdit() {
       return;
     }
 
+    // 1. Připravíme data pro konkrétní záznam (převod na čísla)
+    const updatedWhEntry = {
+      id: whId,
+      date: date,
+      weight: weight.replace(",", "."),
+      height: height.replace(",", "."),
+      head: head.replace(",", "."),
+      foot: foot.replace(",", "."),
+      clothes: clothes,
+    };
+
+    // 2. Vytvoříme nové pole měření
+    const updatedWhList = (selectedChild.wh || []).map((wh: any) => 
+      wh.id === whId ? updatedWhEntry : wh
+    );
+
+    // 3. Update Child objektu
+    const updatedChild = { ...selectedChild, wh: updatedWhList };
+
     try {
-      await api.updateWeightHeight(selectedChildId, whId, {
-        date: date,
-        weight,
-        height,
-        head,
-        foot,
-        clothes,
-      });
-    
-      await reloadChildren();
-        router.back();
-      } catch (error) {
-        console.error("Chyba při ukládání:", error);
-        Alert.alert("Chyba", "Nepodařilo se uložit změny.");
-      }
+      // updateChild v Contextu se postará o AsyncStorage i volání api.syncWeightHeight
+      await updateChild(updatedChild);
+      router.back();
+    } catch (error) {
+      console.error("Chyba při ukládání:", error);
+    }
   };
 
   return (
     <MainScreenContainer>
       <CustomHeader>
-          {selectedChildId ? (
-            <DeleteButton 
-              type="wh" 
-              childId={selectedChildId} 
-              recordId={whId}
-              onDeleteSuccess={() => router.replace("/actions/weight-height")}              />
-          ) : null}
+        {selectedChildId ? (
+          <DeleteButton 
+            type="wh" 
+            childId={selectedChildId} 
+            recordId={whId}
+            onDeleteSuccess={() => router.replace("/actions/weight-height")}              />
+        ) : null}
       </CustomHeader>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Title>Upravit záznam</Title>

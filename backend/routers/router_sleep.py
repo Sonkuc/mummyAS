@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 
 from ..crud import crud_sleep as cs
 from ..models import SleepRecord, SleepRecordCreate, SleepRecordUpdate, SleepRecordRead
@@ -10,11 +10,10 @@ import datetime
 
 router = APIRouter()
 
+
 @router.get("/children/{child_id}/sleep", response_model=List[SleepRecordRead])
 def list_sleep(child_id: str, date: Optional[str] = Query(None), session: Session = Depends(get_session)):
-    """
-    List sleep records for a child. Optional filter by `date` (YYYY-MM-DD).
-    """
+    """List sleep records for a child. Optional filter by `date` (YYYY-MM-DD)."""
     return cs.get_sleep_for_child(session, child_id, date)
 
 
@@ -34,7 +33,7 @@ def create_sleep_bulk(
     return results
 
 
-# Pomocná funkce pro výpočet minut (můžeš ji dát i do jiného souboru)
+# Pomocná funkce pro výpočet minut 
 @router.get("/children/{child_id}/sleep/stats")
 def get_sleep_stats(child_id: str, session: Session = Depends(get_session)):
     statement = select(SleepRecord).where(SleepRecord.child_id == child_id)
@@ -52,7 +51,7 @@ def get_sleep_stats(child_id: str, session: Session = Depends(get_session)):
     sorted_dates = sorted(days_map.keys())
     daily_results = {d: {"total_minutes": 0, "night_minutes": 0} for d in sorted_dates}
 
-    # 1. Výpočet denních spánků (bez limitů, aby se to shodovalo s frontendem)
+    # 1. Výpočet denních spánků 
     for d in sorted_dates:
         recs = days_map[d]
         for i in range(len(recs) - 1):
@@ -62,11 +61,10 @@ def get_sleep_stats(child_id: str, session: Session = Depends(get_session)):
                 start_dt = datetime.datetime.strptime(f"{curr.date} {curr.time}", "%Y-%m-%d %H:%M")
                 end_dt = datetime.datetime.strptime(f"{nxt.date} {nxt.time}", "%Y-%m-%d %H:%M")
                 diff = int((end_dt - start_dt).total_seconds() // 60)
-                # POZOR: Odstraněna horní hranice 1080, ponecháno jen diff > 0
-                if diff > 0:
+                if 0 < diff < 960:
                     daily_results[d]["total_minutes"] += diff
 
-    # 2. Logika nočního spánku (přesah mezi dny)
+    # 2. Logika nočního spánku
     for i in range(len(sorted_dates) - 1):
         d_today = sorted_dates[i]
         d_tomorrow = sorted_dates[i+1]
@@ -88,45 +86,40 @@ def get_sleep_stats(child_id: str, session: Session = Depends(get_session)):
 
 @router.get("/children/{child_id}/sleep/{sleep_id}", response_model=SleepRecordRead)
 def get_sleep(child_id: str, sleep_id: str, session: Session = Depends(get_session)):
-    """
-    Get a single sleep record by `sleep_id`. Verifies it belongs to `child_id`.
-    """
+    """Get a single sleep record by `sleep_id`."""
     rec = cs.get_sleep_record(session, sleep_id)
     if not rec or rec.child_id != child_id:
         raise HTTPException(status_code=404, detail="Sleep record not found")
     return rec
 
-@router.put("/children/{child_id}/sleep/day/{date}") # Přidáno /day/ pro jasné rozlišení
+@router.put("/children/{child_id}/sleep/day/{date}", response_model=List[SleepRecordRead])
 def update_sleep_day(
     child_id: str, 
     date: str, 
     sleep_data: List[SleepRecordCreate], 
     session: Session = Depends(get_session)
 ):
-    # 1. Najdeme staré záznamy pro tento konkrétní den
-    statement = select(SleepRecord).where(
+    # 1. Hromadné smazání
+    session.exec(delete(SleepRecord).where(
         SleepRecord.child_id == child_id,
         SleepRecord.date == date
-    )
-    existing_records = session.exec(statement).all()
+    ))
     
-    for record in existing_records:
-        session.delete(record)
-    
-    # 2. Vložíme nové záznamy ze seznamu
+    # 2. Hromadné vložení
+    new_recs = []
     for item in sleep_data:
-        new_rec = SleepRecord(**item.dict(), child_id=child_id)
-        session.add(new_rec)
+        new_recs.append(SleepRecord(**item.dict(), child_id=child_id))
     
+    session.add_all(new_recs) 
     session.commit()
-    return {"status": "success", "date": date}
+    
+    # Refresh pro vrácení korektních dat
+    for r in new_recs: session.refresh(r)
+    return new_recs
 
 
 @router.delete("/children/{child_id}/sleep/{sleep_id}")
 def delete_sleep(child_id: str, sleep_id: str, session: Session = Depends(get_session)):
-    """
-    Delete a sleep record. Verifies it belongs to `child_id`.
-    """
     rec = cs.get_sleep_record(session, sleep_id)
     if not rec or rec.child_id != child_id:
         raise HTTPException(status_code=404, detail="Sleep record not found")

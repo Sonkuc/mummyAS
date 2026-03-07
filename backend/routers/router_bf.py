@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, select
+from sqlmodel import Session, delete
 
 from ..crud import crud_bf as cbf
 from ..models import BreastfeedingRecordCreate, BreastfeedingRecord, BreastfeedingRecordRead
@@ -16,16 +16,21 @@ def list_bf(child_id: str, date: Optional[str] = Query(None), session: Session =
     """
     return cbf.get_bf_for_child(session, child_id, date)
 
-@router.post("/children/{child_id}/breastfeeding/bulk")
+@router.post("/children/{child_id}/breastfeeding/bulk", response_model=List[BreastfeedingRecordRead])
 def create_bf_bulk(
     child_id: str,
-    bf_list: List[BreastfeedingRecordCreate], # Přijímá seznam
+    bf_list: List[BreastfeedingRecordCreate],
     session: Session = Depends(get_session)
 ):
     results = []
     for item in bf_list:
-        new_rec = cbf.create_bf_record(session, child_id, item)
+        # Vytvoříme objekt, ale necommitujeme hned
+        new_rec = BreastfeedingRecord(**item.dict(), child_id=child_id)
+        session.add(new_rec)
         results.append(new_rec)
+    
+    session.commit()
+    for r in results: session.refresh(r)
     return results
 
 @router.get("/children/{child_id}/breastfeeding/{bf_id}", response_model=BreastfeedingRecordRead)
@@ -46,30 +51,26 @@ def update_bf_day(
     bf_data: List[BreastfeedingRecordCreate], 
     session: Session = Depends(get_session)
 ):
-    # 1. Najdeme a smažeme staré záznamy pro tento konkrétní den
-    statement = select(BreastfeedingRecord).where(
+    # 1. Hromadné smazání
+    delete_statement = delete(BreastfeedingRecord).where(
         BreastfeedingRecord.child_id == child_id,
         BreastfeedingRecord.date == date
     )
-    existing_records = session.exec(statement).all()
-    for record in existing_records:
-        session.delete(record)
+    session.exec(delete_statement)
     
-    # 2. Seřadíme nová data podle času (prevence chaosu v ID/pořadí)
+    # 2. Seřazení a vložení
     sorted_data = sorted(bf_data, key=lambda x: x.time)
     
-    # 3. Vložíme nové záznamy
     new_records = []
     for item in sorted_data:
-        new_rec = BreastfeedingRecord(**item.dict(), child_id=child_id)
+        # Použijeme ID z mobilu, pokud existuje, jinak se vygeneruje nové
+        rec_data = item.dict()
+        new_rec = BreastfeedingRecord(**rec_data, child_id=child_id)
         session.add(new_rec)
         new_records.append(new_rec)
     
     session.commit()
-    # 4. Refreshneme záznamy, aby měly ID z databáze pro návrat
-    for r in new_records:
-        session.refresh(r)
-        
+    for r in new_records: session.refresh(r)
     return new_records
 
 @router.delete("/children/{child_id}/breastfeeding/{bf_id}")

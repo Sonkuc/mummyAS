@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Session, create_engine
 
 sqlite_url = "sqlite:///./app.db"
-engine = create_engine(sqlite_url, echo=True)
+engine = create_engine(sqlite_url, echo=False) # True pro výpisy v terminálu
 
 def init_db():
     SQLModel.metadata.create_all(engine)

@@ -6,22 +6,22 @@ import { formatDateLocal, toIsoDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
-import * as api from "@/components/storage/api";
-import { Milestone } from "@/components/storage/interfaces";
+import { Child, Milestone } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
 import { useChild } from "@/contexts/ChildContext";
 import { MILESTONES } from "@/data/milestones";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
 
 export default function EditMilestone() {
   const { milId } = useLocalSearchParams<{ milId: string }>();
   const router = useRouter();
-  const { selectedChildId, selectedChild, reloadChildren } = useChild();
-
+  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const isInitialized = useRef(false);
+  
   const [name, setName] = useState("");
   const [selectedMilestone, setSelectedMilestone] = useState("");
   const [date, setDate] = useState(formatDateLocal(new Date()));
@@ -32,18 +32,17 @@ export default function EditMilestone() {
     return selectedChild?.milestones?.find((m: Milestone) => m.id === milId);
   }, [milId, selectedChild]);
 
+
   useEffect(() => {
-    if (currentMilestone) {
+    if (currentMilestone && !isInitialized.current) {
       setName(currentMilestone.name);
       
       let rawDate = currentMilestone.date;
       
-      // 1. Ošetření lomítek a teček hned na startu
       if (rawDate.includes("/") || rawDate.includes(".")) {
         rawDate = toIsoDate(rawDate);
       }
       
-      // 2. Kontrola validity, aby se nezobrazovalo dnešní datum
       if (!rawDate || rawDate.includes("undefined")) {
         rawDate = new Date().toISOString().slice(0, 10);
       }
@@ -51,24 +50,36 @@ export default function EditMilestone() {
       setDate(rawDate);
       setOriginalDate(rawDate);
       setNote(currentMilestone.note || "");
+      
+      // Označeno jako hotové - při dalším renderu (třeba syncu) se už nespustí
+      isInitialized.current = true;
     }
-  }, [currentMilestone]);
+  }, [currentMilestone, milId]); // milId zde pro případ navigace mezi milníky
 
   const handleSave = async () => {
     const finalName = name.trim();
-    if (!finalName || !selectedChildId || !milId) return;
+    if (!finalName || !selectedChildId || !milId || !selectedChild || !currentMilestone) return;
+
+    const updatedMilestoneEntry: Milestone = {
+      ...currentMilestone,
+      name: finalName,
+      date: date,
+      note: note.trim(),
+    };
+    
+    const updatedChild: Child = {
+      ...selectedChild,
+      // Použijeme type assertion nebo explicitní fallback
+      milestones: (selectedChild.milestones || []).map((m) => 
+        m.id === milId ? updatedMilestoneEntry : m
+      ),
+    };
 
     try {
-      await api.updateMilestone(selectedChildId, milId, {
-        name: finalName,
-        date: date,
-        note: note,
-      });
-
-      await reloadChildren();
+      await updateChild(updatedChild);
       router.back();
     } catch (error) {
-      console.error("Chyba při ukládání:", error);
+      console.error("Chyba při ukládání milníku:", error);
       Alert.alert("Chyba", "Nepodařilo se uložit změny.");
     }
   };

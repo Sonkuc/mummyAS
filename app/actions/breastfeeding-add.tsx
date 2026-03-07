@@ -1,20 +1,20 @@
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
+import { normalizeTime } from "@/components/HelperFunctions";
 import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
-import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
-import * as api from "@/components/storage/api";
-import type { BreastfeedingRecord } from "@/components/storage/interfaces";
+import type { BreastfeedingRecord, Child } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
+import TimeSelector from "@/components/TimeSelector";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from "react-native-uuid";
 
 type DisplayBreastfeedingRecord = BreastfeedingRecord & { label: string };
@@ -32,7 +32,7 @@ const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecor
 
 export default function BreastfeedingAdd() {
   const router = useRouter();
-  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+  const { selectedChildId, selectedChild, updateChild } = useChild();
 
   const now = new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
   const today = new Date().toISOString().slice(0, 10);
@@ -59,8 +59,10 @@ export default function BreastfeedingAdd() {
   
   // Při načtení stránky zkontrolovat dnešní datum
   useEffect(() => {
-    checkDuplicateDate(today);
-  }, [selectedChild]);
+    // Pokud právě ukládáme, kontrolu duplicity ignorujeme
+    if (!isSaving) {
+      checkDuplicateDate(newDate);      }
+  }, [newDate, selectedChild, isSaving]);
 
   // Při změně data
   const handleDateChange = (d: Date) => {
@@ -130,7 +132,7 @@ export default function BreastfeedingAdd() {
 
   // --- LOGIKA UKLÁDÁNÍ NA BACKEND ---
   const saveChanges = async () => {
-    if (!selectedChildId || records.length === 0) {
+    if (!selectedChildId || !selectedChild || records.length === 0) {
       Alert.alert("Chyba", "Nebyl přidán žádný záznam.");
       return;
     }
@@ -142,24 +144,32 @@ export default function BreastfeedingAdd() {
 
     setIsSaving(true);
     try {
-      // Příprava dat pro backend
-      // Odesíláme pole záznamů pro jeden konkrétní den
-      const payload = records.map(r => ({
+      // 1. Příprava čistých dat s unikátními ID 
+      const newDayRecords: BreastfeedingRecord[] = records.map(r => ({
+        id: r.id || (uuid.v4() as string),
         date: newDate,
         time: r.time,
         state: r.state
       }));
 
-      // Volání API (předpokládám funkci v api.ts)
-      // Pokud posíláš více záznamů najednou, backend by měl mít endpoint pro bulk insert
-      // nebo to pošli jako aktualizaci celého dne.
-      await api.createBreastfeedingRecord(selectedChildId, payload);
+      // 2. Zachování záznamů z ostatních dnů
+      const otherDaysRecords = (selectedChild.breastfeedingRecords || []).filter(
+        (r) => r.date !== newDate
+      );
 
-      await reloadChildren(); // Obnova dat v globálním kontextu
+      // 3. Sestavení nového objektu dítěte
+      const updatedChild: Child = {
+        ...selectedChild,
+        breastfeedingRecords: [...otherDaysRecords, ...newDayRecords]
+      };
+
+      // 4. Uložení skrze kontext
+      await updateChild(updatedChild);
+
       router.back();
     } catch (error) {
       console.error("Chyba při ukládání kojení:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit záznamy na server.");
+      Alert.alert("Chyba", "Nepodařilo se uložit záznamy.");
     } finally {
       setIsSaving(false);
     }
@@ -208,19 +218,9 @@ export default function BreastfeedingAdd() {
               </Text>
             </Pressable>
           </View>
-          <TextInput 
-            placeholder="HH:MM" 
-            style={styles.input} 
-            value={newTime} 
-            onChangeText={(txt) => handleTimeInput(txt, setNewTime)}
-            onBlur={() => {
-              const norm = normalizeTime(newTime);
-              if (norm) setNewTime(norm);
-              else {
-                Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
-                setNewTime("");
-              }
-            }}
+          <TimeSelector 
+            time={newTime} 
+            onChange={setNewTime}
           />
           <Pressable onPress={addRecord}>
             <Text style={[styles.icon, isSaving && { opacity: 0.5 }]}>✅</Text>
@@ -230,18 +230,9 @@ export default function BreastfeedingAdd() {
         {records.map((r, i) => (
           <GroupSection key={i} style={styles.row}>
             <Text style={{ flex: 1 }}>{r.label}</Text>
-            <TextInput
-              style={styles.input}
-              value={r.time}
-              onChangeText={(txt) => handleTimeInput(txt, (t) => updateTime(i, t))}
-              onBlur={() => {
-                const norm = normalizeTime(records[i].time);
-                if (norm) updateTime(i, norm);
-                else {
-                  Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
-                  updateTime(i, "");
-                }
-              }}
+            <TimeSelector 
+              time={r.time} 
+              onChange={(t) => updateTime(i, t)}
             />
             <Pressable onPress={() => deleteRecord(i)}>
               <Text style={styles.icon}>🚮</Text>
@@ -249,13 +240,15 @@ export default function BreastfeedingAdd() {
           </GroupSection>
         ))}
 
-        <View style={{ marginTop: 30 }}>
-          <MyButton 
-            title={isSaving ? "Ukládám..." : "Uložit"} // Vizuální zpětná vazba
-            onPress={saveChanges}
-            disabled={isSaving || records.length === 0} // Zamezení vícenásobnému kliknutí
-          />
-        </View>
+        {records.length > 0 && (
+          <View style={{ marginTop: 30 }}>
+            <MyButton 
+              title={isSaving ? "Ukládám..." : "Uložit"} 
+              onPress={saveChanges}
+              disabled={isSaving}
+            />
+          </View>
+        )}
       </ScrollView>
     </MainScreenContainer>
   );

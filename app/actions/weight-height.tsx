@@ -138,11 +138,11 @@ export default function WeightHeight() {
                         </Text>
                       );
                     })() : null}
-                    {filters.includes("clothes") && wh.clothes && (
-                      <Text style={styles.note}>👕 {wh.clothes}</Text>
-                    )}
                     {filters.includes("foot") && wh.foot && (
                       <Text style={styles.note}>🦶 {wh.foot}</Text>
+                    )}
+                    {filters.includes("clothes") && wh.clothes && (
+                      <Text style={styles.note}>👕 {wh.clothes}</Text>
                     )}
                   </View>
                 </GroupSection>

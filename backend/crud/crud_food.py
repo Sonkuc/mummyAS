@@ -3,29 +3,29 @@ from typing import List, Optional
 
 from ..models import FoodRecord, FoodRecordCreate, FoodRecordUpdate
 
-# ============ FOOD CRUD OPERATIONS ============
 
 def save_food_record(session: Session, child_id: str, data: FoodRecordCreate):
-    # OPRAVA: Musíme hledat podle food_name, ne label
+    # Vyhledání podle jména a dítěte
     statement = select(FoodRecord).where(
         FoodRecord.child_id == child_id, 
-        FoodRecord.food_name == data.food_name  # Změněno z .label
+        FoodRecord.food_name == data.food_name  
     )
     existing_rec = session.exec(statement).first()
 
     if existing_rec:
-        existing_rec.date = data.date
-        existing_rec.category = data.category
-        session.add(existing_rec)
-        session.commit()
-        session.refresh(existing_rec)
-        return existing_rec
+        # Update stávajícího
+        update_data = data.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(existing_rec, key, value)
+        db_obj = existing_rec
     else:
-        rec = FoodRecord(**data.dict(), child_id=child_id)
-        session.add(rec)
-        session.commit()
-        session.refresh(rec)
-        return rec
+        # Create nového
+        db_obj = FoodRecord(**data.dict(), child_id=child_id)
+    
+    session.add(db_obj)
+    session.commit()
+    session.refresh(db_obj)
+    return db_obj
     
 def get_food_record(session: Session, food_id: str) -> Optional[FoodRecord]:
     """Return a food record by its primary id."""

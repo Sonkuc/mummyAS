@@ -20,10 +20,6 @@ def list_food(
     return cfood.get_food_for_child(session, child_id, date, category)
 
 
-@router.post(
-    "/children/{child_id}/food",
-    response_model=FoodRecordRead
-)
 @router.post("/children/{child_id}/food", response_model=FoodRecordRead)
 def save_food(child_id: str, food_data: FoodRecordCreate, session: Session = Depends(get_session)):
     return cfood.save_food_record(session, child_id, food_data)

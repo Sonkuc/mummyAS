@@ -12,7 +12,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 interface SleepStatEntry {
   date: string;
   total_minutes: number;
-  night_minutes: number; // Backend spočítá noční spánek
+  night_minutes?: number;
 }
 
 export default function SleepStats() {

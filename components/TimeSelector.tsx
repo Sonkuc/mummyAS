@@ -1,49 +1,149 @@
+import { COLORS } from "@/constants/MyColors";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useState } from "react";
-import { Pressable, Text } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Modal, Platform, Pressable, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 type Props = {
   time: string; // HH:MM format
   onChange: (time: string) => void;
 };
 
-export default function TimeSelector({ time, onChange }: Props) {
-  const [showPicker, setShowPicker] = useState(false);
+const getCleanTime = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
 
-  const parseTime = (timeStr: string): Date => {
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    const date = new Date();
-    date.setHours(hours || 0, minutes || 0, 0, 0);
-    return date;
+export default function TimeSelector({ time, onChange }: Props) {
+  const [show, setShow] = useState(false);
+  const [tempTime, setTempTime] = useState<string>(time || "");
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  useEffect(() => {
+    setTempTime(time || getCleanTime());
+  }, [time]);
+
+  const parseTime = (timeStr: string | undefined | null): Date => {
+    const d = new Date(); // DNEŠNÍ DATUM (např. 31.1.2026)
+    
+    if (!timeStr || typeof timeStr !== 'string') return d;
+
+    const m = /^(\d{1,2}):(\d{2})$/.exec(timeStr.trim());
+    if (!m) return d;
+
+    // Nastavíme hodiny a minuty do DNEŠNÍHO objektu
+    d.setHours(Number(m[1]), Number(m[2]), 0, 0);
+    return d;
   };
 
   const formatTime = (date: Date): string => {
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${hours}:${minutes}`;
+    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
   };
 
-  const handleTimeChange = (event: any, selectedDate?: Date) => {
-    if (selectedDate) {
-      const formatted = formatTime(selectedDate);
-      onChange(formatted);
-    }
-    setShowPicker(false);
-  };
+  // Tato hodnota jde do Pickeru
+  const safeValue = parseTime(tempTime);
 
   return (
     <>
-      <Pressable onPress={() => setShowPicker(true)}>
-        <Text style={{ fontSize: 20, color: "#0066cc" }}>🕐</Text>
+      <Pressable
+        style={styles.input}
+        onPress={() => setShow(true)}
+      >
+        <Text style={{ fontSize: 15, textAlign: "center"}}>
+          {tempTime || getCleanTime()}
+        </Text>
       </Pressable>
-      {showPicker && (
-        <DateTimePicker
-          value={parseTime(time)}
-          mode="time"
-          display="spinner"
-          onChange={handleTimeChange}
-        />
-      )}
+
+      <Modal visible={show} transparent={true} animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? "#222" : "#fff" }]}>
+            <DateTimePicker
+              value={safeValue} // Teď obsahuje rok 2026, ne 1970
+              mode="time"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              is24Hour={true}
+              // Tímto Picker definitivně ukotvíme v aktuálním dni
+              minimumDate={new Date(new Date().setHours(0,0,0,0))}
+              maximumDate={new Date(new Date().setHours(23,59,59,999))}
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  const formatted = formatTime(selectedDate);
+                  setTempTime(formatted);
+                  if (Platform.OS === "android") {
+                    onChange(formatted);
+                    setShow(false);
+                  }
+                }
+              }}
+              themeVariant={isDark ? "dark" : "light"}
+              style={{ width: "100%" }}
+            />
+            <View style={styles.buttonRow}>
+              <Pressable onPress={() => setShow(false)} style={styles.cancelButton}>
+                <Text style={[styles.buttonText, { color: isDark ? "#fff" : "#000" }]}>Zrušit</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  const final = tempTime || getCleanTime();
+                  onChange(final);
+                  setShow(false);
+                }}
+                style={styles.confirmButton}
+              >
+                <Text style={[styles.buttonText, { color: isDark ? "#fff" : "#000" }]}>Potvrdit</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  input: {
+    width: 70,
+    borderWidth: 1,
+    borderRadius: 12,
+    borderColor: "#ccc",
+    padding: 5,
+    marginHorizontal: 30,
+    textAlign: "center",
+    justifyContent: "center",
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+  },
+  modalContent: {
+    marginHorizontal: 30,
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    marginTop: 20,
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  cancelButton: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: "#ccc",
+    flex: 1,
+    marginRight: 10,
+  },
+  confirmButton: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: COLORS.secundary,
+    flex: 1,
+    marginLeft: 10,
+  },
+  buttonText: {
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+});

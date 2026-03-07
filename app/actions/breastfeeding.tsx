@@ -2,11 +2,11 @@ import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
+import { formatDuration, toTimestamp } from "@/components/HelperFunctions";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import { formatDuration, toTimestamp } from "@/components/SleepBfFunctions";
 import * as api from "@/components/storage/api";
-import type { BreastfeedingRecord } from "@/components/storage/interfaces";
+import type { BreastfeedingRecord, Child } from "@/components/storage/interfaces";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight, ChartColumn, Milk, MilkOff } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import uuid from "react-native-uuid";
 
 type DisplayBreastfeedingRecord = BreastfeedingRecord & { label?: string, extra?: string; };
 
@@ -30,7 +31,7 @@ export default function Breastfeeding() {
   const BREST_SIDE_KEY = "brestSideMode";
 
   const router = useRouter();
-  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+  const { selectedChildId, selectedChild, reloadChildren, updateChild } = useChild();
   
   const clearState = async () => {
     if (!selectedChildId) return;
@@ -75,30 +76,36 @@ export default function Breastfeeding() {
   };
 
   const addRecord = async (label: string, newMode: "start" | "stop") => {
-    if (!selectedChildId) return;
+    if (!selectedChildId || !selectedChild) return;
 
     const now = new Date();
     const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
     const date = now.toISOString().slice(0, 10);
     const startTimestamp = Date.now();
 
+    // 1. Vytvoříme nový záznam
+    const newRec: BreastfeedingRecord = {
+      id: uuid.v4().toString(), // Použij uuid pro unikátní ID v offline režimu
+      date,
+      time,
+      state: newMode,
+    };
+
+    // 2. Připravíme aktualizovaný objekt dítěte
+    const updatedChild: Child = {
+      ...selectedChild,
+      // Přidáme záznam k existujícím
+      breastfeedingRecords: [...(selectedChild.breastfeedingRecords || []), newRec],
+      // Aktualizujeme live stav
+      currentModeFeed: { mode: newMode, start: startTimestamp }
+    };
+
     try {
-      // 1. Uložíme záznam do DB přes API
-      // Posíláme jako pole, aby to odpovídalo tvému bulk endpointu
-      await api.createBreastfeedingRecord(selectedChildId, [{
-        date,
-        time,
-        state: newMode
-      }]);
+      // 3. Použijeme updateChild z Provideru! 
+      // Ten se postará o uložení do AsyncStorage a synchronizaci, až budeš online.
+      await updateChild(updatedChild);
 
-      await api.updateChild(selectedChildId, { 
-        currentModeFeed: { mode: newMode, start: startTimestamp } 
-      });
-
-      // 3. Refresh dat z backendu, aby se projevilo seskupení (grouped)
-      await reloadChildren();
-      
-      // Lokální UI stavy pro čítač
+      // Lokální UI stavy pro čítač (ty zůstávají stejné)
       setMode(newMode);
       setModeStart(startTimestamp);
       if (newMode === "stop") setMinutesSinceStart(null);

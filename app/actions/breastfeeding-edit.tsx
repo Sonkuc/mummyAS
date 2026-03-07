@@ -1,17 +1,17 @@
 import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
+import { normalizeTime } from "@/components/HelperFunctions";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
-import * as api from "@/components/storage/api";
-import type { BreastfeedingRecord } from "@/components/storage/interfaces";
+import type { BreastfeedingRecord, Child } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
+import TimeSelector from "@/components/TimeSelector";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from "react-native-uuid";
 
 type DisplayBreastfeedingRecord = BreastfeedingRecord & { label: string };
@@ -31,36 +31,44 @@ const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecor
 export default function BreastfeedingEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const router = useRouter();
-  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+  const { selectedChildId, selectedChild, updateChild } = useChild();
 
   const [records, setRecords] = useState<DisplayBreastfeedingRecord[]>([]);
   const [newTime, setNewTime] = useState("");
   const [newState, setNewState] = useState<"stop" | "start">("stop");
 
   // Načtení záznamů pro dané datum
+  const isInitialized = useRef(false);
+
   useEffect(() => {
-    if (!selectedChild?.breastfeedingRecords || typeof date !== "string") return;
+    if (!selectedChild?.breastfeedingRecords || !date) return;
 
-    const dayRecords: BreastfeedingRecord[] = selectedChild.breastfeedingRecords
-      .filter((r) => r.date === date)
-      .map((r) => ({
-        id: r.id,
-        date: r.date,
-        time: r.time,
-        state: r.state as "start" | "stop"
-      }));
+    // Inicializujeme pouze jednou při načtení
+    if (!isInitialized.current) {
+      const dayRecords: BreastfeedingRecord[] = selectedChild.breastfeedingRecords
+        .filter((r) => r.date === date)
+        .map((r) => ({
+          id: r.id,
+          date: r.date,
+          time: r.time,
+          state: r.state as "start" | "stop"
+        }))
+        .sort((a, b) => a.time.localeCompare(b.time));
 
-    setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
-    setRecords(renumberFeed(dayRecords));
+      setRecords(renumberFeed(dayRecords));
 
-    if (dayRecords.length > 0) {
-      const lastState = dayRecords[dayRecords.length - 1].state;
-      setNewState(lastState === "start" ? "stop" : "start");
-    } else {
-      setNewState("start");
+      if (dayRecords.length > 0) {
+        const lastState = dayRecords[dayRecords.length - 1].state;
+        setNewState(lastState === "start" ? "stop" : "start");
+      } else {
+        setNewState("start");
+      }
+      
+      setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
+      isInitialized.current = true;
     }
-  }, [selectedChild, date]);
-
+  }, [selectedChild?.id, date]); // Sledujeme ID a datum
+  
   // Úprava času
   const updateTime = (index: number, newTimeValue: string) => {
     setRecords((prev) => {
@@ -121,30 +129,32 @@ export default function BreastfeedingEdit() {
 
   // Uložení změn
   const saveChanges = async () => {
-    if (!selectedChildId) return;
+    if (!selectedChildId || !selectedChild || !date) return;
 
-    // Validace všech časů
-    const normalized: Omit<BreastfeedingRecord, "id">[] = [];
-    for (let i = 0; i < records.length; i++) {
-      const r = records[i];
-      const norm = normalizeTime(r.time);
-      if (!norm) {
-        Alert.alert("Chybný čas", `Záznam č. ${i + 1} obsahuje neplatný čas.`);
-        return;
-      }
-      normalized.push({ date: r.date, time: norm, state: r.state });
-    }
+    const normalizedDayRecords: BreastfeedingRecord[] = records.map(r => ({
+      id: r.id || uuid.v4(),
+      date: r.date,
+      time: normalizeTime(r.time) || "00:00",
+      state: r.state
+    }));
+
+    const otherDaysRecords = selectedChild.breastfeedingRecords?.filter(
+      (r) => r.date !== date
+    ) || [];
+
+    const updatedChild: Child = {
+      ...selectedChild,
+      // Pokud je normalizedDayRecords prázdné, do pole se pro tento den nic nepřidá. To je správně.
+      breastfeedingRecords: [...otherDaysRecords, ...normalizedDayRecords],
+    };
 
     try {
-      // Zavoláme nový API endpoint, který nahradí záznamy pro daný den
-      // Tento endpoint si musíš přidat do api.ts (viz níže)
-      await api.updateBreastfeedingDay(selectedChildId, date!, normalized);
-      
-      await reloadChildren(); // Refresh globálního stavu
+      // TADY JE ZMĚNA: Potřebujeme předat informaci o tom, na který den se sahlo
+      // Pokud tvůj updateChild přijímá jen child, musíme upravit Provider.
+      await updateChild(updatedChild); 
       router.back();
     } catch (error) {
       console.error(error);
-      Alert.alert("Chyba", "Nepodařilo se uložit změny.");
     }
   };
 
@@ -158,21 +168,9 @@ export default function BreastfeedingEdit() {
         {records.map((rec, idx) => (
           <GroupSection key={rec.id} style={styles.row}>
             <Text style={{ flex: 1 }}>{rec.label}</Text>
-            <TextInput
-              style={styles.input}
-              value={rec.time}
-              // filtrujeme vstup už během psaní
-              onChangeText={(txt) => handleTimeInput(txt, (t) => updateTime(idx, t))}
-              onBlur={() => {
-                const current = records[idx]?.time ?? "";
-                const norm = normalizeTime(current);
-                if (norm) {
-                  updateTime(idx, norm);
-                } else {
-                  Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
-                  updateTime(idx, ""); // smažeme neplatný, uživatel musí opravit
-                }
-              }}
+            <TimeSelector 
+              time={rec.time} 
+              onChange={(t) => updateTime(idx, t)}
             />
             <Pressable onPress={() => deleteRecord(idx)}>
               <Text style={styles.icon}>🚮</Text>
@@ -200,19 +198,9 @@ export default function BreastfeedingEdit() {
             </Pressable>
           </View>
 
-          <TextInput
-            placeholder="HH:MM"
-            style={styles.input}
-            value={newTime}
-            onChangeText={(txt) => handleTimeInput(txt, setNewTime)}
-            onBlur={() => {
-              const norm = normalizeTime(newTime);
-              if (norm) setNewTime(norm);
-              else {
-                Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
-                setNewTime("");
-              }
-            }}
+          <TimeSelector 
+            time={newTime} 
+            onChange={setNewTime}
           />
           <Pressable onPress={addRecord}>
             <Text style={styles.icon}>✅</Text>

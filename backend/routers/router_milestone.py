@@ -12,9 +12,7 @@ router = APIRouter()
 
 @router.get("/children/{child_id}/milestones", response_model=List[MilestoneRead])
 def list_milestones(child_id: str, session: Session = Depends(get_session)):
-    """
-    List all milestones for a child.
-    """
+    """List all milestones for a child."""
     return cm.get_milestones_for_child(session, child_id)
 
 @router.post(
@@ -30,9 +28,7 @@ def create_milestone(
 
 @router.get("/children/{child_id}/milestones/{milestone_id}", response_model=MilestoneRead)
 def get_milestone(child_id: str, milestone_id: str, session: Session = Depends(get_session)):
-    """
-    Get a single milestone by `milestone_id`. Verifies the milestone belongs to `child_id`.
-    """
+    """Get a single milestone by `milestone_id`."""
     milestone = cm.get_milestone(session, milestone_id)
     if not milestone or milestone.child_id != child_id:
         raise HTTPException(status_code=404, detail="Milestone not found")
@@ -41,9 +37,7 @@ def get_milestone(child_id: str, milestone_id: str, session: Session = Depends(g
 
 @router.put("/children/{child_id}/milestones/{milestone_id}", response_model=MilestoneRead)
 def update_milestone(child_id: str, milestone_id: str, milestone_data: MilestoneUpdate, session: Session = Depends(get_session)):
-    """
-    Update a milestone. Partial updates supported (only changed fields required).
-    """
+    """Update a milestone."""
     milestone = cm.get_milestone(session, milestone_id)
     if not milestone or milestone.child_id != child_id:
         raise HTTPException(status_code=404, detail="Milestone not found")
@@ -55,9 +49,6 @@ def update_milestone(child_id: str, milestone_id: str, milestone_data: Milestone
 
 @router.delete("/children/{child_id}/milestones/{milestone_id}")
 def delete_milestone(child_id: str, milestone_id: str, session: Session = Depends(get_session)):
-    """
-    Delete a milestone by `milestone_id`. Verifies the milestone belongs to `child_id`.
-    """
     milestone = cm.get_milestone(session, milestone_id)
     if not milestone or milestone.child_id != child_id:
         raise HTTPException(status_code=404, detail="Milestone not found")

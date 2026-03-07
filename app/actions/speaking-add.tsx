@@ -5,7 +5,7 @@ import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
-import * as api from "@/components/storage/api";
+import { Child, Word } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
@@ -21,7 +21,7 @@ export default function SpeakingAdd() {
   const [selectedWord, setSelectedWord] = useState("");
   const [date, setDate] = useState(formatDateLocal(new Date()));
   const [note, setNote] = useState("");
-  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+  const { selectedChildId, selectedChild, updateChild } = useChild();
   
   const handleAdd = async () => {
     let finalName = name.trim();
@@ -45,29 +45,37 @@ export default function SpeakingAdd() {
       return;
     }
 
-  try {
-    // 1. Odeslání dat na server
-    const payload = {
-      name: finalName,
-      entries: [
-        {
-          date: date,
-          // Pokud je note prázdný, pošli raději null nebo ho vynech, 
-          // pokud ho backend nevyžaduje jako string
-          note: note.trim() || "" 
-        },
-      ],
-    };
+    try {
+      // Příprava nového objektu slova (lokální simulace toho, co dělá backend)
+      const newWord: Word = {
+        id: `local-${Date.now()}`,
+        child_id: selectedChildId!,  // Add this required field
+        name: finalName,
+        entries: [
+          {
+            id: `entry-${Date.now()}`,
+            date: date,
+            note: note.trim() ? note.trim() : undefined
+          }
+        ]
+      };
 
-    await api.createWord(selectedChildId, payload);
+      // Vytvoření aktualizované kopie dítěte
+      const updatedChild: Child = {
+        ...selectedChild!, 
+        words: [...existingWords, newWord]
+      };
 
-    // 2. Refresh globálních dat v kontextu
-    await reloadChildren();
-    router.back();
-      } catch (error) {
-        console.error("Chyba při ukládání slova:", error);
-        Alert.alert("Chyba", "Nepodařilo se uložit slovo.");
-      }
+      // Uložení skrze context (zajistí lokální persistenci i sync na pozadí)
+      await updateChild(updatedChild);
+
+      // Návrat zpět
+      router.back();
+
+    } catch (error) {
+      console.error("Chyba při přípravě slova:", error);
+      Alert.alert("Chyba", "Nepodařilo se uložit slovo do paměti.");
+    }
   }; 
 
   return (

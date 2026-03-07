@@ -5,58 +5,30 @@ from ..models import WeightHeight, WeightHeightCreate, WeightHeightUpdate
 
 # ============ WEIGHT / HEIGHT CRUD OPERATIONS ============
 
-def create_wh_record(
-    session: Session,
-    child_id: str,
-    data: WeightHeightCreate
-):
-    rec = WeightHeight(
-        **data.dict(),
-        child_id=child_id
-    )
+def get_wh_for_child(session: Session, child_id: str):
+    """Vrátí všechny záznamy váhy a výšky pro dané dítě."""
+    return session.exec(select(WeightHeight).where(WeightHeight.child_id == child_id)).all()
+
+def create_wh(session: Session, child_id: str, data: WeightHeightCreate) -> WeightHeight:
+    rec = WeightHeight(**data.dict(), child_id=child_id)
     session.add(rec)
     session.commit()
     session.refresh(rec)
     return rec
 
-def get_wh_record(session: Session, wh_id: str) -> Optional[WeightHeight]:
-    """Return a weight/height record by its primary id."""
-    return session.get(WeightHeight, wh_id)
-
-def get_wh_for_child(session: Session, child_id: str, date: Optional[str] = None) -> List[WeightHeight]:
-    """Return all weight/height records for a given child. Optionally filter by date (YYYY-MM-DD)."""
-    query = select(WeightHeight).where(WeightHeight.child_id == child_id)
-    if date:
-        query = query.where(WeightHeight.date == date)
-    return session.exec(query).all()
-
-def find_wh_by_date(session: Session, child_id: str, date: str) -> List[WeightHeight]:
-    """Find weight/height records for a child on an exact date (useful to check duplicates)."""
-    return session.exec(
-        select(WeightHeight).where(WeightHeight.child_id == child_id, WeightHeight.date == date)
-    ).all()
-
-def update_wh_record(session: Session, wh_id: str, wh_data: WeightHeightUpdate) -> Optional[WeightHeight]:
-    """Update fields of an existing weight/height record (partial update supported)."""
-    wh = session.get(WeightHeight, wh_id)
-    if not wh:
-        return None
-
-    update_dict = wh_data.dict(exclude_unset=True)
+def update_wh(session: Session, wh_rec: WeightHeight, data: WeightHeightUpdate) -> WeightHeight:
+    update_dict = data.dict(exclude_unset=True)
     for key, value in update_dict.items():
-        setattr(wh, key, value)
-
-    session.add(wh)
+        setattr(wh_rec, key, value)
+    session.add(wh_rec)
     session.commit()
-    session.refresh(wh)
-    return wh
+    session.refresh(wh_rec)
+    return wh_rec
 
-def delete_wh_record(session: Session, wh_id: str) -> bool:
-    """Delete a weight/height record by id. Returns True if deleted else False."""
-    wh = session.get(WeightHeight, wh_id)
-    if not wh:
+def delete_wh_record(session: Session, wh_id: str, child_id: str) -> bool:
+    rec = session.get(WeightHeight, wh_id)
+    if not rec or rec.child_id != child_id:
         return False
-
-    session.delete(wh)
+    session.delete(rec)
     session.commit()
     return True

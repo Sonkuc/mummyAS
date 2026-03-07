@@ -1,8 +1,7 @@
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 from typing import List, Optional
 from ..models import Speaking, SpeakingCreate, SpeakingUpdate, WordEntry
 
-# ============ WORD CRUD OPERATIONS ============
 
 def get_word(session: Session, word_id: str) -> Optional[Speaking]:
     """Získá slovo podle jeho ID."""
@@ -14,27 +13,20 @@ def get_words_for_child(session: Session, child_id: str) -> List[Speaking]:
     return session.exec(query).all()
 
 def create_word(session: Session, child_id: str, data: SpeakingCreate):
-    """Vytvoří hlavní slovo a k němu i všechny vnořené záznamy (entries)."""
-    rec = Speaking(
+    # Vytvoříme seznam objektů WordEntry
+    db_entries = [WordEntry(**e.dict()) for e in data.entries] if data.entries else []
+    
+    # Vytvoříme hlavní slovo a rovnou mu přiřadíme entries
+    db_word = Speaking(
         name=data.name,
-        child_id=child_id
+        child_id=child_id,
+        entries=db_entries  # SQLAlchemy se postará o word_id automaticky
     )
-    session.add(rec)
+    
+    session.add(db_word)
     session.commit()
-    session.refresh(rec)
-
-    if data.entries:
-        for entry_in in data.entries:
-            db_entry = WordEntry(
-                **entry_in.dict(),
-                word_id=rec.id
-            )
-            session.add(db_entry)
-        
-        session.commit()
-        session.refresh(rec)
-        
-    return rec
+    session.refresh(db_word)
+    return db_word
 
 def update_word(session: Session, word_id: str, word_data: SpeakingUpdate) -> Optional[Speaking]:
     db_word = session.get(Speaking, word_id)
@@ -45,21 +37,14 @@ def update_word(session: Session, word_id: str, word_data: SpeakingUpdate) -> Op
     if word_data.name is not None:
         db_word.name = word_data.name
 
-    # 2. Aktualizace záznamů (entries) - Smazání a znovu vytvoření (Replace strategie)
+    # 2. Aktualizace entries - Smazání a znovu vytvoření (Replace strategie)
     if word_data.entries is not None:
-        # Smažeme staré
-        statement = select(WordEntry).where(WordEntry.word_id == word_id)
-        old_entries = session.exec(statement).all()
-        for old in old_entries:
-            session.delete(old)
+        # 1. Hromadné smazání starých záznamů
+        session.exec(delete(WordEntry).where(WordEntry.word_id == word_id))
         
-        # Přidáme nové
+        # 2. Přidání nových
         for entry_in in word_data.entries:
-            new_entry = WordEntry(
-                date=entry_in.date,
-                note=entry_in.note,
-                word_id=word_id
-            )
+            new_entry = WordEntry(**entry_in.dict(), word_id=word_id)
             session.add(new_entry)
 
     session.add(db_word)

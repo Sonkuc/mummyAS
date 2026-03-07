@@ -1,17 +1,18 @@
 import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
+import { normalizeTime } from "@/components/HelperFunctions";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import { handleTimeInput, normalizeTime } from "@/components/SleepBfFunctions";
-import * as api from "@/components/storage/api";
+import { updateSleepDay } from "@/components/storage/api";
 import { SleepRecord } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
+import TimeSelector from "@/components/TimeSelector";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from 'react-native-uuid';
 
 type DisplaySleepRecord = SleepRecord & { label: string };
@@ -30,36 +31,41 @@ const renumberSleeps = (records: SleepRecord[]): DisplaySleepRecord[] => {
 export default function SleepEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const router = useRouter();
-  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+  const { selectedChildId, selectedChild, updateChild } = useChild();
 
   const [records, setRecords] = useState<DisplaySleepRecord[]>([]);  const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [newTime, setNewTime] = useState("");
   const [newState, setNewState] = useState<"awake" | "sleep">("awake");
 
-  // Načtení záznamů pro dané datum
+  // Proběhla první inicializace?
+  const isInitialized = useRef(false);
+
   useEffect(() => {
     if (!selectedChild?.sleepRecords || !date) return;
+    if (!isInitialized.current) {
+      const dayRecords: SleepRecord[] = selectedChild.sleepRecords
+        .filter((r) => r.date === date)
+        .map((r) => ({
+          id: r.id,
+          date: r.date,
+          time: r.time,
+          state: r.state as "awake" | "sleep"
+        }))
+        .sort((a, b) => a.time.localeCompare(b.time));
 
-    const dayRecords: SleepRecord[] = selectedChild.sleepRecords
-      .filter((r) => r.date === date)
-      .map((r) => ({
-        id: r.id,
-        date: r.date,
-        time: r.time,
-        state: r.state as "awake" | "sleep"
-      }))
-      .sort((a, b) => a.time.localeCompare(b.time));
+      setRecords(renumberSleeps(dayRecords));
+      
+      // Nastavení newState pro další záznam
+      if (dayRecords.length > 0) {
+        const lastState = dayRecords[dayRecords.length - 1].state;
+        setNewState(lastState === "sleep" ? "awake" : "sleep");
+      } else {
+        setNewState("sleep");
+      }
 
-    setRecords(renumberSleeps(dayRecords));
-    setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
-
-    if (dayRecords.length > 0) {
-      const lastState = dayRecords[dayRecords.length - 1].state;
-      setNewState(lastState === "sleep" ? "awake" : "sleep");
-    } else {
-      setNewState("sleep");
+      isInitialized.current = true;
     }
-  }, [selectedChild, date]);
+  }, [selectedChild?.id, date]); // Sledujeme jen ID dítěte a datum, ne celé pole records
 
   // Úprava času
   const updateTime = (index: number, newTimeValue: string) => {
@@ -112,29 +118,56 @@ export default function SleepEdit() {
     });
   };
 
-  // Uložení změn (Bulk update jako u kojení)
+  // Uložení změn (Bulk update)
   const saveChanges = async () => {
-    if (!selectedChildId || !date) return;
+    if (!selectedChildId || !selectedChild || !date) return;
 
-    const normalized: Omit<SleepRecord, "id">[] = [];
-    for (let i = 0; i < records.length; i++) {
-      const r = records[i];
-      const norm = normalizeTime(r.time);
-      if (!norm) {
-        Alert.alert("Chybný čas", `Záznam č. ${i + 1} obsahuje neplatný čas.`);
-        return;
-      }
-      normalized.push({ date: r.date, time: norm, state: r.state });
-    }
+    // 1. Příprava čistých dat
+    const normalizedDayRecords = records.map((r) => ({
+      id: r.id, 
+      date: r.date,
+      time: normalizeTime(r.time) || r.time,
+      state: r.state,
+    }));
 
     try {
-      // Předpokládám endpoint updateSleepDay v api.ts
-      await api.updateSleepDay(selectedChildId, date, normalized);
-      await reloadChildren();
-      router.back();
+      // 2. LOKÁLNÍ ULOŽENÍ
+      const otherDaysRecords = (selectedChild.sleepRecords || []).filter(
+        (r) => r.date !== date
+      );
+
+      const updatedChild = {
+        ...selectedChild,
+        sleepRecords: [...otherDaysRecords, ...normalizedDayRecords].sort(
+          (a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)
+        ),
+      };
+
+      // Uložíme do Contextu (toto aktualizuje AsyncStorage i stav aplikace)
+      await updateChild(updatedChild);
+
+      // 3. OKAMŽITÝ NÁVRAT (Nečekáme na server!)
+      // Použijeme podmínku, aby byl návrat co nejplynulejší
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/actions/sleep");
+      }
+
+      // 4. SYNCHRONIZACE NA POZADÍ
+      // Tady je kritická změna: posíláme normalizedDayRecords (které mohou být [])
+      // a explicitně definujeme datum 'date'
+      updateSleepDay(selectedChildId, date, normalizedDayRecords)
+        .then(() => {
+          console.log(`[SYNC] Den ${date} úspěšně synchronizován (záznamů: ${normalizedDayRecords.length})`);
+        })
+        .catch((err) => {
+          console.warn("Sync na pozadí selhal, vyřeší se automaticky později.", err);
+        });
+
     } catch (error) {
-      console.error(error);
-      Alert.alert("Chyba", "Nepodařilo se uložit změny.");
+      console.error("Kritická chyba při lokálním ukládání:", error);
+      Alert.alert("Chyba", "Nepodařilo se uložit data do telefonu.");
     }
   };
 
@@ -148,21 +181,9 @@ export default function SleepEdit() {
         {records.map((rec, idx) => (
           <GroupSection key={rec.id} style={styles.row}>
             <Text style={{ flex: 1 }}>{rec.label}</Text>
-            <TextInput
-              style={styles.input}
-              value={rec.time}
-              // filtruje se vstup už během psaní
-              onChangeText={(txt) => handleTimeInput(txt, (t) => updateTime(idx, t))}
-              onBlur={() => {
-                const current = records[idx]?.time ?? "";
-                const norm = normalizeTime(current);
-                if (norm) {
-                  updateTime(idx, norm);
-                } else {
-                  Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
-                  updateTime(idx, ""); // smaže neplatný, uživatel musí opravit
-                }
-              }}
+            <TimeSelector 
+              time={rec.time} 
+              onChange={(t) => updateTime(idx, t)}
             />
             <Pressable onPress={() => deleteRecord(idx)}>
               <Text style={styles.icon}>🚮</Text>
@@ -189,19 +210,9 @@ export default function SleepEdit() {
               </Text>
             </Pressable>
           </View>
-          <TextInput
-            placeholder="HH:MM"
-            style={styles.input}
-            value={newTime}
-            onChangeText={(txt) => handleTimeInput(txt, setNewTime)}
-            onBlur={() => {
-              const norm = normalizeTime(newTime);
-              if (norm) setNewTime(norm);
-              else {
-                Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
-                setNewTime("");
-              }
-            }}
+          <TimeSelector 
+            time={newTime} 
+            onChange={setNewTime}
           />
           <Pressable onPress={addRecord}>
             <Text style={styles.icon}>✅</Text>

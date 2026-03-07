@@ -2,7 +2,7 @@ import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import { createTeethRecord, deleteTeethRecord } from "@/components/storage/api";
+import * as api from "@/components/storage/api";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
@@ -12,7 +12,7 @@ import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from "reac
 
 export default function Teeth() {
   const [selectedTooth, setSelectedTooth] = useState<null | string>(null);
-  const { reloadChildren, selectedChildId, allChildren } = useChild();
+  const { updateChild, selectedChildId, allChildren } = useChild();
   
   const selectedChild = useMemo(() => 
     allChildren.find(c => c.id === selectedChildId),
@@ -52,44 +52,45 @@ export default function Teeth() {
     return map;
   }, [selectedChild]);
 
-  const handleDateChange = async (toothId: string, date: Date) => {
+  // JEDNOTNÁ FUNKCE PRO SYNCHRONIZACI
+  const syncChanges = async (updatedRecords: any[]) => {
     if (!selectedChild) return;
     
-    // Zajištění, že bereme datum podle lokálního času, ne UTC
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const localIsoDate = `${year}-${month}-${day}`;
+    // 1. Lokální update (UI + AsyncStorage) - proběhne okamžitě
+    const updatedChild = { ...selectedChild, teethRecords: updatedRecords };
+    await updateChild(updatedChild);
 
+    // 2. Odeslání na server (pokud selže, ChildProvider to zkusí znovu později)
     try {
-      await createTeethRecord(selectedChild.id, {
-        tooth_id: toothId,
-        date: localIsoDate
-      });
-      await reloadChildren();
-    } catch (error) {
-      console.error("Chyba při ukládání zubu:", error);
+      await api.syncTeethRecords(selectedChild.id, updatedRecords);
+    } catch (e) {
+      console.log("Sync uloženo pro pozdější odeslání.");
     }
   };
 
+  // PŘIDÁNÍ NEBO ZMĚNA DATA
+  const handleDateChange = async (toothId: string, date: Date) => {
+    const localIsoDate = date.toISOString().split('T')[0];
+    
+    // Vytvoříme nový záznam (bez id a child_id, ty si pořeší backend při syncu)
+    const newRecord = { tooth_id: toothId, date: localIsoDate };
+
+    // Odfiltrujeme starou verzi tohoto zubu a přidáme novou
+    const filtered = (selectedChild?.teethRecords || []).filter(r => r.tooth_id !== toothId);
+    await syncChanges([...filtered, newRecord]);
+  };
+
+  // SMAZÁNÍ DATUMU
   const handleDateDelete = async () => {
-    if (!selectedChild || !selectedTooth) return;
+    if (!selectedTooth) return;
 
-    // Najdeme v datech z backendu ten konkrétní záznam pro daný zub, abychom znali jeho ID
-    const recordToDelete = selectedChild.teethRecords?.find(
-      (r: any) => r.tooth_id === selectedTooth
+    // Vynecháme tento zub z pole
+    const updatedRecords = (selectedChild?.teethRecords || []).filter(
+      r => r.tooth_id !== selectedTooth
     );
-
-    if (!recordToDelete) return;
-
-    try {
-      // Smažeme podle technického ID (UUID)
-      await deleteTeethRecord(selectedChild.id, recordToDelete.id);
-      await reloadChildren();
-      setSelectedTooth(null); // Zavřeme detail zubu
-    } catch (error) {
-      console.error("Chyba při mazání zubu:", error);
-    }
+    
+    await syncChanges(updatedRecords);
+    setSelectedTooth(null); // Zavřeme detail zubu
   };
 
   const TeethJawSection = ({ jaw, label }: { jaw: "upper" | "lower", label: string }) => (

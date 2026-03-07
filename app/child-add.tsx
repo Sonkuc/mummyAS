@@ -5,7 +5,7 @@ import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import PhotoChooser from "@/components/PhotoChooser";
-import * as api from "@/components/storage/api";
+import { Child } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
@@ -14,7 +14,7 @@ import { useChild } from "@/contexts/ChildContext";
 import * as FileSystem from "expo-file-system/legacy";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from "react-native-uuid";
 
 export default function ChildAdd() {
@@ -23,7 +23,7 @@ export default function ChildAdd() {
   const [sex, setSex] = useState("");
   const [birthDate, setBirthDate] = useState<Date>(new Date());
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const { reloadChildren, setSelectedChildId, allChildren } = useChild();
+  const { updateChild, setSelectedChildId, allChildren } = useChild();
 
   const childId = useMemo(() => uuid.v4() as string, []);
 
@@ -71,102 +71,110 @@ export default function ChildAdd() {
       }     
     }
 
-    const childData = {
+    const newChildData: Child = {
+      id: childId, // Naše UUID
       name: name.trim(),
       sex: sex,
-      birthDate: formatDateLocal(birthDate),
+      birthDate: formatDateLocal(birthDate), // Ukládáme jako YYYY-MM-DD
       photo: finalPhotoUri,
+      milestones: [],
+      words: [],
+      foodDates: {},
+      foodCategories: {},
+      teethDates: {},
+      teethRecords: [],
+      sleepRecords: [],
+      breastfeedingRecords: [],
+      wh: [],
+      currentModeSleep: null,
+      currentModeFeed: null,
     };
 
     try {
-      // 1. Uložíme dítě a chytíme si odpověď z backendu
-      // Předpokládám, že createChild vrací objekt vytvořeného dítěte i s jeho ID
-      const savedChild = await api.createChild(childData);
-
-      // 2. Refreshneme seznam dětí z backendu
-      await reloadChildren();
-
-      // 3. TADY použijeme setSelectedChildId
-      if (savedChild && savedChild.id) {
-        await setSelectedChildId(savedChild.id);
-      }
       
+       // Přidání do RAM (ihned v UI), Uložení do AsyncStorage (přežije restart), Přidání do pending_updates 
+      await updateChild(newChildData);
+
+      // Nastavíme jako aktivní dítě
+      await setSelectedChildId(childId);
+
       router.back();
     } catch (error) {
-      console.error(error);
-      alert("Nepodařilo se uložit dítě na server.");
+      console.error("Kritická chyba při přidávání:", error);
+      alert("Nepodařilo se uložit data.");
     }
   };
 
   return (
     <MainScreenContainer>
-      <CustomHeader/> 
-      <Title>Zadej informace</Title>
-      <Subtitle>Jméno</Subtitle>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <CustomHeader/> 
+        <Title>Zadej informace</Title>
+        <Subtitle>Jméno</Subtitle>
 
-      <MyTextInput
-        placeholder="Jméno"
-        value={name}
-        autoCapitalize="words"
-        onChangeText={setName}
-      />
+        <MyTextInput
+          placeholder="Jméno"
+          value={name}
+          autoCapitalize="words"
+          onChangeText={setName}
+        />
 
-      <Subtitle style={{marginTop: 10}}>Datum narození</Subtitle>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
-        <View style={{ width: "80%" }}>
-          <ValidatedDateInput
-            value={formatDateLocal(birthDate)}
-            onChange={(val) => {
-              if (val && val.length === 10) {
-                const [y, m, d] = val.split("-").map(Number);
-                const newD = new Date(y, m - 1, d);
-                if (!isNaN(newD.getTime())) setBirthDate(newD);
-              }
-            }}
-            allowPastDates={true}
-            fallbackOnError="original"
-            originalValue={formatDateLocal(new Date())}
+        <Subtitle style={{marginTop: 10}}>Datum narození</Subtitle>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 25 }}>
+          <View style={{ width: "80%" }}>
+            <ValidatedDateInput
+              value={formatDateLocal(birthDate)}
+              onChange={(val) => {
+                if (val && val.length === 10) {
+                  const [y, m, d] = val.split("-").map(Number);
+                  const newD = new Date(y, m - 1, d);
+                  if (!isNaN(newD.getTime())) setBirthDate(newD);
+                }
+              }}
+              allowPastDates={true}
+              fallbackOnError="original"
+              originalValue={formatDateLocal(new Date())}
+            />
+          </View>
+          <DateSelector
+            date={birthDate}
+            onChange={setBirthDate}
           />
         </View>
-        <DateSelector
-          date={birthDate}
-          onChange={setBirthDate}
+
+        <View style={styles.genderContainer}>
+          <Pressable
+            style={[
+              styles.genderButton,
+              sex === "chlapec" && styles.genderSelected,
+            ]}
+            onPress={() => setSex("chlapec")}
+          >
+            <Text style={[
+              sex === "chlapec" && styles.genderTextSelected,
+            ]}>Chlapec</Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.genderButton,
+              sex === "divka" && styles.genderSelected,
+            ]}
+            onPress={() => setSex("divka")}
+          >
+            <Text style={[
+              sex === "divka" && styles.genderTextSelected,
+            ]}>Dívka</Text>
+          </Pressable>
+        </View>
+
+        <PhotoChooser
+          childId={childId}
+          initialUri={null}
+          onSelect={(uri) => setPhotoUri(uri)}
         />
-      </View>
-
-      <View style={styles.genderContainer}>
-        <Pressable
-          style={[
-            styles.genderButton,
-            sex === "chlapec" && styles.genderSelected,
-          ]}
-          onPress={() => setSex("chlapec")}
-        >
-          <Text style={[
-            sex === "chlapec" && styles.genderTextSelected,
-          ]}>Chlapec</Text>
-        </Pressable>
-
-        <Pressable
-          style={[
-            styles.genderButton,
-            sex === "divka" && styles.genderSelected,
-          ]}
-          onPress={() => setSex("divka")}
-        >
-          <Text style={[
-            sex === "divka" && styles.genderTextSelected,
-          ]}>Dívka</Text>
-        </Pressable>
-      </View>
-
-      <PhotoChooser
-        childId={childId}
-        initialUri={null}
-        onSelect={(uri) => setPhotoUri(uri)}
-      />
-      <CheckButton style={{marginBottom: 20}} onPress = {handleSave} /> 
-
+        <CheckButton style={{marginBottom: 20}} onPress = {handleSave} /> 
+      </ScrollView>
     </MainScreenContainer>
   );
 }

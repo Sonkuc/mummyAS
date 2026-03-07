@@ -17,7 +17,7 @@ export default function Milestone() {
   const sortedMilestones = React.useMemo(() => {
     return (selectedChild?.milestones || [])
       .slice() // Vytvoříme kopii pro sort
-      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [selectedChild]);
 
   return (

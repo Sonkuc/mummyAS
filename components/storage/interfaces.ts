@@ -10,12 +10,12 @@ export interface Milestone {
 export interface WeightHeight {
   id: string;
   date: string;
-  weight?: string;
-  height?: string;
-  head?: string;
-  foot?: string;
-  clothes?: string;
-};
+  weight?: string | number | null; 
+  height?: string | number | null;
+  head?: string | number | null;
+  foot?: string | null;
+  clothes?: string | null;
+}
 
 export interface BreastfeedingRecord {
   id: string;
@@ -24,12 +24,22 @@ export interface BreastfeedingRecord {
   state: "start" | "stop";
 };
 
+export interface BreastfeedingStats {
+  date: string;
+  total_minutes: number;
+}
+
 export interface SleepRecord {
   id: string;
   date: string;
   time: string;
   state: "awake" | "sleep";
 };
+
+export interface SleepStats {
+  date: string;
+  total_minutes: number;
+}
 
 export type WordEntry = {
   id: string;      // ID záznamu z DB
@@ -53,7 +63,15 @@ export interface TeethRecord {
   created_at: string;  // Optional, if needed
 };
 
-export type FoodDates = Record<string, string>;
+export interface FoodRecord {
+  id: string;
+  child_id: string;
+  food_name: string; // Backend název
+  category: string;
+  date: string;      // ISO formát
+}
+
+export type FoodDates = Record<string, string>; // Mapa: { "Jablko": "2026-01-31" }
 
 export interface Child {
   id: string;

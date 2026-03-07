@@ -38,14 +38,8 @@ def get_bf_stats(child_id: str, session: Session = Depends(get_session)):
             t1 = datetime.strptime(start_time, "%H:%M")
             t2 = datetime.strptime(rec.time, "%H:%M")
             diff = (t2 - t1).seconds // 60
-            
-            # OCHRANA: Pokud je kojení delší než 2 hodiny (120 min), 
-            # pravděpodobně jde o chybu zapomenutého stopnutí.
             if 0 < diff < 120:
                 stats[rec.date] += diff
-            else:
-                # Volitelně: přičíst průměrnou délku kojení místo nesmyslu
-                stats[rec.date] += 15 
 
     return [{"date": d, "total_minutes": m} for d, m in sorted(stats.items())]
 
@@ -57,24 +51,30 @@ def get_child(child_id: str, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="Child not found")
     return child
 
+
 @router.post("/children", response_model=ChildRead)
 def create_child(child_data: ChildCreate, session: Session = Depends(get_session)):
     return cc.create_child(session, child_data)
 
+
 @router.put("/children/{child_id}", response_model=ChildRead)
 def update_child(child_id: str, child_data: ChildUpdate, session: Session = Depends(get_session)):
-    # Získáme dítě z DB
+    # 1. Zkusíme získat dítě
     db_child = session.get(Child, child_id)
-    if not db_child:
-        raise HTTPException(status_code=404, detail="Child not found")
-
-    # Převedeme data na dict, exclude_unset zajistí, že nepřepíšeme pole, která neposíláme
-    update_data = child_data.dict(exclude_unset=True)
     
-    for key, value in update_data.items():
-        setattr(db_child, key, value)
+    # 2. UPSERT: Pokud neexistuje, vytvoříme ho s daným ID
+    if not db_child:
+        new_data = child_data.dict(exclude_unset=True)
+        new_data["id"] = child_id
+        db_child = Child(**new_data)
+        session.add(db_child)
+    else:
+        # 3. Klasický UPDATE
+        update_data = child_data.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_child, key, value)
+        session.add(db_child)
 
-    session.add(db_child)
     session.commit()
     session.refresh(db_child)
     return db_child

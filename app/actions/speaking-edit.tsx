@@ -5,20 +5,20 @@ import GroupSection from "@/components/GroupSection";
 import { formatDateLocal, formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
-import * as api from "@/components/storage/api";
+import { Child } from "@/components/storage/interfaces";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function SpeakingEdit() {
   const { wordId } = useLocalSearchParams();
   const router = useRouter();
-  const { selectedChildId, selectedChild, reloadChildren } = useChild();
+  const { selectedChildId, selectedChild, updateChild } = useChild();
 
   const [name, setName] = useState("");
   const [entries, setEntries] = useState<{ id?: string; date: string; note?: string }[]>([]);
@@ -27,30 +27,43 @@ export default function SpeakingEdit() {
 
   const currentWord = selectedChild?.words?.find((w: any) => w.id === wordId);
 
+  const isInitialized = useRef(false);
+
   useEffect(() => {
-    if (currentWord) {
+    if (!currentWord) return;
+
+    if (!isInitialized.current) {
       setName(currentWord.name);
       setEntries(currentWord.entries ?? []);
+      isInitialized.current = true;
     }
-  }, [currentWord]);
+  }, [currentWord?.id, wordId]);
 
   const handleSave = async () => {
-    if (!selectedChildId || !wordId) return;
+    if (!selectedChildId || !wordId || !selectedChild) return;
+
+    // 1. Nová verze slova (aktualizované jméno a pole záznamů)
+    const updatedWord = {
+      ...currentWord,
+      name: name.trim(),
+      entries: entries.map(e => ({
+        id: e.id,
+        date: e.date,
+        note: e.note?.trim() || ""
+      })),
+    };
+
+    // 2. Vytvoříme kopii celého dítěte, kde v poli 'words' vyměníme to jedno slovo
+    const updatedChild: Child = {
+      ...selectedChild,
+      words: selectedChild.words?.map((w: any) => 
+        w.id === wordId ? updatedWord : w
+      ) || [],
+    };
 
     try {
-      const payload = {
-        name: name.trim(),
-        // Posíláme aktuální stav entries zpět na server
-        entries: entries.map(e => ({
-          date: e.date,
-          note: e.note?.trim() || ""
-        })),
-      };
-
-      // API volání
-      await api.updateWord(selectedChildId, String(wordId), payload);
+      await updateChild(updatedChild);
       
-      await reloadChildren();
       router.back();
     } catch (error) {
       console.error("Chyba při ukládání:", error);
@@ -58,16 +71,27 @@ export default function SpeakingEdit() {
     }
   };
 
-  const removeEntry = (entryToRemove: { date: string; note?: string }) => {
-  setEntries(prev => prev.filter(e => 
-    // Mažeme ten, který se neshoduje v datu i poznámce zároveň
-    !(e.date === entryToRemove.date && e.note === entryToRemove.note)
-  ));
-};
+  const removeEntry = (entryToRemove: { id?: string; date: string; note?: string }) => {
+    setEntries(prev => prev.filter(e => {
+      // Pokud máme ID (z API nebo čerstvě vygenerované)
+      if (e.id && entryToRemove.id) {
+        return e.id !== entryToRemove.id;
+      }
+      // Fallback pro jistotu (shoda data a poznámky)
+      return !(e.date === entryToRemove.date && e.note === entryToRemove.note);
+    }));
+  };
 
   const addEntry = () => {
     if (!newDate.trim()) return;
-    setEntries(prev => [...prev, { date: newDate, note: newNote }]);
+    
+    // Přidáváme unikátní ID pro každé entry
+    setEntries(prev => [...prev, { 
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+      date: newDate, 
+      note: newNote 
+    }]);
+  
     setDate(formatDateLocal(new Date()));
     setNewNote("");
   };

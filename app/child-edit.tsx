@@ -6,7 +6,6 @@ import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import PhotoChooser from "@/components/PhotoChooser";
-import * as api from "@/components/storage/api";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
@@ -15,11 +14,11 @@ import { useChild } from "@/contexts/ChildContext";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function ChildEdit() {
   const router = useRouter();
-  const { allChildren, reloadChildren } = useChild();
+  const { allChildren, updateChild } = useChild();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const currentChild = useMemo(() => 
@@ -88,89 +87,88 @@ export default function ChildEdit() {
     }
 
     try {
-      // Volání API pro update na serveru
-      // Předpokládám, že tvůj backend očekává birthDate ve formátu YYYY-MM-DD
       const updatedData = {
+        ...currentChild, 
         name: name.trim(),
         sex: sex,
         birthDate: formatDateLocal(birthDate),
         photo: finalPhotoUri,
       };
 
-      await api.updateChild(currentChild.id, updatedData);
-      
-      // Refresh dat v kontextu
-      await reloadChildren();
+      await updateChild(updatedData);
       
       router.back();
     } catch (error) {
+      // Pokud selže něco v kódu, ne kvůli síti
       console.error(error);
-      alert("Nepodařilo se uložit změny na server.");
+      alert("Neočekávaná chyba při ukládání.");
     }
   };
 
   if (!currentChild) return null;
 
   return (
-    <MainScreenContainer>
-      <CustomHeader>
-        <DeleteButton type="child" childId={currentChild.id} />
-      </CustomHeader>
+    <MainScreenContainer style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <CustomHeader>
+          <DeleteButton type="child" childId={currentChild.id} />
+        </CustomHeader>
 
-      <Title>Uprav informace</Title>
+        <Title>Uprav informace</Title>
 
-      <Subtitle>Jméno</Subtitle>
-      <MyTextInput 
-        placeholder="Jméno" 
-        value={name} 
-        onChangeText={setName} 
-        autoCapitalize="words"
-      />
-      <Subtitle style={{ marginTop: 10 }}>Datum narození</Subtitle>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <View style={{ width: "80%" }}>
-          <ValidatedDateInput
-            value={birthDate ? formatDateLocal(birthDate) : ""}
-            onChange={(val) => setBirthDate(val ? new Date(val) : null)}
-            birthISO={currentChild.birthDate}
-            allowPastDates={true}
-            fallbackOnError="original"
-            originalValue={currentChild.birthDate}
+        <Subtitle>Jméno</Subtitle>
+        <MyTextInput 
+          placeholder="Jméno" 
+          value={name} 
+          onChangeText={setName} 
+          autoCapitalize="words"
+        />
+        <Subtitle style={{ marginTop: 10 }}>Datum narození</Subtitle>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ width: "80%" }}>
+            <ValidatedDateInput
+              value={birthDate ? formatDateLocal(birthDate) : ""}
+              onChange={(val) => setBirthDate(val ? new Date(val) : null)}
+              birthISO={currentChild.birthDate}
+              allowPastDates={true}
+              fallbackOnError="original"
+              originalValue={currentChild.birthDate}
+            />
+          </View>
+          <DateSelector
+            date={birthDate && !isNaN(birthDate.getTime()) ? birthDate : new Date()}
+            onChange={(newDate) => setBirthDate(newDate)}
           />
         </View>
-        <DateSelector
-          date={birthDate && !isNaN(birthDate.getTime()) ? birthDate : new Date()}
-          onChange={(newDate) => setBirthDate(newDate)}
+
+        <View style={styles.genderContainer}>
+          <Pressable
+            style={[styles.genderButton, sex === "chlapec" && styles.genderSelected]}
+            onPress={() => setSex("chlapec")}
+          >
+            <Text style={[sex === "chlapec" && styles.genderTextSelected]}>
+              Chlapec
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.genderButton, sex === "divka" && styles.genderSelected]}
+            onPress={() => setSex("divka")}
+          >
+            <Text style={[sex === "divka" && styles.genderTextSelected]}>
+              Dívka
+            </Text>
+          </Pressable>
+        </View>
+
+        <PhotoChooser
+          childId={currentChild.id}
+          initialUri={currentChild.photo}
+          onSelect={(uri) => setPhotoUri(uri)}
         />
-      </View>
 
-      <View style={styles.genderContainer}>
-        <Pressable
-          style={[styles.genderButton, sex === "chlapec" && styles.genderSelected]}
-          onPress={() => setSex("chlapec")}
-        >
-          <Text style={[sex === "chlapec" && styles.genderTextSelected]}>
-            Chlapec
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.genderButton, sex === "divka" && styles.genderSelected]}
-          onPress={() => setSex("divka")}
-        >
-          <Text style={[sex === "divka" && styles.genderTextSelected]}>
-            Dívka
-          </Text>
-        </Pressable>
-      </View>
-
-      <PhotoChooser
-        childId={currentChild.id}
-        initialUri={currentChild.photo}
-        onSelect={(uri) => setPhotoUri(uri)}
-      />
-
-      <CheckButton style={{ marginBottom: 20 }} onPress={handleSave} />
+        <CheckButton style={{ marginBottom: 20 }} onPress={handleSave} />
+      </ScrollView>
     </MainScreenContainer>
   );
 }
