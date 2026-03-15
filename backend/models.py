@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, JSON
@@ -15,7 +15,7 @@ class ChildBase(SQLModel):
     photo: Optional[str] = None
     currentModeFeed: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     currentModeSleep: Optional[dict] = Field(default=None, sa_column=Column(JSON))
-
+    
 class ChildRead(ChildBase):
     id: str
     milestones: List["MilestoneRead"] = Field(default_factory=list) 
@@ -25,6 +25,7 @@ class ChildRead(ChildBase):
     foodRecords: List["FoodRecordRead"] = Field(default_factory=list)
     sleepRecords: List["SleepRecordRead"] = Field(default_factory=list)
     breastfeedingRecords: List["BreastfeedingRecordRead"] = Field(default_factory=list)   
+    diaryEntries: List["DiaryRead"] = Field(default_factory=list)
 
 class Child(ChildBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -57,6 +58,11 @@ class Child(ChildBase, table=True):
         back_populates="child", 
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
+    diaryEntries: List["Diary"] = Relationship(
+        back_populates="child", 
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
 class ChildCreate(SQLModel):
     id: Optional[str] = None
     name: str
@@ -151,6 +157,7 @@ class BreastfeedingRecordBase(SQLModel):
     date: str  # YYYY-MM-DD format
     time: str  # HH:MM format
     state: BreastfeedingState  # "start" or "stop"
+    note: Optional[str] = None
 
 class BreastfeedingRecordRead(BreastfeedingRecordBase):
     id: str
@@ -169,6 +176,7 @@ class BreastfeedingRecordCreate(BreastfeedingRecordBase):
 class BreastfeedingRecordUpdate(SQLModel):
     time: Optional[str] = None
     state: Optional[BreastfeedingState] = None
+    note: Optional[str] = None
 
 class BreastfeedingDaySummary(SQLModel):
     date: str
@@ -186,6 +194,7 @@ class SleepRecordBase(SQLModel):
     state: SleepState  # "sleep" or "awake"
     label: Optional[str] = None
     extra: Optional[str] = None
+    note: Optional[str] = None
 
 class SleepRecordRead(SleepRecordBase):
     id: str
@@ -206,6 +215,7 @@ class SleepRecordUpdate(SQLModel):
     state: Optional[SleepState] = None
     label: Optional[str] = None
     extra: Optional[str] = None
+    note: Optional[str] = None
 
 class SleepDaySummary(SQLModel):
     date: str
@@ -293,9 +303,10 @@ class FoodCategory(str, Enum):
     other = "other"
 
 class FoodRecordBase(SQLModel):
+    food_name: str
     category: FoodCategory # "cereal", "fruit", ...
     date: Optional[str] = "" # YYYY-MM-DD format
-
+    note: Optional[str] = None
 
 class FoodRecordRead(FoodRecordBase):
     id: str
@@ -315,3 +326,32 @@ class FoodRecordUpdate(SQLModel):
     food_name: Optional[str] = None
     date: Optional[str] = None
     category: Optional[FoodCategory] = None
+    note: Optional[str] = None
+
+# ============ DIARY MODELS ============
+
+class DiaryBase(SQLModel):
+    text: str
+    date: str  # YYYY-MM-DD
+    time: str  # HH:MM
+    category: Optional[str] = "obecné"
+
+class Diary(DiaryBase, table=True):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    child_id: str = Field(foreign_key="child.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    child: "Child" = Relationship(back_populates="diaryEntries")
+
+class DiaryRead(DiaryBase):
+    id: str
+    child_id: str
+    created_at: datetime
+
+class DiaryCreate(DiaryBase): # Dědí text, date, time, category. 
+    pass
+
+class DiaryUpdate(SQLModel):
+    text: Optional[str] = None
+    date: Optional[str] = None
+    time: Optional[str] = None
+    category: Optional[str] = None

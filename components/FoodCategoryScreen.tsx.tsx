@@ -9,6 +9,7 @@ import GroupSection from "./GroupSection";
 import LookUp from "./LookUpButton";
 import MainScreenContainer from "./MainScreenContainer";
 import MyTextInput from "./MyTextInput";
+import Note from "./Note";
 import Subtitle from "./Subtitle";
 import Title from "./Title";
 
@@ -24,37 +25,48 @@ type Props = {
 };
 
 export default function FoodCategoryScreen({ title, categoryKey, dataList }: Props) {
-  const { selectedChild, selectedChildId, updateChild } = useChild();
+  const { selectedChild, updateChild } = useChild();
   const [selectedFood, setSelectedFood] = useState<null | string>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newFoodLabel, setNewFoodLabel] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  // --- POMOCNÁ FUNKCE PRO OPTIMISTICKÝ UPDATE ---
-  const saveFoodOffline = async (foodLabel: string, dateStr: string) => {
+  // --- JEDNOTNÁ FUNKCE PRO UKLÁDÁNÍ (Datum, Kategorie i Poznámka) ---
+  const saveFoodData = async (label: string, updates: { date?: string, note?: string }) => {
     if (!selectedChild) return;
 
-    // 1. Vytvoříme kopii foodDates a foodCategories
-    const newFoodDates = { ...(selectedChild.foodDates || {}) };
-    const newFoodCategories = { ...(selectedChild.foodCategories || {}) };
-
-    // 2. Aktualizujeme hodnoty
-    newFoodDates[foodLabel] = dateStr;
-    newFoodCategories[foodLabel] = categoryKey;
-
-    // 3. Vytvoříme aktualizovaný objekt dítěte
-    const updatedChild = {
-      ...selectedChild,
-      foodDates: newFoodDates,
-      foodCategories: newFoodCategories,
-    };
+    // Všechny informace o jídle uložíme do těchto map pro bleskové UI
+    const newFoodDates = { ...(selectedChild.foodDates || {}), ... (updates.date !== undefined ? { [label]: updates.date } : {}) };
+    const newFoodNotes = { ...(selectedChild.foodNotes || {}), ... (updates.note !== undefined ? { [label]: updates.note } : {}) };
+    const newFoodCategories = { ...(selectedChild.foodCategories || {}), [label]: categoryKey };
 
     try {
-      await updateChild(updatedChild);
+      await updateChild({
+        ...selectedChild,
+        foodDates: newFoodDates,
+        foodNotes: newFoodNotes,
+        foodCategories: newFoodCategories,
+      });
     } catch (err) {
-      console.error("Chyba při lokálním ukládání jídla:", err);
+      console.error("Chyba při ukládání jídla:", err);
     }
   };
+
+  const renderFoodItem = (label: string, buttonStyle: any) => (
+    <View key={label} style={styles.row}>
+      {/* Poznámka - naprosto stejná logika jako u spánku */}
+      <Note 
+        initialText={selectedChild?.foodNotes?.[label] || ""}
+        onSave={(text) => saveFoodData(label, { note: text })}
+      />
+      
+      <Pressable 
+        style={[styles.button, buttonStyle]} 
+        onPress={() => setSelectedFood(label)}
+      >
+        <Text style={styles.buttonText}>{label}</Text>
+      </Pressable>
+    </View>
+  );
   
   const getChildAgeInMonths = (): number => {
     if (!selectedChild?.birthDate) return 0;
@@ -90,16 +102,21 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
   // 2. Změna data (Ukládání na backend)
   const handleDateChange = async (foodLabel: string, date: Date) => {
     const isoDate = date.toISOString().slice(0, 10);
-    if (selectedChild?.foodDates?.[foodLabel] === isoDate) return;
+      if (selectedChild?.foodDates?.[foodLabel] === isoDate) return;
 
-    await saveFoodOffline(foodLabel, isoDate);
+    // 2. Async/Await: Počkej na výsledek uložení
+    try {
+        await saveFoodData(foodLabel, { date: isoDate });
+    } catch (error) {
+        console.error("Nepodařilo se změnit datum:", error);
+    }
   };
 
   // 3. Smazání data (Nastavení na prázdný string nebo null)
   const handleDateDelete = async () => {
     if (!selectedFood) return;
     // Nastavením na prázdný string jídlo "od-zavedeme"
-    await saveFoodOffline(selectedFood, "");
+    await saveFoodData(selectedFood, { date: "" });
     setSelectedFood(null);
   };
 
@@ -113,7 +130,7 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
     const label = newFoodLabel.trim();
     if (!label) return;
 
-    await saveFoodOffline(label, "");
+    await saveFoodData(label, { date: "" });
     setShowAddModal(false);
     setNewFoodLabel("");
   };
@@ -140,29 +157,17 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
 
         <Subtitle> Zavedeno </Subtitle>
         <GroupSection style={styles.sectionContainer}>
-          {introducedFoods.map(([label]) => (
-            <Pressable key={label} style={[styles.button, styles.buttonIntroduced]} onPress={() => setSelectedFood(label)}>
-              <Text style={styles.buttonText}>{label}</Text>
-            </Pressable>
-          ))}
+          {introducedFoods.map(([label]) => renderFoodItem(label, styles.buttonIntroduced))}
         </GroupSection>
 
         <Subtitle> Navrženo dle věku </Subtitle>
         <GroupSection style={styles.sectionContainer}>
-          {suggestedFoods.map(item => (
-            <Pressable key={item.label} style={[styles.button, styles.buttonSuggested]} onPress={() => setSelectedFood(item.label)}>
-              <Text style={styles.buttonText}>{item.label}</Text>
-            </Pressable>
-          ))}
+          {suggestedFoods.map(item => renderFoodItem(item.label, styles.buttonSuggested))}
         </GroupSection>
 
         <Subtitle> Ostatní </Subtitle>
         <GroupSection style={styles.sectionContainer}>
-          {futureFoods.map(item => (
-            <Pressable key={item.label} style={[styles.button, styles.buttonFuture]} onPress={() => setSelectedFood(item.label)}>
-              <Text style={styles.buttonText}>{item.label}</Text>
-            </Pressable>
-          ))}
+          {futureFoods.map(item => renderFoodItem(item.label, styles.buttonFuture))}
         </GroupSection>
 
         <Subtitle> Moje </Subtitle>

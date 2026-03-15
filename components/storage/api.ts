@@ -1,7 +1,7 @@
 // API functions for backend integration using fetch
 // Assumes backend is running on http://localhost:8000 (adjust if needed, e.g., for mobile use your machine's IP)
 
-import { BreastfeedingRecord, BreastfeedingStats, Child, FoodRecord, Milestone, SleepRecord, SleepStats, TeethRecord, WeightHeight, Word } from "./interfaces";
+import { BreastfeedingRecord, BreastfeedingStats, Child, Diary, DiaryCreate, DiaryUpdate, FoodRecord, Milestone, SleepRecord, SleepStats, TeethRecord, WeightHeight, Word } from "./interfaces";
 
 const BASE_URL = 'http://192.168.31.152:8000'; // Change to your backend URL for mobile testing
 
@@ -495,7 +495,7 @@ export const fetchFoodRecords = async (childId: string): Promise<FoodRecord[]> =
 // 2. UNIVERZÁLNÍ FUNKCE (Upsert)
 export const saveFoodRecord = async (
   childId: string, 
-  foodData: { label: string, date: string, category: string }
+  foodData: { label: string, date: string, category: string, note?: string }
 ): Promise<FoodRecord> => {
   const response = await fetch(`${BASE_URL}/children/${childId}/food`, {
     method: 'POST',
@@ -504,6 +504,7 @@ export const saveFoodRecord = async (
       food_name: foodData.label,
       date: foodData.date,       
       category: foodData.category,
+      note: foodData.note
     }),
   });
 
@@ -529,4 +530,39 @@ export const deleteFoodRecord = async (childId: string, foodLabel: string): Prom
   });
   if (!response.ok) throw new Error('Failed to delete food record');
   return response;
+};
+
+// ============ DIARY API FUNCTIONS ============
+
+export const fetchDiaryEntries = async (childId: string): Promise<Diary[]> => {
+  const response = await fetch(`${BASE_URL}/children/${childId}/diary`);
+  if (!response.ok) throw new Error('Failed to fetch diary entries');
+  return response.json();
+};
+
+export const createDiaryEntry = async (childId: string, diaryData: DiaryCreate): Promise<Diary> => {
+  const response = await fetch(`${BASE_URL}/children/${childId}/diary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(diaryData),
+  });
+  if (!response.ok) throw new Error('Failed to create diary entry');
+  return response.json();
+};
+
+export const updateDiaryEntry = async (childId: string, diaryId: string, diaryData: DiaryUpdate): Promise<Diary> => {
+  const response = await fetch(`${BASE_URL}/children/${childId}/diary/${diaryId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(diaryData),
+  });
+  if (!response.ok) throw new Error('Failed to update diary entry');
+  return response.json();
+};
+
+export const deleteDiaryEntry = async (childId: string, diaryId: string): Promise<void> => {
+  const response = await fetch(`${BASE_URL}/children/${childId}/diary/${diaryId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete diary entry');
 };

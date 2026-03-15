@@ -160,7 +160,8 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
               api.saveFoodRecord(currentId, {
                 label,
                 date: childData.foodDates![label],
-                category: childData.foodCategories?.[label] || ""
+                category: childData.foodCategories?.[label] || "",
+                note: childData.foodNotes?.[label] || "" // <-- PŘIDAT TOTO
               })
             ));
           }
@@ -315,23 +316,30 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
             currentChild.wh = await api.fetchWeightHeights(apiChild.id).catch(() => []);
           }
 
-          // --- Jídlo (OPRAVA TADY!) ---
-          if (isChildPending && local?.foodDates) {
-            currentChild.foodDates = local.foodDates;
-            currentChild.foodCategories = local.foodCategories;
+          // --- Jídlo ---
+          if (isChildPending && (local?.foodDates || local?.foodNotes)) {
+            currentChild.foodDates = local?.foodDates || {};
+            currentChild.foodCategories = local?.foodCategories || {};
+            currentChild.foodNotes = local?.foodNotes || {};
           } else {
             try {
               const apiFood = await api.fetchFoodRecords(apiChild.id);
               const apiDates: FoodDates = {};
               const apiCats: Record<string, string> = {};
+              const apiNotes: Record<string, string> = {}; 
+
               apiFood.forEach((rec: any) => {
                 apiDates[rec.food_name] = rec.date || "";
                 apiCats[rec.food_name] = rec.category || "";
+                apiNotes[rec.food_name] = rec.note || ""; 
               });
+              
               currentChild.foodDates = apiDates;
               currentChild.foodCategories = apiCats;
+              currentChild.foodNotes = apiNotes; 
             } catch {
               currentChild.foodDates = local?.foodDates || {};
+              currentChild.foodNotes = local?.foodNotes || {};
             }
           }
 

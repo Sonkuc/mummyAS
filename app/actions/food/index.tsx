@@ -34,7 +34,7 @@ export default function Food() {
       <Title>Vyber kategorii</Title>
       
       <View style={styles.buttonContainer}>
-        {categories.map((category) => (
+        {categories.map((category: Category) => (
           <MyButton 
             backgroundColor={COLORS.secundary}
             key={category.route as string}

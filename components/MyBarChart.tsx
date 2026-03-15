@@ -12,12 +12,6 @@ type Props = {
 export function MyBarChart({ title, data, dayMode = "day" }: Props) {
   const screenWidth = Dimensions.get("window").width;
   const BarChart = BarChartComponent as any;
-  const maxHours = Math.max(...data.map((d) => d.hours), 0);
-
-  const segments =
-    maxHours <= 6 ? 6 :
-    maxHours <= 12 ? 8 :
-    maxHours <= 18 ? 9 : 10;
 
   return (
     <>
@@ -32,32 +26,34 @@ export function MyBarChart({ title, data, dayMode = "day" }: Props) {
         width={screenWidth - 20}
         height={300}
         fromZero
-        yAxisInterval={1}
-        segments={segments}
-        chartConfig={
-          {
-            backgroundColor: "#fff",
-            backgroundGradientFrom: COLORS.backgroundContainer,
-            backgroundGradientTo: COLORS.backgroundContainer,
-            decimalPlaces: dayMode === "day" ? 1 : 0,
-            color: (opacity = 1) => `rgba(153, 55, 105, ${opacity})`,
-            labelColor: () => "#333",
-            style: { borderRadius: 16 },
-            formatYLabel: ((v: string) => {
-              const num = parseFloat(v);
-              if (isNaN(num)) return "";
-              if (dayMode === "day") {
-                return `${num.toFixed(1)} h`;
-              } else {
-                return `${Math.round(num)} h`;
-              }
-            }) as any,
-          } as any
-        }
+        yAxisInterval={1} 
+        segments={5}
+        chartConfig={{
+          backgroundColor: "#fff",
+          backgroundGradientFrom: COLORS.backgroundContainer,
+          backgroundGradientTo: COLORS.backgroundContainer,
+          // decimalPlaces ovlivňuje, jak přesná čísla chodí do formatYLabel
+          decimalPlaces: 2, 
+          color: (opacity = 1) => `rgba(153, 55, 105, ${opacity})`,
+          labelColor: () => "#333",
+          style: { borderRadius: 16 },
+          formatYLabel: (value: string) => {
+            const totalHours = parseFloat(value);
+            if (isNaN(totalHours) || totalHours === 0) return "0 h";
+
+            const h = Math.floor(totalHours);
+            const m = Math.round((totalHours - h) * 60);
+
+            // Formátování
+            if (m === 0) return `${h}h`;
+            if (h === 0) return `${m}m`;
+            return `${h}h ${m}m`;
+          },
+        }}
         style={{
           borderRadius: 16,
           alignSelf: "center",
-          marginLeft: -40,
+          marginLeft: 20, 
         }}
       />
     </>

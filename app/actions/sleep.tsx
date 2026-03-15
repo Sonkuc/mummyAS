@@ -5,6 +5,7 @@ import GroupSection from "@/components/GroupSection";
 import { formatDuration, toTimestamp } from "@/components/HelperFunctions";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
+import Note from "@/components/Note";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
@@ -283,9 +284,33 @@ export default function Sleep() {
                 </View>
 
                 {records.map((rec) => (
-                  <Text key={rec.id || `${rec.date}-${rec.time}`} style={styles.recordText}>
-                    {rec.label}{rec.extra ?? ""}
-                  </Text>
+                  <View key={rec.id} style={styles.row}>
+                    <Note 
+                      initialText={rec.note} 
+                      onSave={async (newNoteText) => {
+                        // 1. Bezpečnostní pojistka
+                        if (!selectedChild || !selectedChild.sleepRecords) return;
+    
+                        // 2. Vytvoření nového pole záznamů
+                        const updatedRecords = selectedChild.sleepRecords.map(r => 
+                          r.id === rec.id ? { ...r, note: newNoteText } : r
+                        );
+                        
+                        // 3. Odeslání na server/provider
+                        try {
+                          await updateChild({
+                            ...selectedChild,
+                            sleepRecords: updatedRecords
+                          });
+                        } catch (err) {
+                          Alert.alert("Chyba", "Nepodařilo se uložit poznámku.");
+                        }
+                      }} 
+                    />
+                    <Text key={rec.id || `${rec.date}-${rec.time}`} style={styles.recordText}>
+                      {rec.label}{rec.extra ?? ""}
+                    </Text>
+                  </View>
                 ))}
 
                 <View style={{ marginTop: 6, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 4 }}>

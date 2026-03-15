@@ -135,9 +135,9 @@ export default function Actions() {
       <Title>Vyber akci</Title>
 
       <View style={styles.buttonContainer}>
-        {actions.map((action: Action, index) => (
+        {actions.map((action: Action) => (
           <MyButton
-            key={index}
+            key={action.route as string} 
             title={action.title}
             onPress={() => router.push(action.route)}
             icon={action.icon}

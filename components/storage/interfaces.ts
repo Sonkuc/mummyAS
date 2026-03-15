@@ -22,6 +22,7 @@ export interface BreastfeedingRecord {
   date: string;
   time: string;
   state: "start" | "stop";
+  note?: string;
 };
 
 export interface BreastfeedingStats {
@@ -34,6 +35,7 @@ export interface SleepRecord {
   date: string;
   time: string;
   state: "awake" | "sleep";
+  note?: string;
 };
 
 export interface SleepStats {
@@ -69,9 +71,22 @@ export interface FoodRecord {
   food_name: string; // Backend název
   category: string;
   date: string;      // ISO formát
+  note?: string;
 }
 
 export type FoodDates = Record<string, string>; // Mapa: { "Jablko": "2026-01-31" }
+
+export interface Diary {
+  id: string;
+  child_id: string;
+  text: string;    
+  date: string;     // YYYY-MM-DD
+  time: string;     // HH:MM
+  created_at?: string; 
+}
+
+export type DiaryCreate = Omit<Diary, 'id' | 'child_id' | 'created_at'>;
+export type DiaryUpdate = Partial<DiaryCreate>;
 
 export interface Child {
   id: string;
@@ -86,6 +101,8 @@ export interface Child {
   wh?: WeightHeight[];
   foodDates?: FoodDates;
   foodCategories?: Record<string, string>;
+  foodRecords?: FoodRecord[];
+  foodNotes?: Record<string, string>;
   sleepRecords?: SleepRecord[];
   currentModeSleep?: {
     mode: "awake" | "sleep";
@@ -96,4 +113,5 @@ export interface Child {
     mode: "start" | "stop";
     start: number;
   } | null;
+  diary?:  Diary[];
 }

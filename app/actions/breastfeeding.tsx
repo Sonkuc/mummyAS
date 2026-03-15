@@ -5,6 +5,7 @@ import GroupSection from "@/components/GroupSection";
 import { formatDuration, toTimestamp } from "@/components/HelperFunctions";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
+import Note from "@/components/Note";
 import * as api from "@/components/storage/api";
 import type { BreastfeedingRecord, Child } from "@/components/storage/interfaces";
 import Title from "@/components/Title";
@@ -34,12 +35,17 @@ export default function Breastfeeding() {
   const { selectedChildId, selectedChild, reloadChildren, updateChild } = useChild();
   
   const clearState = async () => {
-    if (!selectedChildId) return;
-    
+    if (!selectedChildId || !selectedChild) return; 
+
     try {
-      // Vymažeme live stav na backendu
-      await api.updateChild(selectedChildId, { currentModeFeed: null });
-      
+      // Kopie dítěte, vynulován currentModeFeed
+      const updatedChild = { 
+        ...selectedChild, 
+        currentModeFeed: null 
+      };
+
+      await api.updateChild(selectedChildId, updatedChild);
+        
       // Lokální reset
       setMode("");
       setModeStart(null);
@@ -159,64 +165,72 @@ export default function Breastfeeding() {
   const grouped = useMemo(() => {
     if (!records.length) return [];
 
-    // Seskupení záznamů podle data
-    const groupedByDate: Record<string, (DisplayBreastfeedingRecord & { ts: number })[]> = {};
-    records.forEach((rec) => {
-      const ts = toTimestamp(rec.date, rec.time);
-      if (!groupedByDate[rec.date]) groupedByDate[rec.date] = [];
-      groupedByDate[rec.date].push({ ...rec, ts });
-    });
+    // 1. Všechny záznamy seřadíme chronologicky napříč všemi dny
+    const allSorted = [...records]
+      .map(r => ({ ...r, ts: toTimestamp(r.date, r.time) }))
+      .sort((a, b) => a.ts - b.ts);
 
-    return Object.entries(groupedByDate)
-      .map(([date, recs]) => {
-        const sortedAsc = [...recs].sort((a, b) => a.ts - b.ts);
+    const dayMap: Record<string, { date: string; totalFeedMinutes: number; records: any[] }> = {};
+    const feedCounters: Record<string, number> = {};
 
-        let totalFeedMinutes = 0;
-        const enhanced: (DisplayBreastfeedingRecord & { ts: number; extra?: string })[] = [];
-        let feedCounter = 1;
+    // 2. Procházíme seřazené záznamy a párujeme je
+    for (let i = 0; i < allSorted.length; i++) {
+      const curr = allSorted[i];
+      
+      // Inicializace dne v mapě (pokud ještě neexistuje)
+      if (!dayMap[curr.date]) {
+        dayMap[curr.date] = { date: curr.date, totalFeedMinutes: 0, records: [] };
+        feedCounters[curr.date] = 1;
+      }
 
-        for (let i = 0; i < sortedAsc.length; i++) {
-          const curr = sortedAsc[i];
-          const next = sortedAsc[i + 1];
-          let extra = "";
+      let extra = "";
+      let label = "";
 
-          if (next && curr.state === "start" && next.state === "stop") {
-            const minutes = Math.floor((next.ts - curr.ts) / 60000);
-            if (minutes > 0) {
-              totalFeedMinutes += minutes;
-              extra = ` → ${formatDuration(minutes)}`;
-            }
+      if (curr.state === "start") {
+        // Hledáme k tomuto startu následující stop (i kdyby byl v jiný den)
+        const nextStop = allSorted.slice(i + 1).find(r => r.state === "stop");
+        
+        if (nextStop) {
+          const minutes = Math.floor((nextStop.ts - curr.ts) / 60000);
+          if (minutes > 0) {
+            // Započítáme minuty ke dni, kdy kojení ZAČALO
+            dayMap[curr.date].totalFeedMinutes += minutes;
+            extra = ` → ${formatDuration(minutes)}`;
           }
-
-          const label =
-            curr.state === "stop"
-              ? `Konec kojení: ${curr.time}`
-              : `Začátek ${feedCounter++}. kojení: ${curr.time}`;
-
-          enhanced.push({ ...curr, label, extra });
         }
+        label = `Začátek ${feedCounters[curr.date]++}. kojení: ${curr.time}`;
+        dayMap[curr.date].records.push({ ...curr, label, extra });
+      } else {
+        // U stop záznamu jen vytvoříme popisek a přidáme ho k danému dni
+        label = `Konec kojení: ${curr.time}`;
+        dayMap[curr.date].records.push({ ...curr, label });
+      }
+    }
 
-        // Seřadíme sestupně pro UI
-        const sortedDesc = [...enhanced].sort((a, b) => b.ts - a.ts);
-
-        return {
-          date,
-          totalFeedMinutes,
-          records: sortedDesc,
-        };
-      })
-      .sort((a, b) => {
-        const ta = toTimestamp(a.date, "23:59");
-        const tb = toTimestamp(b.date, "23:59");
-        return tb - ta;
-      });
+    // 3. Převedeme mapu na pole a seřadíme dny sestupně (nejnovější nahoře)
+    return Object.values(dayMap)
+      .map(day => ({
+        ...day,
+        // Záznamy v rámci dne seřadíme sestupně podle času
+        records: day.records.sort((a, b) => b.ts - a.ts)
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
   }, [records]);
 
   const getLastMode = (): "start" | "stop" | null => {
+    // 1. Priorita je live stav z backendu/contextu (ten je globální)
     if (selectedChild?.currentModeFeed?.mode) {
       return selectedChild.currentModeFeed.mode;
     }
-    const last = selectedChild?.breastfeedingRecords?.[selectedChild.breastfeedingRecords.length - 1];
+    
+    // 2. Fallback na poslední uložený záznam (seřazený globálně)
+    const allRecs = selectedChild?.breastfeedingRecords ?? [];
+    if (allRecs.length === 0) return null;
+    
+    const last = [...allRecs].sort((a, b) => 
+      toTimestamp(a.date, a.time) - toTimestamp(b.date, b.time)
+    )[allRecs.length - 1];
+    
     return last?.state ?? null;
   };
 
@@ -301,12 +315,33 @@ export default function Breastfeeding() {
               <Text style={styles.dateTitle}>{formatDateToCzech(date)}</Text>
             </View>
             {records.map((rec) => (
-              <Text
-                key={rec.id}
-                style={styles.recordText}
-              >
-                {rec.label}{rec.extra ?? ""}
-              </Text>
+              <View key={rec.id} style={styles.row}>
+                <Note 
+                  initialText={rec.note} 
+                  onSave={async (newNoteText) => {
+                    // 1. Bezpečnostní pojistka
+                    if (!selectedChild || !selectedChild.breastfeedingRecords) return;
+
+                    // 2. Vytvoření nového pole záznamů
+                    const updatedRecords = selectedChild.breastfeedingRecords.map(r => 
+                      r.id === rec.id ? { ...r, note: newNoteText } : r
+                    );
+                    
+                    // 3. Odeslání na server/provider
+                    try {
+                      await updateChild({
+                        ...selectedChild,
+                        breastfeedingRecords: updatedRecords
+                      });
+                    } catch (err) {
+                      Alert.alert("Chyba", "Nepodařilo se uložit poznámku.");
+                    }
+                  }} 
+                />
+                <Text style={styles.recordText}>
+                  {rec.label} {rec.extra ?? ""}
+                </Text>
+              </View>
             ))}
             <Text style={styles.totalText}>
               Celkový čas kojení: {Math.floor(totalFeedMinutes / 60)} h {totalFeedMinutes % 60} m
@@ -405,4 +440,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  notePreview: {
+    fontSize: 12,
+    color: '#888',
+    fontStyle: 'italic',
+    marginLeft: 10,
+  }
 });
