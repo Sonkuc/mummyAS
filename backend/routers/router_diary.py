@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 from typing import List
 
-from ..crud import crud_diary as cd
-from ..models import DiaryCreate, DiaryRead, DiaryUpdate
-from ..db import get_session
+from backend.crud import crud_diary as cd
+from backend.models import DiaryCreate, DiaryRead, DiaryUpdate
+from backend.db import get_session
 
 router = APIRouter()
 

@@ -10,6 +10,6 @@ export const COLORS = {
   lightGreen: "#d4f1d4",
   lightYellow: "#fff6c4", 
   lightGrey: "#e6e6e6",
-  lightPurple: "#fdc8fdff",
+  lightPurple: "rgb(245, 220, 245)",
   switchNonActive: "#f2f2f2",
 };

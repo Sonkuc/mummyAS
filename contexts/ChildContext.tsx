@@ -1,5 +1,5 @@
 import * as api from "@/components/storage/api";
-import { Child, FoodDates } from "@/components/storage/interfaces";
+import { Child } from "@/components/storage/interfaces";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -14,6 +14,8 @@ type ChildContextType = {
   saveAllChildren: (children: Child[]) => Promise<void>;
   deleteChild: (id: string) => Promise<void>;
   deleteWeightHeightRecord: (childId: string, whId: string) => Promise<void>;
+  deleteFoodRecord: (childId: string, foodId: string) => Promise<void>;
+  deleteDiaryRecord: (childId: string, diaryId: string) => Promise<void>;
 };
 
 const ChildContext = createContext<ChildContextType | undefined>(undefined);
@@ -155,16 +157,30 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
           }
 
           // --- KROK 4: JÍDLO ---
-          if (childData.foodDates) {
-            await Promise.all(Object.keys(childData.foodDates).map(label => 
-              api.saveFoodRecord(currentId, {
-                label,
-                date: childData.foodDates![label],
-                category: childData.foodCategories?.[label] || "",
-                note: childData.foodNotes?.[label] || "" // <-- PŘIDAT TOTO
-              })
-            ));
-          }
+            if (childData.foodRecords) {
+              // 1. Zjistíme aktuální stav na serveru
+              const remoteFoods = await api.fetchFoodRecords(currentId).catch(() => []);
+              
+              // 2. Najdeme jídla, která jsou na serveru, ale v lokální (childData) verzi už nejsou
+              const toDelete = remoteFoods.filter(rf => 
+                !childData.foodRecords?.some(lf => lf.food_name === rf.food_name)
+              );
+
+              // 3. Smažeme je ze serveru
+              await Promise.all(toDelete.map(rf => 
+                api.deleteFoodRecord(currentId, rf.food_name).catch(() => null)
+              ));
+
+              // 4. Uložíme zbytek (vytvoření/update)
+              await Promise.all(childData.foodRecords.map(rec => 
+                api.saveFoodRecord(currentId, {
+                  label: rec.food_name,
+                  date: rec.date,
+                  category: rec.category,
+                  note: rec.note
+                })
+              ));
+            }
 
           // --- KROK 5: VÁHA / VÝŠKA ---
           if (childData.wh) {
@@ -177,6 +193,27 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
           // --- KROK 7: SLOVA ---
           if (childData.words) {
             childData.words = await api.syncWords(currentId, childData.words);
+          }
+
+          // --- KROK 8: DENÍK ---
+          if (childData.diaryRecords) {
+            const updatedDiary = [];
+            for (const record of childData.diaryRecords) {
+              if (record.id.startsWith("local-")) {
+                try {
+                  const { id, ...rest } = record;
+                  // API musí vrátit vytvořený objekt s novým ID
+                  const savedRecord = await api.createDiaryEntry(currentId, rest as any);
+                  updatedDiary.push(savedRecord); // Přidáme záznam se serverovým ID
+                } catch (err) {
+                  console.warn("[SYNC] Záznam v deníku selhal", err);
+                  updatedDiary.push(record); // Necháme lokální pro příští pokus
+                }
+              } else {
+                updatedDiary.push(record);
+              }
+            }
+            childData.diaryRecords = updatedDiary;
           }
 
           // Pokud až sem bez throw, dítě kompletně zesynchronizované
@@ -192,6 +229,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       await processDeletionQueue("pending_milestone_deletions", (i) => api.deleteMilestone(i.childId, i.milId));
       await processDeletionQueue("pending_word_deletions", (i) => api.deleteWord(i.childId, i.wordId));
       await processDeletionQueue("pending_wh_deletions", (i) => api.deleteWeightHeight(i.childId, i.whId));
+      await processDeletionQueue("pending_diary_deletions", (i) => api.deleteDiaryEntry(i.childId, i.diaryId));
 
       if (syncedIds.length > 0) {
         const remaining = { ...pendingUpdates };
@@ -277,7 +315,21 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
 
           const currentChild = { ...apiChild };
 
-          // --- Denní záznamy ---
+          // --- Načtení front pro smazání (aby smazané věci znovu nevyskočily) ---
+          const [milDeletesStr, wordDeletesStr, foodDeletesStr, diaryDeletesStr] = await Promise.all([
+            AsyncStorage.getItem("pending_milestone_deletions"),
+            AsyncStorage.getItem("pending_word_deletions"),
+            AsyncStorage.getItem("pending_food_deletions"), 
+            AsyncStorage.getItem("pending_wh_deletions"),
+            AsyncStorage.getItem("pending_diary_deletions"),
+          ]);
+
+          const milDeletes = milDeletesStr ? JSON.parse(milDeletesStr).map((d: any) => d.milId) : [];
+          const wordDeletes = wordDeletesStr ? JSON.parse(wordDeletesStr).map((d: any) => d.wordId) : [];
+          const foodDeletes = foodDeletesStr ? JSON.parse(foodDeletesStr) : []; 
+          const diaryDeletes = diaryDeletesStr ? JSON.parse(diaryDeletesStr) : [];
+
+          // --- Denní záznamy (Beze změny) ---
           currentChild.sleepRecords = mergeByDate(
             await api.fetchSleepRecords(apiChild.id).catch(() => []), 
             local?.sleepRecords || [],
@@ -290,11 +342,6 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
           );
 
           // --- Entity s ID (Milníky, Slova) ---
-          const milDeletesStr = await AsyncStorage.getItem("pending_milestone_deletions");
-          const milDeletes = milDeletesStr ? JSON.parse(milDeletesStr).map((d: any) => d.milId) : [];
-          const wordDeletesStr = await AsyncStorage.getItem("pending_word_deletions");
-          const wordDeletes = wordDeletesStr ? JSON.parse(wordDeletesStr).map((d: any) => d.wordId) : [];
-
           currentChild.milestones = mergeEntities(
             await api.fetchMilestones(apiChild.id).catch(() => []), 
             local?.milestones,
@@ -306,8 +353,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
             wordDeletes
           );
 
-          // --- Zuby a WH (OPRAVA TADY!) ---
-          // Pokud je dítě pending, nesmíme přebít naše data prázdným/starým polem z API
+          // --- Zuby a WH ---
           if (isChildPending) {
             currentChild.teethRecords = local?.teethRecords || [];
             currentChild.wh = local?.wh || [];
@@ -316,33 +362,41 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
             currentChild.wh = await api.fetchWeightHeights(apiChild.id).catch(() => []);
           }
 
-          // --- Jídlo ---
-          if (isChildPending && (local?.foodDates || local?.foodNotes)) {
-            currentChild.foodDates = local?.foodDates || {};
-            currentChild.foodCategories = local?.foodCategories || {};
-            currentChild.foodNotes = local?.foodNotes || {};
+          // --- JÍDLO ---
+          if (isChildPending) {
+            currentChild.foodRecords = local?.foodRecords || [];
           } else {
             try {
-              const apiFood = await api.fetchFoodRecords(apiChild.id);
-              const apiDates: FoodDates = {};
-              const apiCats: Record<string, string> = {};
-              const apiNotes: Record<string, string> = {}; 
-
-              apiFood.forEach((rec: any) => {
-                apiDates[rec.food_name] = rec.date || "";
-                apiCats[rec.food_name] = rec.category || "";
-                apiNotes[rec.food_name] = rec.note || ""; 
-              });
+              const remoteFoods = await api.fetchFoodRecords(apiChild.id);
               
-              currentChild.foodDates = apiDates;
-              currentChild.foodCategories = apiCats;
-              currentChild.foodNotes = apiNotes; 
+              // FILTRACE: Zahodíme jídla, která jsou na serveru, ale v lokální frontě čekají na smazání
+              currentChild.foodRecords = remoteFoods.filter(rf => 
+                !foodDeletes.some((d: any) => d.childId === apiChild.id && d.foodName === rf.food_name)
+              );
             } catch {
-              currentChild.foodDates = local?.foodDates || {};
-              currentChild.foodNotes = local?.foodNotes || {};
+              currentChild.foodRecords = local?.foodRecords || [];
             }
           }
 
+          // --- DENÍK ---
+          if (isChildPending) {
+            currentChild.diaryRecords = local?.diaryRecords || [];
+          } else {
+            const remoteDiary = await api.fetchDiaryEntries(apiChild.id).catch(() => []);
+            const filteredApiDiary = remoteDiary.filter(rd => !diaryDeletes.includes(rd.id));
+            
+            // Získáme lokální záznamy, které ještě nejsou na serveru
+            // Kontrola podle ID (local-) AND obsahu (prevence duplicity po syncu)
+            const localNewDiary = (local?.diaryRecords || []).filter(ld => {
+              const isLocal = ld.id.startsWith("local-");
+              const alreadyOnServer = filteredApiDiary.some(rd => 
+                rd.name === ld.name && rd.text === ld.text && rd.date === ld.date
+              );
+              return isLocal && !alreadyOnServer;
+            });
+            
+            currentChild.diaryRecords = [...filteredApiDiary, ...localNewDiary];
+          }
           return currentChild;
         })
       );
@@ -458,7 +512,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
         return child;
       });
 
-      // OKAMŽITÝ zápis na disk, aby po router.replace byla data už tam
+      // OKAMŽITÝ zápis na disk
       AsyncStorage.setItem("children", JSON.stringify(newList));
       return newList;
     });
@@ -473,6 +527,78 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       const list = existing ? JSON.parse(existing) : [];
       list.push({ childId, whId });
       await AsyncStorage.setItem("pending_wh_deletions", JSON.stringify(list));
+    }
+  }, []);
+
+  const deleteFoodRecord = useCallback(async (childId: string, foodName: string) => {
+    // 1. Okamžitý update UI
+    setAllChildren(prev => prev.map(child => {
+      if (child.id === childId) {
+        return {
+          ...child,
+          foodRecords: (child.foodRecords || []).filter(r => r.food_name !== foodName)
+        };
+      }
+      return child;
+    }));
+
+    // 2. Zápis do lokálního AsyncStorage (pro sychr před reloadem)
+    const stored = await AsyncStorage.getItem("children");
+    if (stored) {
+      const list = JSON.parse(stored) as Child[];
+      const updated = list.map(c => c.id === childId 
+        ? { ...c, foodRecords: (c.foodRecords || []).filter(r => r.food_name !== foodName) } 
+        : c
+      );
+      await AsyncStorage.setItem("children", JSON.stringify(updated));
+    }
+
+    // 3. Pokus o smazání na API + Fronta
+    try {
+      await api.deleteFoodRecord(childId, foodName);
+    } catch (err) {
+      // Pokud selže (offline), uložíme do fronty, kterou reloadChildren respektuje
+      const existing = await AsyncStorage.getItem("pending_food_deletions");
+      const list = existing ? JSON.parse(existing) : [];
+      list.push({ childId, foodName });
+      await AsyncStorage.setItem("pending_food_deletions", JSON.stringify(list));
+    }
+  }, []);
+
+  const deleteDiaryRecord = useCallback(async (childId: string, diaryId: string) => {
+    // 1. Okamžitý update UI
+    setAllChildren(prev => prev.map(child => {
+      if (child.id === childId) {
+        return {
+          ...child,
+          diaryRecords: (child.diaryRecords || []).filter(r => r.id !== diaryId)
+        };
+      }
+      return child;
+    }));
+
+    // 2. Pokud je to lokální záznam, co nebyl na serveru, stačí smazat z cache
+    if (diaryId.startsWith("local-")) {
+      const stored = await AsyncStorage.getItem("children");
+      if (stored) {
+        const list = JSON.parse(stored) as Child[];
+        const updated = list.map(c => c.id === childId 
+          ? { ...c, diaryRecords: (c.diaryRecords || []).filter(r => r.id !== diaryId) } 
+          : c
+        );
+        await AsyncStorage.setItem("children", JSON.stringify(updated));
+      }
+      return;
+    }
+
+    // 3. Pokus o smazání na API + Fronta
+    try {
+      await api.deleteDiaryEntry(childId, diaryId);
+    } catch (err) {
+      const existing = await AsyncStorage.getItem("pending_diary_deletions");
+      const list = existing ? JSON.parse(existing) : [];
+      list.push({ childId, diaryId });
+      await AsyncStorage.setItem("pending_diary_deletions", JSON.stringify(list));
     }
   }, []);
 
@@ -496,6 +622,8 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
         reloadChildren,
         deleteChild: deleteChild, // Mapujeme funkci na klíč deleteChild
         deleteWeightHeightRecord,
+        deleteFoodRecord,
+        deleteDiaryRecord
       }}
     >
       {children}

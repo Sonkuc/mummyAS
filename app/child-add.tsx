@@ -79,8 +79,7 @@ export default function ChildAdd() {
       photo: finalPhotoUri,
       milestones: [],
       words: [],
-      foodDates: {},
-      foodCategories: {},
+      foodRecords: [],
       teethDates: {},
       teethRecords: [],
       sleepRecords: [],
@@ -88,6 +87,7 @@ export default function ChildAdd() {
       wh: [],
       currentModeSleep: null,
       currentModeFeed: null,
+      diaryRecords: [],
     };
 
     try {

@@ -145,7 +145,7 @@ export default function Teeth() {
           {toothMap[selectedTooth] && (
             <View style={styles.row}>
               <Pressable onPress={handleDateDelete}>
-                <Text style={{ fontSize: 14 }}>🚮</Text>
+                <Text style={{ fontSize: 14, marginRight: 5 }}>🚮</Text>
               </Pressable>
               <Text style={styles.dateText}>
                 Datum prořezání: {new Date(toothMap[selectedTooth]).toLocaleDateString("cs-CZ")}

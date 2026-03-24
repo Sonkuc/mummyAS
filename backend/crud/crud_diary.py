@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 from typing import List, Optional
-from models import Diary, DiaryCreate, DiaryUpdate
+from backend.models import Diary, DiaryCreate, DiaryUpdate
 
 def create_diary_entry(session: Session, child_id: str, data: DiaryCreate) -> Diary:
     db_diary = Diary(
@@ -19,7 +19,7 @@ def get_diary_for_child(session: Session, child_id: str) -> List[Diary]:
     query = (
         select(Diary)
         .where(Diary.child_id == child_id)
-        .order_by(Diary.date.desc(), Diary.time.desc())
+        .order_by(Diary.date.desc())
     )
     return session.exec(query).all()
 

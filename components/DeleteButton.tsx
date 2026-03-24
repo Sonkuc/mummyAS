@@ -6,7 +6,7 @@ import React from "react";
 import { Alert, Pressable, Text } from "react-native";
 
 type Props = {
-  type: "child" | "milestone" | "word" | "wh" | "tooth"; 
+  type: "child" | "milestone" | "word" | "wh" | "tooth" | "diary"; 
   childId: string; 
   recordId?: string;
   onDeleteSuccess?: () => void;
@@ -50,6 +50,8 @@ export default function DeleteButton({ type, childId, recordId, onDeleteSuccess 
                 updatedChild.wh = child.wh?.filter(r => r.id !== recordId);
               } else if (type === "tooth") {
                 updatedChild.teethRecords = child.teethRecords?.filter(r => r.id !== recordId);
+              } else if (type === "diary") {
+                updatedChild.diaryRecords = child.diaryRecords?.filter(r => r.id !== recordId);
               }
 
               // Uložíme do cache a pokusíme se o celkový update (pokud je Child update endpoint)

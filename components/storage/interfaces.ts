@@ -65,6 +65,18 @@ export interface TeethRecord {
   created_at: string;  // Optional, if needed
 };
 
+export interface Diary {
+  id: string;
+  child_id: string;
+  text: string;
+  name: string;    
+  date: string;     // YYYY-MM-DD
+  created_at?: string; 
+}
+
+export type DiaryCreate = Omit<Diary, 'id' | 'child_id' | 'created_at'>;
+export type DiaryUpdate = Partial<DiaryCreate>;
+
 export interface FoodRecord {
   id: string;
   child_id: string;
@@ -73,20 +85,6 @@ export interface FoodRecord {
   date: string;      // ISO formát
   note?: string;
 }
-
-export type FoodDates = Record<string, string>; // Mapa: { "Jablko": "2026-01-31" }
-
-export interface Diary {
-  id: string;
-  child_id: string;
-  text: string;    
-  date: string;     // YYYY-MM-DD
-  time: string;     // HH:MM
-  created_at?: string; 
-}
-
-export type DiaryCreate = Omit<Diary, 'id' | 'child_id' | 'created_at'>;
-export type DiaryUpdate = Partial<DiaryCreate>;
 
 export interface Child {
   id: string;
@@ -99,10 +97,7 @@ export interface Child {
   teethDates?: ToothDates;
   teethRecords?: TeethRecord[]; 
   wh?: WeightHeight[];
-  foodDates?: FoodDates;
-  foodCategories?: Record<string, string>;
   foodRecords?: FoodRecord[];
-  foodNotes?: Record<string, string>;
   sleepRecords?: SleepRecord[];
   currentModeSleep?: {
     mode: "awake" | "sleep";
@@ -113,5 +108,5 @@ export interface Child {
     mode: "start" | "stop";
     start: number;
   } | null;
-  diary?:  Diary[];
+  diaryRecords?:  Diary[];
 }

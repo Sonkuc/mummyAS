@@ -11,7 +11,7 @@ export const FRUITS = [
   { month: 7, label: "Meruňka" },
   { month: 7, label: "Švestka" },
   { month: 9, label: "Borůvka" },
-  { month: 9, label: "Brsinka" },
+  { month: 9, label: "Brusinka" },
   { month: 9, label: "Kiwi" },
   { month: 9, label: "Malina" },
   { month: 9, label: "Mango" },

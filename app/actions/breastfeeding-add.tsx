@@ -35,7 +35,6 @@ export default function BreastfeedingAdd() {
   const { selectedChildId, selectedChild, updateChild } = useChild();
 
   const now = new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
-  const today = new Date().toISOString().slice(0, 10);
   const [newDate, setNewDate] = useState(formatDateLocal(new Date()));
   const [records, setRecords] = useState<DisplayBreastfeedingRecord[]>([]);
   const [newTime, setNewTime] = useState(now);

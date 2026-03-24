@@ -1,6 +1,7 @@
 export const VEGETABLE = [
   { month: 11, label: "Artyčok" },
   { month: 5, label: "Batáty" },
+  { month: 13, label: "Bílá ředkev" },
   { month: 9, label: "Bílé zelí" },
   { month: 5, label: "Brambory" },
   { month: 5, label: "Brokolice" },
@@ -33,7 +34,7 @@ export const VEGETABLE = [
   { month: 13, label: "Paprika" },
   { month: 11, label: "Rajče" },
   { month: 13, label: "Řapíkatý celer" },
-  { month: 13, label: "Ředkev/ředkvičky" },
+  { month: 13, label: "Ředkvičky" },
   { month: 9, label: "Růžičková kapusta" },
   { month: 11, label: "Špenát" },
   { month: 5, label: "Pastyňák" },

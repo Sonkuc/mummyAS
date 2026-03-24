@@ -22,6 +22,7 @@ export default function MyTextInput({
     <TextInput
       style={styles.input}
       placeholder={placeholder}
+      placeholderTextColor="#888"
       autoCapitalize={autoCapitalize}      
       secureTextEntry={secureTextEntry}
       value={value}
@@ -40,5 +41,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderColor: "#ccc",
     borderWidth: 1,
+    color: "black",
+    fontSize: 15,
   },
 });

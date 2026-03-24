@@ -11,7 +11,7 @@ export const HERBS = [
   { month: 9, label: "Meduňka" },
   { month: 9, label: "Medvědí česnek" },
   { month: 9, label: "Pažitka" },
-  { month: 11, label: "Oregano/dobromysl" },
+  { month: 11, label: "Oregano" },
   { month: 11, label: "Celerová nať" },
   { month: 11, label: "Majoránka" },
   { month: 11, label: "Tymián" },

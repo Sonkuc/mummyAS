@@ -333,7 +333,7 @@ class FoodRecordUpdate(SQLModel):
 class DiaryBase(SQLModel):
     text: str
     date: str  # YYYY-MM-DD
-    time: str  # HH:MM
+    name: str  # HH:MM
     category: Optional[str] = "obecné"
 
 class Diary(DiaryBase, table=True):
@@ -347,11 +347,11 @@ class DiaryRead(DiaryBase):
     child_id: str
     created_at: datetime
 
-class DiaryCreate(DiaryBase): # Dědí text, date, time, category. 
+class DiaryCreate(DiaryBase): # Dědí text, date, name, category. 
     pass
 
 class DiaryUpdate(SQLModel):
     text: Optional[str] = None
     date: Optional[str] = None
-    time: Optional[str] = None
+    name: Optional[str] = None
     category: Optional[str] = None

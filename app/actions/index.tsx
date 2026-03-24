@@ -7,7 +7,7 @@ import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { Href, useFocusEffect, useRouter } from "expo-router";
-import { Apple, Baby, Heart, MessageCircle, Moon, Ruler, Star } from "lucide-react-native";
+import { Apple, Baby, BookHeart, Heart, MessageCircle, Moon, Ruler, Star } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -32,6 +32,7 @@ export default function Actions() {
     { title: "Zoubky", route: "/actions/teeth", icon: <Baby color="white" size={20} /> },
     { title: "Mluvení", route: "/actions/speaking", icon: <MessageCircle color="white" size={20} /> },
     { title: "Potraviny", route: "/actions/food", icon: <Apple color="white" size={20} /> },
+    { title: "Deník", route: "/actions/diary", icon: <BookHeart color="white" size={20} /> },
   ];
 
   useFocusEffect(

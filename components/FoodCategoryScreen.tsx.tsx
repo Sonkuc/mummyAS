@@ -12,6 +12,7 @@ import MyTextInput from "./MyTextInput";
 import Note from "./Note";
 import Subtitle from "./Subtitle";
 import Title from "./Title";
+import { FoodRecord } from "./storage/interfaces";
 
 type FoodItem = {
   label: string;
@@ -25,48 +26,86 @@ type Props = {
 };
 
 export default function FoodCategoryScreen({ title, categoryKey, dataList }: Props) {
-  const { selectedChild, updateChild } = useChild();
+  const { selectedChild, updateChild, deleteFoodRecord } = useChild();
   const [selectedFood, setSelectedFood] = useState<null | string>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newFoodLabel, setNewFoodLabel] = useState("");
 
-  // --- JEDNOTNÁ FUNKCE PRO UKLÁDÁNÍ (Datum, Kategorie i Poznámka) ---
+  // --- POMOCNÝ FINDER ---
+  // Najde záznam v poli podle jména (labelu)
+  const getRecord = (label: string) => 
+    selectedChild?.foodRecords?.find(r => r.food_name === label);
+
+  // --- JEDNOTNÁ FUNKCE PRO UKLÁDÁNÍ ---
   const saveFoodData = async (label: string, updates: { date?: string, note?: string }) => {
     if (!selectedChild) return;
 
-    // Všechny informace o jídle uložíme do těchto map pro bleskové UI
-    const newFoodDates = { ...(selectedChild.foodDates || {}), ... (updates.date !== undefined ? { [label]: updates.date } : {}) };
-    const newFoodNotes = { ...(selectedChild.foodNotes || {}), ... (updates.note !== undefined ? { [label]: updates.note } : {}) };
-    const newFoodCategories = { ...(selectedChild.foodCategories || {}), [label]: categoryKey };
+    const currentRecords = selectedChild.foodRecords || [];
+    const existingIndex = currentRecords.findIndex(r => r.food_name === label);
+
+    let updatedRecords: FoodRecord[];
+
+    if (existingIndex > -1) {
+      // 1. UPDATE: Jídlo v seznamu už je, upravíme ho
+      updatedRecords = [...currentRecords];
+      updatedRecords[existingIndex] = {
+        ...updatedRecords[existingIndex],
+        ...updates,
+        category: categoryKey // kategorie sedí
+      };
+    } else {
+      // 2. CREATE: Nové jídlo
+      const newRecord: FoodRecord = {
+        id: `local-${Date.now()}`, // Dočasné ID pro offline/UI
+        child_id: selectedChild.id,
+        food_name: label,
+        category: categoryKey,
+        date: updates.date || "",
+        note: updates.note || ""
+      };
+      updatedRecords = [...currentRecords, newRecord];
+    }
 
     try {
       await updateChild({
         ...selectedChild,
-        foodDates: newFoodDates,
-        foodNotes: newFoodNotes,
-        foodCategories: newFoodCategories,
+        foodRecords: updatedRecords,
       });
     } catch (err) {
       console.error("Chyba při ukládání jídla:", err);
     }
   };
 
-  const renderFoodItem = (label: string, buttonStyle: any) => (
-    <View key={label} style={styles.row}>
-      {/* Poznámka - naprosto stejná logika jako u spánku */}
-      <Note 
-        initialText={selectedChild?.foodNotes?.[label] || ""}
-        onSave={(text) => saveFoodData(label, { note: text })}
-      />
-      
-      <Pressable 
-        style={[styles.button, buttonStyle]} 
-        onPress={() => setSelectedFood(label)}
-      >
-        <Text style={styles.buttonText}>{label}</Text>
-      </Pressable>
-    </View>
-  );
+  const renderFoodItem = (label: string, buttonStyle: any) => {
+    const record = getRecord(label);
+    const words = label.split(" ");
+
+    return (
+      <View key={label} style={styles.itemWrapper}>
+        <Pressable 
+          style={[styles.button, buttonStyle]} 
+          onPress={() => setSelectedFood(label)}
+        >
+          <View style={styles.buttonContentWrapper}>
+            {/* Ikona poznámky */}
+            <View style={styles.noteWrapper}>
+              <Note 
+                initialText={record?.note || ""}
+                onSave={(text) => saveFoodData(label, { note: text })}
+              />
+            </View>
+
+            {/* Jednotlivá slova jako samostatné Text prvky */}
+            {words.map((word, index) => (
+              <Text key={index} style={styles.buttonText}>
+                {word}{index < words.length - 1 ? " " : ""}
+              </Text>
+            ))}
+          </View>
+        </Pressable>
+      </View>
+    );
+  };
   
   const getChildAgeInMonths = (): number => {
     if (!selectedChild?.birthDate) return 0;
@@ -78,41 +117,39 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
     return Math.max(0, years * 12 + months);
   };
 
-  const introducedFoods = Object.entries(selectedChild?.foodDates || {})
-    .filter(([_, date]) => !!date)
-    .filter(([label]) => 
-      dataList.some(item => item.label === label) || 
-      selectedChild?.foodCategories?.[label] === categoryKey
-    );
+  // 1. Zavedená jídla (mají datum a patří do této kategorie nebo dataListu)
+  const introducedFoods = (selectedChild?.foodRecords || [])
+    .filter(r => !!r.date && (
+      dataList.some(item => item.label === r.food_name) || 
+      r.category === categoryKey
+    ));
 
-  const myFoods = Object.entries(selectedChild?.foodDates || {})
-    .filter(([_, date]) => date === "")
-    .filter(([label]) => selectedChild?.foodCategories?.[label] === categoryKey);
+  // 2. Moje jídla (přidaná ručně, zatím bez data)
+  const myFoods = (selectedChild?.foodRecords || [])
+    .filter(r => !r.date && r.category === categoryKey && !dataList.some(d => d.label === r.food_name));
 
+  // 3. Navržená jídla (nejsou v foodRecords s datem a splňují věk)
   const suggestedFoods = dataList.filter(item => {
-    const date = selectedChild?.foodDates?.[item.label];
-    return !date && getChildAgeInMonths() >= item.month;
+    const record = getRecord(item.label);
+    return !record?.date && getChildAgeInMonths() >= item.month;
   });
 
+  // 4. Budoucí jídla (nejsou v foodRecords s datem a nesplňují věk)
   const futureFoods = dataList.filter(item => {
-    const date = selectedChild?.foodDates?.[item.label];
-    return !date && getChildAgeInMonths() < item.month;
+    const record = getRecord(item.label);
+    return !record?.date && getChildAgeInMonths() < item.month;
   });
 
-  // 2. Změna data (Ukládání na backend)
+  // Změna data (Ukládání na backend)
   const handleDateChange = async (foodLabel: string, date: Date) => {
     const isoDate = date.toISOString().slice(0, 10);
-      if (selectedChild?.foodDates?.[foodLabel] === isoDate) return;
+    const record = getRecord(foodLabel);
+    if (record?.date === isoDate) return;
 
-    // 2. Async/Await: Počkej na výsledek uložení
-    try {
-        await saveFoodData(foodLabel, { date: isoDate });
-    } catch (error) {
-        console.error("Nepodařilo se změnit datum:", error);
-    }
+    await saveFoodData(foodLabel, { date: isoDate });
   };
 
-  // 3. Smazání data (Nastavení na prázdný string nebo null)
+  // Smazání data (Prázdný string nebo null)
   const handleDateDelete = async () => {
     if (!selectedFood) return;
     // Nastavením na prázdný string jídlo "od-zavedeme"
@@ -135,18 +172,32 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
     setNewFoodLabel("");
   };
 
+  const handleFullDelete = async () => {
+    if (!selectedFood || !selectedChild) return;
+
+    try {
+      await deleteFoodRecord(selectedChild.id, selectedFood);
+      setSelectedFood(null); 
+    } catch (err) {
+      console.error("Chyba při mazání potraviny:", err);
+    }
+  };
+
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions/food">
         <LookUp
-          list={dataList.map(item => ({
-            ...item,
-            buttonStyle: !!selectedChild?.foodDates?.[item.label]
-              ? styles.buttonIntroduced
-              : getChildAgeInMonths() >= item.month
-              ? styles.buttonSuggested
-              : styles.buttonFuture
-          }))}
+          list={dataList.map(item => {
+            const record = getRecord(item.label);
+            return {
+              ...item,
+              buttonStyle: !!record?.date
+                ? styles.buttonIntroduced
+                : getChildAgeInMonths() >= item.month
+                ? styles.buttonSuggested
+                : styles.buttonFuture
+            };
+          })}
           getButtonStyle={item => typeof item === "string" ? {} : item.buttonStyle}
           onSelect={label => setSelectedFood(label)}
         />
@@ -157,7 +208,7 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
 
         <Subtitle> Zavedeno </Subtitle>
         <GroupSection style={styles.sectionContainer}>
-          {introducedFoods.map(([label]) => renderFoodItem(label, styles.buttonIntroduced))}
+          {introducedFoods.map((record) => renderFoodItem(record.food_name, styles.buttonIntroduced))}
         </GroupSection>
 
         <Subtitle> Navrženo dle věku </Subtitle>
@@ -172,11 +223,7 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
 
         <Subtitle> Moje </Subtitle>
         <GroupSection style={styles.sectionContainer}>
-          {myFoods.map(([label]) => (
-            <Pressable key={label} style={[styles.button, styles.buttonCreated]} onPress={() => setSelectedFood(label)}>
-              <Text style={styles.buttonText}>{label}</Text>
-            </Pressable>
-          ))}
+          {myFoods.map(record => renderFoodItem(record.food_name, styles.buttonCreated))}
         </GroupSection>
       </ScrollView>
 
@@ -206,7 +253,9 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
                 <Text style={styles.closeText}>Uložit</Text>
               </Pressable>
               <Pressable onPress={() => setShowAddModal(false)}>
-                <Text style={styles.closeText}>Zavřít</Text>
+                <Text style={styles.uiButtonText}>
+                Zavřít
+              </Text>
               </Pressable>
             </View>
           </GroupSection>
@@ -215,63 +264,128 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
 
       {/* Modal s datem */}
       <Modal visible={!!selectedFood} transparent animationType="slide">
-        {selectedFood && (
-          <View style={styles.modalOverlay}>
-            <GroupSection style={styles.dateSelectorBox}>
-              <View style={styles.titleRow}>
-                <Subtitle style={{ color: COLORS.primary, marginTop: -10 }}>{selectedFood}</Subtitle>
-                <DateSelector
-                  date={
-                    selectedChild?.foodDates?.[selectedFood]
-                      ? new Date(selectedChild.foodDates[selectedFood])
-                      : new Date()
-                  }
-                  onChange={date => handleDateChange(selectedFood, date)}
-                  birthISO={selectedChild ? selectedChild.birthDate : null}
-                />
-              </View>
-              {selectedChild?.foodDates?.[selectedFood] && (
-                <View style={styles.row}>
-                  <Pressable onPress={handleDateDelete}>
-                    <Text style={{ fontSize: 14 }}>🚮</Text>
-                  </Pressable>
-                  <Text style={styles.dateText}>
-                    Datum zavedení:{" "}
-                    {new Date(selectedChild.foodDates[selectedFood]).toLocaleDateString("cs-CZ")}
-                  </Text>
+        {selectedFood && (() => {
+          const record = getRecord(selectedFood);
+          return (
+            <View style={styles.modalOverlay}>
+              <GroupSection style={styles.dateSelectorBox}>
+                <View style={styles.titleRow}>
+                  <Subtitle style={{ color: COLORS.primary, marginTop: -10}}>{selectedFood}</Subtitle>
+                  <DateSelector
+                    date={record?.date ? new Date(record.date) : new Date()}
+                    onChange={date => handleDateChange(selectedFood, date)}
+                    birthISO={selectedChild ? selectedChild.birthDate : null}
+                  />
                 </View>
-              )}
-              <Pressable onPress={() => setSelectedFood(null)}>
-                <Text style={styles.closeText}>Zavřít</Text>
-              </Pressable>
-            </GroupSection>
-          </View>
-        )}
+
+                {/* Odstranění DATA */}
+                {record?.date && (
+                  <View style={styles.row}>
+                    <Pressable onPress={handleDateDelete}>
+                      <Text style={{ fontSize: 14, marginRight: 5 }}>🚮</Text>
+                    </Pressable>
+                    <Text style={styles.dateText}>
+                      Datum zavedení: {new Date(record.date).toLocaleDateString("cs-CZ")}
+                    </Text>
+                  </View>
+                )}
+
+                <View style= {styles.titleRow}>
+                  {/* ÚPLNÉ SMAZÁNÍ potraviny */}
+                  {!dataList.some(item => item.label === selectedFood) && (
+                    <Pressable 
+                      onPress={handleFullDelete} 
+                      style={styles.uiButton}
+                    >
+                      <Text style={styles.uiButtonText}>
+                        Smazat potravinu
+                      </Text>
+                    </Pressable>  
+                  )}
+                  
+                  <Pressable 
+                    onPress={() => setSelectedFood(null)} 
+                    style={styles.uiButton}
+                  >
+                    <Text style={styles.uiButtonText}>
+                      Zavřít
+                    </Text>
+                  </Pressable>
+                </View>
+              </GroupSection>
+            </View>
+          );
+        })()}
       </Modal>
     </MainScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  sectionContainer: { 
+    flexDirection: "row", 
+    flexWrap: "wrap", 
+    justifyContent: "flex-start", // Zarovnat od začátku
+    paddingHorizontal: 10, // Drobný padding po stranách
+  },
+  itemWrapper: {
+    width: "50%", 
+    paddingHorizontal: 5, 
+    marginBottom: 10, 
+  },
   button: {
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     borderRadius: 20,
-    marginBottom: 10,
-    width: "48%",
     alignItems: "center",
     justifyContent: "center",
+    minHeight: 50,
   },
+  buttonContentWrapper: {
+    flexDirection: "row",      // Prvky řadíme vedle sebe
+    flexWrap: "wrap",          // Když není místo, zalomíme
+    justifyContent: "center",  
+    alignItems: "center",      
+  },
+  noteWrapper: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   buttonIntroduced: { backgroundColor: COLORS.lightGreen },
   buttonSuggested: { backgroundColor: COLORS.lightYellow },
   buttonFuture: { backgroundColor: COLORS.lightGrey },
   buttonCreated: { backgroundColor: COLORS.lightPurple },
-  buttonText: { fontSize: 16, textAlign: "center", flexWrap: "wrap" },
+  
+  buttonText: { 
+    fontSize: 16, 
+    fontWeight: "500",
+    textAlign: "center",
+  },
+
   dateSelectorBox: { marginHorizontal: 20, marginTop: 10, marginBottom: 20, width: "80%", maxWidth: 400 },
   closeText: { color: COLORS.darkRedText, fontSize: 15, fontWeight: "bold", textAlign: "right" },
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.3)" },
   dateText: { color: COLORS.primary, fontWeight: "500" },
-  row: { flexDirection: "row" },
+  row: { flexDirection: "row", marginBottom: 30, marginTop: -20 },
+
+  deleteAction: {
+    alignItems: "center",
+    padding: 10,
+  },
+  uiButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 12,
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.lightGrey,
+  },
+  uiButtonText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: COLORS.darkRedText,
+  },
 });

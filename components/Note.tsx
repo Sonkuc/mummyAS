@@ -91,7 +91,7 @@ export default function Note({ initialText, onSave }: NoteProps) {
 const styles = StyleSheet.create({
   iconButton: {
     padding: 4,
-    marginRight: 8,
+    marginRight: 1,
   },
   modalOverlay: {
     flex: 1,
