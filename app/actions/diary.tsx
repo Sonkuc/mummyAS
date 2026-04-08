@@ -2,33 +2,19 @@ import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
+import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import React, { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-
-import { formatDateToCzech } from "@/components/IsoFormatDate";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Diary() {
   const { selectedChild } = useChild();
   const [isEditMode, setIsEditMode] = useState(false);
-  
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [noteText, setNoteText] = useState("");
-
   const records = selectedChild?.diaryRecords || [];
-
-  const handleEdit = (record: any) => {
-    setEditingRecordId(record.id);
-    setName(record.name);
-    setNoteText(record.text || "");
-    setModalVisible(true);
-  };
 
   return (
     <MainScreenContainer>
@@ -44,12 +30,7 @@ export default function Diary() {
               <View style={styles.row}>
                 <View style={styles.leftContent}>
                   {isEditMode && (
-                    <Pressable 
-                      onPress={() => handleEdit(diary)} 
-                      style={styles.pencilWrapper}
-                    >
                       <EditPencil targetPath={`/actions/diary-edit?diaryId=${diary.id}`} color={COLORS.primary}  />
-                    </Pressable>
                   )} 
                   <Text style={styles.itemTitle} numberOfLines={1}>
                     {diary.name}
@@ -96,9 +77,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1, 
     marginRight: 10
-  },
-  pencilWrapper: {
-    marginRight: 8, 
   },
   itemTitle: { 
     fontSize: 18, 

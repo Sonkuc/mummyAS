@@ -23,10 +23,12 @@ def get_diary_for_child(session: Session, child_id: str) -> List[Diary]:
     )
     return session.exec(query).all()
 
-def update_diary_entry(session: Session, db_diary: Diary, diary_data: DiaryUpdate) -> Diary:
+def update_diary_entry(session: Session, db_diary: Diary, diary_data: DiaryUpdate) -> Optional[Diary]:
+    """Aktualizuje existující objekt záznamu v deníku."""
     update_dict = diary_data.dict(exclude_unset=True)
     for key, value in update_dict.items():
         setattr(db_diary, key, value)
+    
     session.add(db_diary)
     session.commit()
     session.refresh(db_diary)

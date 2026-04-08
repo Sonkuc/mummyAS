@@ -10,69 +10,63 @@ import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
 
 export default function DiaryEdit() {
-  const { diaryId } = useLocalSearchParams(); 
-  const { selectedChild, updateChild } = useChild();
+  const { diaryId } = useLocalSearchParams<{ diaryId: string }>();
+  const { selectedChild, updateDiaryRecord } = useChild();
   const router = useRouter();
+  
+  // Mechanismus pro zabránění přepsání rozepsaných dat při syncu na pozadí
+  const isInitialized = useRef(false);
 
   // Stavy
   const [name, setName] = useState("");
   const [noteText, setNoteText] = useState("");
   const [date, setDate] = useState("");
+  const [originalDate, setOriginalDate] = useState<string | null>(null);
 
-  // 1. Načtení existujících dat při mountu
+  // Memo pro nalezení konkrétního záznamu
+  const currentRecord = useMemo(() => {
+    return selectedChild?.diaryRecords?.find((r) => r.id === diaryId);
+  }, [diaryId, selectedChild]);
+
+  // 1. Načtení existujících dat (Analogicky k Milestone)
   useEffect(() => {
-  if (selectedChild && diaryId) {
-    const record = selectedChild.diaryRecords?.find((r) => r.id === diaryId);
-    
-    if (record) {
-      setName(record.name);
-      setNoteText(record.text || "");
-      setDate(record.date);
-    } else {
-      if (!name) {
-        Alert.alert("Chyba", "Záznam nebyl nalezen.");
-        router.back();
-      }
+    if (currentRecord && !isInitialized.current) {
+      setName(currentRecord.name);
+      setNoteText(currentRecord.text || "");
+      setDate(currentRecord.date);
+      setOriginalDate(currentRecord.date);
+      
+      isInitialized.current = true;
+    } else if (!currentRecord && !isInitialized.current && selectedChild) {
+      // Pokud záznam neexistuje (např. byl smazán v jiném okně)
+      Alert.alert("Chyba", "Záznam nebyl nalezen.");
+      router.back();
     }
-  }
-}, [diaryId, selectedChild]);
+  }, [currentRecord, selectedChild]);
 
   const handleUpdate = async () => {
-    if (!selectedChild || !name.trim() || !diaryId) return;
-
-    // Vytvoříme aktualizovaný objekt záznamu
-    const updatedRecord = {
-      id: diaryId as string,
-      child_id: selectedChild.id,
-      name: name.trim(),
-      text: noteText,
-      date: date,
-    };
+    const finalName = name.trim();
+    if (!selectedChild || !finalName || !diaryId || !currentRecord) return;
 
     try {
-      // 2. Mapujeme pole a nahradíme starý záznam novým
-      const updatedDiaryRecords = (selectedChild.diaryRecords || []).map((r) =>
-        r.id === diaryId ? updatedRecord : r
-      );
-
-      const updatedChild = {
-        ...selectedChild,
-        diaryRecords: updatedDiaryRecords,
-      };
-
-      await updateChild(updatedChild);
+      await updateDiaryRecord(selectedChild.id, diaryId, {
+        name: finalName,
+        text: noteText.trim(),
+        date: date,
+      });
+      
       router.back();
     } catch (error) {
-      console.error("Chyba při aktualizaci:", error);
-      Alert.alert("Chyba", "Nepodařilo se upravit záznam.");
+      console.error(error);
+      Alert.alert("Chyba", "Nepodařilo se uložit změny.");
     }
   };
 
-  if (!date) return null; // Prevence renderu před načtením dat
+  if (!date) return null;
 
   return (
     <MainScreenContainer>
@@ -111,10 +105,12 @@ export default function DiaryEdit() {
                   value={date}
                   onChange={(d) => d && setDate(d)}
                   birthISO={selectedChild ? selectedChild.birthDate : null}
+                  fallbackOnError="original"
+                  originalValue={originalDate ?? undefined}
                 />
               </View>
               <DateSelector
-                date={new Date(date)}
+                date={isNaN(new Date(date).getTime()) ? new Date() : new Date(date)}
                 onChange={(newDate) => setDate(formatDateLocal(newDate))}
                 birthISO={selectedChild ? selectedChild.birthDate : null}
               />

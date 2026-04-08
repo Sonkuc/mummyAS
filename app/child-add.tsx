@@ -11,7 +11,7 @@ import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
-import * as FileSystem from "expo-file-system/legacy";
+import { File, Paths } from 'expo-file-system';
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -47,35 +47,30 @@ export default function ChildAdd() {
       return;
     }
 
+
     let finalPhotoUri = "anonym";
 
     if (photoUri) {
       if (photoUri.startsWith("avatar")) {
         finalPhotoUri = photoUri;
       } else {
-        const docDir = FileSystem.documentDirectory ?? "";
-        if (photoUri.startsWith("file://") || photoUri.startsWith(docDir)) {
-          const newPath = `${docDir}${childId}.jpg`;
-          try {
-            if (photoUri !== newPath) {
-              await FileSystem.deleteAsync(newPath, { idempotent: true });
-              await FileSystem.copyAsync({ from: photoUri, to: newPath });
-            }
-            finalPhotoUri = newPath;
-          } catch (err) {
-            console.error("Chyba při ukládání fotky:", err);
-          }
-        } else {
+        try {
+          const sourceFile = new File(photoUri);
+          const destinationFile = new File(Paths.document, `${childId}.jpg`);
+          await sourceFile.copy(destinationFile);
+          finalPhotoUri = destinationFile.uri;
+        } catch (err) {
+          console.error("Chyba při ukládání fotky:", err);
           finalPhotoUri = photoUri;
         }
-      }     
+      }
     }
 
     const newChildData: Child = {
-      id: childId, // Naše UUID
+      id: childId, // UUID
       name: name.trim(),
       sex: sex,
-      birthDate: formatDateLocal(birthDate), // Ukládáme jako YYYY-MM-DD
+      birthDate: formatDateLocal(birthDate), // YYYY-MM-DD
       photo: finalPhotoUri,
       milestones: [],
       words: [],

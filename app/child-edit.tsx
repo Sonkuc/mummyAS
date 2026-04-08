@@ -11,7 +11,7 @@ import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
-import * as FileSystem from "expo-file-system/legacy";
+import { File, Paths } from "expo-file-system";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -72,14 +72,14 @@ export default function ChildEdit() {
       if (basePhoto.startsWith("avatar")) {
         finalPhotoUri = basePhoto;
       } else {
-        const docDir = FileSystem.documentDirectory ?? "";
-        const newPath = `${docDir}${currentChild.id}.jpg`;
         try {
-          if (basePhoto !== newPath) {
-            await FileSystem.deleteAsync(newPath, { idempotent: true });
-            await FileSystem.copyAsync({ from: basePhoto, to: newPath });
+          const sourceFile = new File(basePhoto);
+          const destinationFile = new File(Paths.document, `${currentChild.id}.jpg`);
+          if (destinationFile.exists) {
+            destinationFile.delete();
           }
-          finalPhotoUri = newPath;
+          sourceFile.copy(destinationFile);
+          finalPhotoUri = destinationFile.uri;
         } catch (err) {
           console.error("Chyba při ukládání fotky:", err);
         }

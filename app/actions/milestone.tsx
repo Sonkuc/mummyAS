@@ -2,6 +2,7 @@ import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
+import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
@@ -39,7 +40,7 @@ export default function Milestone() {
                     />
                   )}
                   <Text style={styles.item}>
-                    {m.date ? new Date(m.date).toLocaleDateString("cs-CZ") : "Bez data"}
+                    {m.date ? formatDateToCzech(m.date) : "Bez data"}
                   </Text>
                   <Text style={{ fontSize: 16, marginLeft: 10 }}>
                     {m.name}

@@ -68,7 +68,7 @@ export interface TeethRecord {
 export interface Diary {
   id: string;
   child_id: string;
-  text: string;
+  text?: string;
   name: string;    
   date: string;     // YYYY-MM-DD
   created_at?: string; 
