@@ -50,7 +50,7 @@ export default function Register() {
       options: {
       // Uloží do user_metadata
       data: {
-        parent_role: sex, 
+        gender: sex, 
       },
     },
     });
@@ -112,26 +112,26 @@ export default function Register() {
             <Pressable
               style={[
                 styles.genderButton,
-                sex === "maminka" && styles.genderSelected,
+                sex === "mum" && styles.genderSelected,
               ]}
-              onPress={() => setSex("maminka")}
+              onPress={() => setSex("mum")}
             >
               <Text style={[
                 styles.genderText,
-                sex === "maminka" && styles.genderTextSelected,
+                sex === "mum" && styles.genderTextSelected,
               ]}>Maminka</Text>
             </Pressable>
 
             <Pressable
               style={[
                 styles.genderButton,
-                sex === "tatinek" && styles.genderSelected,
+                sex === "dad" && styles.genderSelected,
               ]}
-              onPress={() => setSex("tatinek")}
+              onPress={() => setSex("dad")}
             >
               <Text style={[
                 styles.genderText,
-                sex === "tatinek" && styles.genderTextSelected,
+                sex === "dad" && styles.genderTextSelected,
               ]}>Tatínek</Text>
             </Pressable>
           </View>

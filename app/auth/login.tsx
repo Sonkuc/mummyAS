@@ -5,7 +5,6 @@ import Subtitle from "@/components/Subtitle";
 import { COLORS } from "@/constants/MyColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
-import * as QueryParams from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as WebBrowser from 'expo-web-browser';
 import { Chrome, HelpCircle, X } from "lucide-react-native";
@@ -44,13 +43,9 @@ export default function Login() {
   };
 
   const handleGoogleLogin = async () => {
-    console.log('Trying Google login...');
+  try {
+    const redirectUri = "exp://192.168.31.152:8081/--/auth/callback";
     
-    const redirectUri = QueryParams.makeRedirectUri({
-      scheme: "mummyas",
-      path: "auth/callback",
-    });
-
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -64,8 +59,44 @@ export default function Login() {
     const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 
     if (res.type === "success" && res.url) {
+      // 1. Získáme část za mřížkou #
+      const anchor = res.url.split("#")[1]; 
+      
+      if (anchor) {
+        // 2. Rozsekáme parametry (access_token, refresh_token atd.)
+        const params = new URLSearchParams(anchor);
+        const access_token = params.get("access_token");
+        const refresh_token = params.get("refresh_token");
+
+        if (access_token && refresh_token) {
+          console.log("Tokeny nalezeny, ukládám session...");
+
+          // 3. TOHLE JE KLÍČOVÝ KROK: Předáme tokeny Supabase
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+
+          if (sessionError) {
+            console.error("Chyba při setSession:", sessionError.message);
+            alert("Chyba při přihlášení: " + sessionError.message);
+          } else {
+            console.log("Session úspěšně nastavena pro:", sessionData.user?.email);
+            
+            // 4. Přesměrujeme uživatele do aplikace
+            // Použij replace, aby se uživatel nemohl vrátit zpět na Login šipkou
+            router.replace("/"); // Nebo tvoje cesta k hlavní obrazovce
+          }
+        } else {
+          console.error("Tokeny v URL chybí!");
+        }
+      }
     }
-  };
+  } catch (err) {
+    console.error("Google Login Error:", err);
+  }
+};
+
   const handleResetPassword = async () => {
     if (!user?.email) return;
     setLoading(true);

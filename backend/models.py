@@ -5,10 +5,33 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, JSON
 from enum import Enum
 
+# ============ USER MODELS ============
+
+class UserProfileBase(SQLModel):
+    id: str = Field(primary_key=True)
+    email: str
+    gender: str  # "mum" nebo "dad"
+
+class UserProfile(UserProfileBase, table=True):
+    __tablename__ = "profiles"  
+    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    children: List["Child"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+class UserProfileRead(UserProfileBase):
+    id: str
+    created_at: datetime
+
+
 # ============ CHILD MODELS ============
 
 class ChildBase(SQLModel):
     id: Optional[str] = None
+    user_id: str = Field(foreign_key="profiles.id", nullable=False)
     name: str
     birthDate: str
     sex: str
@@ -18,6 +41,7 @@ class ChildBase(SQLModel):
     
 class ChildRead(ChildBase):
     id: str
+    user_id: str = Field(foreign_key="profiles.id", nullable=False)
     milestones: List["MilestoneRead"] = Field(default_factory=list) 
     teethRecords: List["TeethRecordRead"] = Field(default_factory=list)
     words: List["SpeakingRead"] = Field(default_factory=list)
@@ -28,8 +52,12 @@ class ChildRead(ChildBase):
     diaryEntries: List["DiaryRead"] = Field(default_factory=list)
 
 class Child(ChildBase, table=True):
+    __tablename__ = "children"
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    
+    user_id: str = Field(foreign_key="profiles.id", index=True, ondelete="CASCADE")
+    user: Optional[UserProfile] = Relationship(back_populates="children")
+
     milestones: List["Milestone"] = Relationship(
         back_populates="child", 
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
@@ -65,6 +93,7 @@ class Child(ChildBase, table=True):
 
 class ChildCreate(SQLModel):
     id: Optional[str] = None
+    user_id: str = Field(foreign_key="profiles.id", nullable=False)
     name: str
     birthDate: str
     sex: str
@@ -92,7 +121,7 @@ class MilestoneRead(MilestoneBase):
 
 class Milestone(MilestoneBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="child.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     child: "Child" = Relationship(back_populates="milestones")
 
@@ -133,7 +162,7 @@ class WeightHeightRead(WeightHeightBase):
 
 class WeightHeight(WeightHeightBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="child.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     child: "Child" = Relationship(back_populates="wh")
 
@@ -166,12 +195,12 @@ class BreastfeedingRecordRead(BreastfeedingRecordBase):
 
 class BreastfeedingRecord(BreastfeedingRecordBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="child.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     child: "Child" = Relationship(back_populates="breastfeedingRecords")
 
 class BreastfeedingRecordCreate(BreastfeedingRecordBase):
-    id: Optional[str] = None  # Aby ID backend přijal z mobilu
+    id: Optional[str] = None  
 
 class BreastfeedingRecordUpdate(SQLModel):
     time: Optional[str] = None
@@ -203,7 +232,7 @@ class SleepRecordRead(SleepRecordBase):
 
 class SleepRecord(SleepRecordBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="child.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     child: "Child" = Relationship(back_populates="sleepRecords")
 
@@ -221,12 +250,13 @@ class SleepDaySummary(SQLModel):
     date: str
     total_minutes: int
 
-# --- ENTRY MODEL (Historie výslovnosti) ---
+# --- ENTRY MODEL ---
 class WordEntryBase(SQLModel):
     date: str  # YYYY-MM-DD
     note: Optional[str] = None
 
 class WordEntry(WordEntryBase, table=True):
+    __tablename__ = "word_entries"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     word_id: str = Field(foreign_key="speaking.id", ondelete="CASCADE")
     
@@ -237,13 +267,14 @@ class WordEntryUpdate(SQLModel):
     date: Optional[str] = None
     note: Optional[str] = None
 
-# --- MAIN WORD MODEL (Hlavní slovo) ---
+# --- MAIN WORD MODEL ---
 class SpeakingBase(SQLModel):
     name: str  # Např. "Ahoj"
 
 class Speaking(SpeakingBase, table=True):
+    __tablename__ = "speaking"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="child.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relace na historii výslovností
@@ -281,7 +312,7 @@ class TeethRecordRead(TeethRecordBase):
 
 class TeethRecord(TeethRecordBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="child.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     child: "Child" = Relationship(back_populates="teethRecords")
 
@@ -315,7 +346,7 @@ class FoodRecordRead(FoodRecordBase):
 
 class FoodRecord(FoodRecordBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="child.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     child: "Child" = Relationship(back_populates="foodRecords")
 
@@ -338,7 +369,7 @@ class DiaryBase(SQLModel):
 
 class Diary(DiaryBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="child.id")
+    child_id: str = Field(foreign_key="children.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     child: "Child" = Relationship(back_populates="diaryEntries")
 

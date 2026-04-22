@@ -12,6 +12,7 @@ from backend.routers.router_teeth import router as router_teeth
 from backend.routers.router_speaking import router as router_speaking
 from backend.routers.router_food import router as router_food
 from backend.routers.router_diary import router as router_diary
+from backend.routers.router_user import router as router_user
 
 app = FastAPI(title="MummyAS API", version="1.0.0")
 
@@ -41,3 +42,4 @@ app.include_router(router_teeth)
 app.include_router(router_speaking)
 app.include_router(router_food)
 app.include_router(router_diary)
+app.include_router(router_user, tags=["Users"])

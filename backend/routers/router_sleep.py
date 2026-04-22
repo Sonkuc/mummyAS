@@ -1,31 +1,45 @@
-from typing import List, Optional
-
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, select, delete
-
-from ..crud import crud_sleep as cs
-from ..models import SleepRecord, SleepRecordCreate, SleepRecordUpdate, SleepRecordRead
-from ..db import get_session
 import datetime
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
+from sqlmodel import Session, select, delete
+from ..crud import crud_sleep as cs
+from ..models import Child, SleepRecord, SleepRecordCreate, SleepRecordRead
+from ..db import get_session
 
 router = APIRouter()
 
+def verify_child_ownership(session: Session, child_id: str, x_user_id: str):
+    """Pomocná funkce pro ověření, zda dítě patří přihlášenému uživateli."""
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="X-User-Id header missing")
+    
+    child = session.get(Child, child_id)
+    if not child or child.user_id != x_user_id:
+        raise HTTPException(status_code=403, detail="Tohle dítě vám nepatří!")
+    return child
 
 @router.get("/children/{child_id}/sleep", response_model=List[SleepRecordRead])
-def list_sleep(child_id: str, date: Optional[str] = Query(None), session: Session = Depends(get_session)):
-    """List sleep records for a child. Optional filter by `date` (YYYY-MM-DD)."""
+def list_sleep(
+    child_id: str, 
+    date: Optional[str] = Query(None), 
+    session: Session = Depends(get_session),
+    x_user_id: str = Header(None)
+):
+    """Seznam záznamů spánku s ověřením vlastníka."""
+    verify_child_ownership(session, child_id, x_user_id)
     return cs.get_sleep_for_child(session, child_id, date)
 
 
-@router.post(
-    "/children/{child_id}/sleep/bulk",
-    response_model=List[SleepRecordRead]
-)
+@router.post("/children/{child_id}/sleep/bulk", response_model=List[SleepRecordRead])
 def create_sleep_bulk(
     child_id: str,
     sleep_data: List[SleepRecordCreate],
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    x_user_id: str = Header(None)
 ):
+    """Hromadné vytvoření záznamů spánku s ověřením vlastníka."""
+    verify_child_ownership(session, child_id, x_user_id)
+    
     results = []
     for item in sleep_data:
         new_rec = cs.create_sleep_record(session, child_id, item)
@@ -33,9 +47,15 @@ def create_sleep_bulk(
     return results
 
 
-# Pomocná funkce pro výpočet minut 
 @router.get("/children/{child_id}/sleep/stats")
-def get_sleep_stats(child_id: str, session: Session = Depends(get_session)):
+def get_sleep_stats(
+    child_id: str, 
+    session: Session = Depends(get_session),
+    x_user_id: str = Header(None)
+):
+    """Výpočet statistik spánku s ověřením vlastníka."""
+    verify_child_ownership(session, child_id, x_user_id)
+    
     statement = select(SleepRecord).where(SleepRecord.child_id == child_id)
     records = session.exec(statement).all()
     if not records: return []
@@ -84,28 +104,42 @@ def get_sleep_stats(child_id: str, session: Session = Depends(get_session)):
 
     return [{"date": d, **v} for d, v in sorted(daily_results.items())]
 
+
 @router.get("/children/{child_id}/sleep/{sleep_id}", response_model=SleepRecordRead)
-def get_sleep(child_id: str, sleep_id: str, session: Session = Depends(get_session)):
-    """Get a single sleep record by `sleep_id`."""
+def get_sleep(
+    child_id: str, 
+    sleep_id: str, 
+    session: Session = Depends(get_session),
+    x_user_id: str = Header(None)
+):
+    """Detail jednoho záznamu spánku s kontrolou vlastníka."""
+    verify_child_ownership(session, child_id, x_user_id)
+    
     rec = cs.get_sleep_record(session, sleep_id)
     if not rec or rec.child_id != child_id:
         raise HTTPException(status_code=404, detail="Sleep record not found")
     return rec
+
 
 @router.put("/children/{child_id}/sleep/day/{date}", response_model=List[SleepRecordRead])
 def update_sleep_day(
     child_id: str, 
     date: str, 
     sleep_data: List[SleepRecordCreate], 
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    x_user_id: str = Header(None)
 ):
-    # 1. Hromadné smazání
+    """Aktualizace celého dne spánku s ověřením vlastníka před smazáním."""
+    # 1. Nejdříve ověříme, zda uživateli dítě patří
+    verify_child_ownership(session, child_id, x_user_id)
+
+    # 2. Hromadné smazání
     session.exec(delete(SleepRecord).where(
         SleepRecord.child_id == child_id,
         SleepRecord.date == date
     ))
     
-    # 2. Hromadné vložení
+    # 3. Hromadné vložení
     new_recs = []
     for item in sleep_data:
         new_recs.append(SleepRecord(**item.dict(), child_id=child_id))
@@ -113,15 +147,23 @@ def update_sleep_day(
     session.add_all(new_recs) 
     session.commit()
     
-    # Refresh pro vrácení korektních dat
     for r in new_recs: session.refresh(r)
     return new_recs
 
 
 @router.delete("/children/{child_id}/sleep/{sleep_id}")
-def delete_sleep(child_id: str, sleep_id: str, session: Session = Depends(get_session)):
+def delete_sleep(
+    child_id: str, 
+    sleep_id: str, 
+    session: Session = Depends(get_session),
+    x_user_id: str = Header(None)
+):
+    """Smazání záznamu spánku s ověřením vlastníka."""
+    verify_child_ownership(session, child_id, x_user_id)
+    
     rec = cs.get_sleep_record(session, sleep_id)
     if not rec or rec.child_id != child_id:
         raise HTTPException(status_code=404, detail="Sleep record not found")
+        
     cs.delete_sleep_record(session, sleep_id)
     return {"status": "deleted", "sleep_id": sleep_id}

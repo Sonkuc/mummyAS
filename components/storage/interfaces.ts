@@ -1,3 +1,9 @@
+export interface UserProfile {
+  id: string;          
+  email: string;
+  created_at: string;
+  gender: "mum" | "dad";
+}
 
 export interface Milestone {
   id: string;
@@ -88,6 +94,7 @@ export interface FoodRecord {
 
 export interface Child {
   id: string;
+  user_id: string;
   name: string;
   sex: string;
   birthDate: string;

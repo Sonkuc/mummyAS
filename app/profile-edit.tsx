@@ -2,11 +2,15 @@ import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
+import * as api from "@/components/storage/api";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useAuth } from "@/contexts/AuthContext";
+import { useChild } from "@/contexts/ChildContext";
 import { supabase } from "@/lib/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -17,6 +21,7 @@ export default function ProfileEdit() {
   
   const [sex, setSex] = useState(user?.user_metadata?.parent_role || "");
   const [loading, setLoading] = useState(false);
+  const { allChildren, deleteChild } = useChild();
   
   // Stavy pro hesla
   const [oldPassword, setOldPassword] = useState("");
@@ -69,6 +74,61 @@ export default function ProfileEdit() {
       router.back();
     }
   };
+
+  const handleDeleteAccount = async () => {
+    // 1. Kontrola připojení
+    const state = await NetInfo.fetch();
+    if (!state.isConnected) {
+      Alert.alert(
+        "Jste offline", 
+        "Pro smazání účtu musíte být připojeni k internetu, aby bylo možné data bezpečně odstranit i ze serveru."
+      );
+      return;
+    }
+
+    // 2. Potvrzovací okno
+    Alert.alert(
+      "⚠️ Trvalé smazání účtu",
+      "Opravdu chcete smazat svůj profil a veškerá data o dětech? Tato akce je nevratná.",
+      [
+        { text: "Zrušit", style: "cancel" },
+        { 
+          text: "Smazat vše", 
+          style: "destructive", 
+          onPress: executeDelete 
+        }
+      ]
+    );
+  };
+
+  const executeDelete = async () => {
+  setLoading(true);
+  try {
+    if (!user) return;
+
+    // A. Smazání z backendu (SQLite)
+    await api.deleteUserProfile(user.id);
+    console.log("Backend smazán");
+
+    // B. VYČIŠTĚNÍ LOKÁLNÍCH DAT (Klíčový krok!)
+    // Tady musíme zajistit, aby ChildContext zapomněl všechny děti
+    // Pokud máš v useChild metodu pro reset, zavolej ji (např. setAllChildren([]))
+    
+    await AsyncStorage.clear(); 
+    console.log("AsyncStorage vyčištěn");
+
+    // C. Odhlášení
+    await supabase.auth.signOut();
+
+    // D. Navigace
+    Alert.alert("Smazáno", "Účet byl smazán.");
+    router.replace("/auth/login");
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <MainScreenContainer>
@@ -132,6 +192,16 @@ export default function ProfileEdit() {
             />
           </View>
         </View>
+        <View style={[styles.buttonContainer, { marginTop: 40 }]}>
+          <Pressable 
+            onPress={handleDeleteAccount}
+            style={({ pressed }) => [
+              { opacity: pressed ? 0.6 : 1, alignItems: 'center', padding: 15 }
+            ]}
+          >
+          <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>Smazat účet</Text>
+        </Pressable>
+      </View>
       </ScrollView>
     </MainScreenContainer>
   );

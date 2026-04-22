@@ -1,6 +1,7 @@
 import * as api from "@/components/storage/api";
 import * as utils from "@/components/storage/context/syncService";
 import { Child, DiaryUpdate } from "@/components/storage/interfaces";
+import { useAuth } from "@/contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -20,15 +21,26 @@ type ChildContextType = {
   deleteMilestoneRecord: (childId: string, milId: string) => Promise<void>;
   deleteWordRecord: (childId: string, wordId: string) => Promise<void>;
   updateDiaryRecord: (childId: string, diaryId: string, data: DiaryUpdate) => Promise<void>;
+  isDataLoaded: boolean;
 };
 
 const ChildContext = createContext<ChildContextType | undefined>(undefined);
 
 export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
+  const { session, user } = useAuth();
   const [allChildren, setAllChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildIdState] = useState<string | null>(null);
   const syncInProgress = useRef(false);
-  
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!session) {
+      setAllChildren([]);
+      setSelectedChildIdState(null);
+      AsyncStorage.removeItem("selectedChildId");
+    }
+  }, [session]);
+
   const selectedChild = useMemo(() => {
     return allChildren.find(c => c.id === selectedChildId) || null;
   }, [allChildren, selectedChildId]);
@@ -38,8 +50,17 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     await AsyncStorage.setItem("children", JSON.stringify(newList));
   };
 
-  const syncOfflineData = useCallback(async () => {
+  const syncOfflineData = useCallback(async (userId?: string) => {
     if (syncInProgress.current) return [];
+
+    const currentUserId = userId || user?.id;
+
+    if (!currentUserId) {
+      console.warn("LOG: SyncOfflineData přerušen - userId není k dispozici");
+      return [];
+    }
+    
+    console.log("LOG: Start syncOfflineData pro uživatele:", currentUserId);
     syncInProgress.current = true;
 
     try {
@@ -55,7 +76,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
 
         try {
           // --- KROK 0: ZAJIŠTĚNÍ EXISTENCE ---
-          await api.updateChild(currentId, childData);
+          await api.updateChild(currentId, childData, currentUserId);
 
           // --- KROK 1 & 2: DENNÍ ZÁZNAMY ---
           await utils.syncDailyRecords(
@@ -153,7 +174,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       // --- MAZÁNÍ FRONTY ---
-      await utils.processDeletionQueue("pending_child_deletions", (id) => api.deleteChild(id));
+      await utils.processDeletionQueue("pending_child_deletions", (id) => api.deleteChild(id, currentUserId));
       await utils.processDeletionQueue("pending_milestone_deletions", (i) => api.deleteMilestone(i.childId, i.milId));
       await utils.processDeletionQueue("pending_word_deletions", (i) => api.deleteWord(i.childId, i.wordId));
       await utils.processDeletionQueue("pending_wh_deletions", (i) => api.deleteWeightHeight(i.childId, i.whId));
@@ -176,6 +197,12 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const reloadChildren = useCallback(async () => {
+    if (!user || !user.id) {
+      console.log("LOG: reloadChildren - Uživatel zatím není k dispozici (null), přeskakuji.");
+      return;
+    }
+    console.log("LOG: reloadChildren - Start pro uživatele:", user.id);
+
     const mergeEntities = <T extends { id: string | number; name: string }>(
       apiData: T[],
       localData: T[] | undefined,
@@ -211,10 +238,10 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      const syncedIds = await syncOfflineData();
+      const syncedIds = await syncOfflineData(user.id);
       
       const [childrenFromAPI, offlineDataStr] = await Promise.all([
-        api.fetchChildren().catch(() => []),
+        api.fetchChildren(user.id).catch(() => []),
         AsyncStorage.getItem("pending_child_updates")
       ]);
       
@@ -323,28 +350,36 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
 
       const finalChildren = [...enrichedChildren, ...onlyLocalChildren];
       setAllChildren(finalChildren);
+      setIsDataLoaded(true);
       await AsyncStorage.setItem("children", JSON.stringify(finalChildren));
     } catch (error) {
       console.warn("[RELOAD] Offline nebo chyba API.");
     }
-  }, [syncOfflineData]);
+  }, [user, syncOfflineData]);
 
   // Inicializace
   useEffect(() => {
     const initData = async () => {
-      // 1. Načteme naposledy vybrané ID z paměti telefonu
-      const storedId = await AsyncStorage.getItem("selectedChildId");
-      if (storedId) {
-        setSelectedChildIdState(storedId);
+      // Pokud user ještě není (isLoading v AuthContextu), nic nedělej a počkej
+      if (!user) {
+        console.log("LOG: initData - uživatel zatím není k dispozici, čekám...");
+        return;
       }
 
-      // 2. Načteme data
-      await reloadChildren();
+      try {
+        console.log("LOG: initData - uživatel nalezen, spouštím reload a sync.");
+        const storedId = await AsyncStorage.getItem("selectedChildId");
+        if (storedId) setSelectedChildIdState(storedId);
+
+        // Spustíme reload, který v sobě má i sync
+        await reloadChildren();
+      } catch (e) {
+        console.error("Chyba při inicializaci ChildProvideru:", e);
+      }
     };
 
     initData();
- 
-  }, [reloadChildren]);
+  }, [user, reloadChildren]);
 
   const setSelectedChildId = useCallback(async (id: string | null) => {
     setSelectedChildIdState(id);
@@ -443,7 +478,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      await api.deleteChild(childId);
+      await api.deleteChild(childId, user!.id);
     } catch (err: any) {
       if (!err?.message?.includes("404")) {
         const toDeleteStr = await AsyncStorage.getItem("pending_child_deletions");
@@ -608,6 +643,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
         deleteMilestoneRecord,
         deleteWordRecord,
         updateDiaryRecord,
+        isDataLoaded,
       }}
     >
       {children}

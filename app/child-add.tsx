@@ -11,6 +11,7 @@ import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
+import { supabase } from "@/lib/supabase";
 import { File, Paths } from 'expo-file-system';
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -35,6 +36,14 @@ export default function ChildAdd() {
 
     if (isNaN(birthDate.getTime())) {
       alert("Datum narození není platné.");
+      return;
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      alert("Chyba: Pro přidání dítěte musíš být přihlášená.");
+      console.error("User session error:", userError);
       return;
     }
 
@@ -68,6 +77,7 @@ export default function ChildAdd() {
 
     const newChildData: Child = {
       id: childId, // UUID
+      user_id: user.id, // UUID
       name: name.trim(),
       sex: sex,
       birthDate: formatDateLocal(birthDate), // YYYY-MM-DD
