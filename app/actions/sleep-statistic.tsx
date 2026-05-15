@@ -5,6 +5,7 @@ import { useChartData } from "@/components/statisticBfSleep";
 import * as api from "@/components/storage/api";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
+import { useAuth } from "@/contexts/AuthContext";
 import { useChild } from "@/contexts/ChildContext";
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -18,6 +19,7 @@ interface SleepStatEntry {
 
 export default function SleepStats() {
   const { selectedChildId } = useChild();
+  const { user } = useAuth();
   const [periodMode, setPeriodMode] = useState<"week" | "month" | "halfYear">("week");
   const [dayMode, setDayMode] = useState<"day" | "plusNight">("plusNight");
   const [stats, setStats] = useState<SleepStatEntry[]>([]);
@@ -27,7 +29,7 @@ export default function SleepStats() {
   useEffect(() => {
     if (selectedChildId) {
       setLoading(true);
-      api.fetchSleepStats(selectedChildId)
+      api.fetchSleepStats(selectedChildId, user!.id)
         .then((data) => {
           setStats(data);
           setLoading(false);
@@ -71,13 +73,19 @@ export default function SleepStats() {
       </View>
 
       {/* 2. Graf */}
-      <MyBarChart
-        title={getChartTitle()}
-        data={chartData}
-        mode={periodMode}
-        dayMode="day"
-      />
-  
+      {chartData.length > 0 ? (
+        <MyBarChart
+          title={getChartTitle()}
+          data={chartData}
+          mode={periodMode}
+          dayMode="day"
+        />
+      ) : (
+      <Text style={styles.noData}>
+        {loading ? "Načítám data..." : "Zatím nemáte dostatek dat."}
+      </Text>
+      )}
+      
       {/* 3. Speciální přepínač pro Spánek (Denní/Celkový) */}
       <Pressable 
         style={[styles.periodButton, { marginTop: 30 }]}
@@ -113,4 +121,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-evenly",
     marginBottom: 15,
   },
+  noData: {
+    marginTop: 50,
+    color: "#999",
+    fontStyle: "italic",
+  }
 });

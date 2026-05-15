@@ -1,3 +1,4 @@
+// ============ USER ============
 export interface UserProfile {
   id: string;          
   email: string;
@@ -5,16 +6,22 @@ export interface UserProfile {
   gender: "mum" | "dad";
 }
 
+// ============ MILESTONE ============
 export interface Milestone {
   id: string;
   child_id: string; 
   name: string;
   date: string;
   note?: string;
-};
+  created_at?: string;
+}
+export type MilestoneCreate = Omit<Milestone, 'id' | 'child_id'>;
+export type MilestoneUpdate = Partial<MilestoneCreate>;
 
+// ============ WEIGHT/HEIGHT ============
 export interface WeightHeight {
   id: string;
+  child_id: string;
   date: string;
   weight?: string | number | null; 
   height?: string | number | null;
@@ -22,76 +29,103 @@ export interface WeightHeight {
   foot?: string | null;
   clothes?: string | null;
 }
+export type WeightHeightCreate = Omit<WeightHeight, 'id'>;
 
+// ============ BREASTFEEDING ============
 export interface BreastfeedingRecord {
   id: string;
+  child_id: string;
   date: string;
   time: string;
   state: "start" | "stop";
   note?: string;
-};
-
-export interface BreastfeedingStats {
-  date: string;
-  total_minutes: number;
 }
 
+export type BreastfeedingSyncItem = Omit<BreastfeedingRecord, 'child_id'>;
+export type BreastfeedingSyncDay = BreastfeedingSyncItem[];
+
+// Typ pro UI
+export type DisplayBreastfeedingRecord = BreastfeedingRecord & { label: string };
+
+// ============ SLEEP ============
 export interface SleepRecord {
   id: string;
+  child_id: string;
   date: string;
   time: string;
   state: "awake" | "sleep";
   note?: string;
-};
-
-export interface SleepStats {
-  date: string;
-  total_minutes: number;
 }
+export type SleepSyncItem = Omit<SleepRecord, 'child_id'>;
+export type SleepSyncDay = SleepSyncItem[];
 
+// Typ pro UI 
+export type DisplaySleepRecord = SleepRecord & { label: string };
+
+// ============ SPEAKING (WORDS) ============
 export type WordEntry = {
-  id: string;      // ID záznamu z DB
-  date: string;    // YYYY-MM-DD
-  note?: string;   // Volitelná poznámka
+  id: string;
+  date: string;
+  note?: string;
 };
 
 export type Word = {
-  id: string;      // ID slova z DB
+  id: string;
   child_id: string;
   name: string;
-  entries: WordEntry[]; // Pole objektů s vlastními ID
+  entries: WordEntry[];
+  created_at?: string;
+};
+export type WordUpdatePayload = {
+  name: string;
+  entries: Omit<WordEntry, 'id'>[];
 };
 
-export type ToothDates = Record<string, string>;
+// ============ TEETH ============
 export interface TeethRecord {
-  id: string;  // Backend-generated UUID
+  id: string;
   tooth_id: string;
   date: string;
   child_id: string;
-  created_at: string;  // Optional, if needed
-};
+  created_at?: string;
+}
+export type TeethRecordSync = Omit<TeethRecord, 'id' | 'child_id' | 'created_at'>;
 
+// ============ DIARY ============
 export interface Diary {
   id: string;
   child_id: string;
   text?: string;
   name: string;    
-  date: string;     // YYYY-MM-DD
+  date: string;
   created_at?: string; 
 }
-
 export type DiaryCreate = Omit<Diary, 'id' | 'child_id' | 'created_at'>;
 export type DiaryUpdate = Partial<DiaryCreate>;
 
+// ============ FOOD ============
+
+export type FoodCategory = 
+  | "cereal" 
+  | "fruit" 
+  | "vegetable" 
+  | "meat" 
+  | "legume" 
+  | "herbs" 
+  | "other";
+  
 export interface FoodRecord {
   id: string;
   child_id: string;
-  food_name: string; // Backend název
-  category: string;
-  date: string;      // ISO formát
+  food_name: string;
+  category: FoodCategory;
+  date: string;
   note?: string;
 }
+export type FoodRecordCreate = Omit<FoodRecord, 'id' | 'child_id'>;
+export type FoodRecordUpdate = Partial<FoodRecordCreate>;
 
+// ============ CHILD ============
 export interface Child {
   id: string;
   user_id: string;
@@ -101,19 +135,17 @@ export interface Child {
   photo: string;
   milestones?: Milestone[];
   words?: Word[];
-  teethDates?: ToothDates;
   teethRecords?: TeethRecord[]; 
   wh?: WeightHeight[];
   foodRecords?: FoodRecord[];
   sleepRecords?: SleepRecord[];
-  currentModeSleep?: {
-    mode: "awake" | "sleep";
-    start: number;
-  } | null;
+  currentModeSleep?: { mode: "awake" | "sleep"; start: string; } | null;
   breastfeedingRecords?: BreastfeedingRecord[];
-  currentModeFeed?: {
-    mode: "start" | "stop";
-    start: number;
-  } | null;
+  currentModeFeed?: { mode: "start" | "stop"; start: string; } | null;
   diaryRecords?:  Diary[];
 }
+export type ChildCreate = Omit<Child, 'id' | 'user_id' | 'milestones' | 'words' | 'teethRecords' | 'wh' | 'foodRecords' | 'sleepRecords' | 'breastfeedingRecords' | 'diaryRecords'>;
+export type ChildUpdate = Partial<ChildCreate> & {
+  currentModeSleep?: Child['currentModeSleep'];
+  currentModeFeed?: Child['currentModeFeed'];
+};

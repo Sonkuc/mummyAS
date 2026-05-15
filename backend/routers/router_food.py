@@ -1,33 +1,41 @@
 from typing import List, Optional
-
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, select
-
-from ..crud import crud_food as cfood
-from ..models import FoodRecordCreate, FoodRecordUpdate, FoodRecordRead, FoodRecord
-from ..db import get_session
-
-router = APIRouter()
-
-
-from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
-from sqlmodel import Session, select
+from sqlmodel import Session
 from ..crud import crud_food as cfood
-from ..models import Child, FoodRecord, FoodRecordCreate, FoodRecordUpdate, FoodRecordRead
+from ..models import Child, FoodRecordRead, FoodRecordCreate, FoodRecordUpdate
 from ..db import get_session
 
 router = APIRouter()
 
 def verify_child_ownership(session: Session, child_id: str, x_user_id: str):
-    """Ověří, zda dítě existuje a patří přihlášenému uživateli."""
-    if not x_user_id:
-        raise HTTPException(status_code=401, detail="X-User-Id header missing")
-    
+    """Ověří, zda dítě existuje a patří uživateli."""    
     child = session.get(Child, child_id)
-    if not child or child.user_id != x_user_id:
-        raise HTTPException(status_code=403, detail="Tohle dítě vám nepatří nebo neexistuje!")
+    if not child:
+        raise HTTPException(status_code=404, detail="Dítě nebylo nalezeno.")      
+    if child.user_id != x_user_id:
+        raise HTTPException(status_code=403, detail="Tohle dítě vám nepatří!")      
     return child
+
+@router.post("/children/{child_id}/food/sync", response_model=List[FoodRecordRead])
+def sync_food(
+    child_id: str, 
+    food_list: List[FoodRecordCreate], 
+    session: Session = Depends(get_session),
+    x_user_id: str = Header(...)
+):
+    """
+    Hromadně synchronizuje jídla (Upsert podle food_name).
+    Frontend pošle aktuální seznam všech jídel v kategorii/celkově.
+    """
+    verify_child_ownership(session, child_id, x_user_id)
+    
+    results = []
+    for food_data in food_list:
+        rec = cfood.save_food_record(session, child_id, food_data)
+        results.append(rec)
+    
+    return results
+
 
 @router.get("/children/{child_id}/food", response_model=List[FoodRecordRead])
 def list_food(
@@ -35,81 +43,24 @@ def list_food(
     date: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
+    x_user_id: str = Header(...)
 ):
-    """Načte seznam jídel pro konkrétní dítě s ověřením vlastníka."""
+    """Zůstává pro úvodní načtení dat při startu aplikace."""
     verify_child_ownership(session, child_id, x_user_id)
     return cfood.get_food_for_child(session, child_id, date, category)
-
-
-@router.post("/children/{child_id}/food", response_model=FoodRecordRead)
-def save_food(
-    child_id: str, 
-    food_data: FoodRecordCreate, 
-    session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
-):
-    """Uloží záznam o jídle pouze pokud uživatel vlastní dané child_id."""
-    verify_child_ownership(session, child_id, x_user_id)
-    return cfood.save_food_record(session, child_id, food_data)
-
-
-@router.get("/children/{child_id}/food/{food_id}", response_model=FoodRecordRead)
-def get_food(
-    child_id: str, 
-    food_id: str, 
-    session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
-):
-    """Detail jídla s kontrolou vlastníka a vazby na dítě."""
-    verify_child_ownership(session, child_id, x_user_id)
-    
-    food = cfood.get_food_record(session, food_id)
-    if not food or food.child_id != child_id:
-        raise HTTPException(status_code=404, detail="Food record not found")
-    return food
-
-
-@router.put("/children/{child_id}/food/{food_id}", response_model=FoodRecordRead)
-def update_food(
-    child_id: str, 
-    food_id: str, 
-    food_data: FoodRecordUpdate, 
-    session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
-):
-    """Aktualizace jídla s kontrolou vlastníka."""
-    verify_child_ownership(session, child_id, x_user_id)
-    
-    food = cfood.get_food_record(session, food_id)
-    if not food or food.child_id != child_id:
-        raise HTTPException(status_code=404, detail="Food record not found")
-        
-    updated = cfood.update_food_record(session, food_id, food_data)
-    if updated is None:
-        raise HTTPException(status_code=400, detail="Update failed")
-    return updated
-
 
 @router.delete("/children/{child_id}/food/name/{food_name}")
 def delete_food_by_name(
     child_id: str, 
     food_name: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
+    x_user_id: str = Header(...)
 ):
-    """Smazání jídla podle názvu s kontrolou vlastníka (ochrana před neoprávněným mazáním)."""
+    """Smaže jídlo podle názvu (pro úplné odstranění vlastních potravin)."""
     verify_child_ownership(session, child_id, x_user_id)
     
-    statement = select(FoodRecord).where(
-        FoodRecord.child_id == child_id, 
-        FoodRecord.food_name == food_name
-    )
-    record = session.exec(statement).first()
-    
-    if not record:
-        raise HTTPException(status_code=404, detail="Food not found")
+    success = cfood.delete_food_by_name(session, child_id, food_name)
+    if not success:
+        raise HTTPException(status_code=404, detail="Záznam o jídle nebyl nalezen.")
         
-    session.delete(record)
-    session.commit()
     return {"status": "deleted"}

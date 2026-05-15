@@ -5,7 +5,6 @@ import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
-import { Child } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
@@ -17,7 +16,7 @@ import { ScrollView, View } from "react-native";
 
 export default function AddMilestone() {
   const router = useRouter();
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const { selectedChildId, selectedChild, addMilestoneRecord } = useChild();
   
   const [name, setName] = useState("");
   const [selectedMilestone, setSelectedMilestone] = useState("");
@@ -31,22 +30,12 @@ export default function AddMilestone() {
     }
 
     try {
-      // Definice nového milníku
-      const newMilestone = {
-        id: `local-${Date.now()}`,
-        child_id: selectedChildId,
+      await addMilestoneRecord(selectedChildId, {
         name: finalName,
         date: date,
         note: note.trim() || undefined,
-      };
+      });
 
-      // Vytvoření kopie 
-      const updatedChild: Child = {
-        ...selectedChild,
-        milestones: [...(selectedChild.milestones || []), newMilestone] 
-      };
-
-      await updateChild(updatedChild);
       router.back();
     } catch (error) {
       console.error("Chyba při ukládání milníku:", error);

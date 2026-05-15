@@ -19,11 +19,11 @@ export default function Sleep() {
   const [records, setRecords] = useState<any[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [mode, setMode] = useState<"awake" | "sleep" | "">("");
-  const [modeStart, setModeStart] = useState<number | null>(null);
+  const [modeStart, setModeStart] = useState<string | null>(null);
   const [minutesSinceMode, setMinutesSinceMode] = useState<number | null>(null);
 
   const router = useRouter();
-  const { selectedChildId, selectedChild, reloadChildren, updateChild } = useChild();
+  const { selectedChildId, selectedChild, updateChild } = useChild();
 
   // RESET STAVU
   const clearState = async () => {
@@ -59,10 +59,10 @@ export default function Sleep() {
       }
 
       if (selectedChild?.currentModeSleep) {
-        const { mode, start } = selectedChild.currentModeSleep;
+        const { mode, start } = selectedChild?.currentModeSleep;
         setMode(mode as "awake" | "sleep");
         setModeStart(start);
-        const diff = Math.floor((Date.now() - start) / 60000);
+        const diff = Math.floor((Date.now() - new Date(start).getTime()) / 60000);
         setMinutesSinceMode(diff);
       }
     }, [selectedChild])
@@ -73,7 +73,7 @@ export default function Sleep() {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (mode && modeStart) {
       const tick = () => {
-        const diffMinutes = Math.floor((Date.now() - modeStart) / 60000);
+        const diffMinutes = Math.floor((Date.now() - new Date(modeStart).getTime()) / 60000);
         setMinutesSinceMode(diffMinutes);
       };
       tick();
@@ -98,11 +98,12 @@ export default function Sleep() {
     const now = new Date();
     const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
     const date = now.toISOString().slice(0, 10);
-    const startTimestamp = Date.now();
+    const startISO = now.toISOString();
 
     // 2. Vytvoříme lokální záznam 
     const newRec = {
       id: `local-${Date.now()}`, 
+      child_id: selectedChildId,
       date,
       time,
       state: newMode,
@@ -114,7 +115,7 @@ export default function Sleep() {
       // Přidáme záznam k existujícím
       sleepRecords: [...(selectedChild.sleepRecords || []), newRec],
       // Nastavíme live režim pro čítač
-      currentModeSleep: { mode: newMode, start: startTimestamp }
+      currentModeSleep: { mode: newMode, start: startISO }
     };
 
     try {
@@ -124,7 +125,7 @@ export default function Sleep() {
 
       // Aktualizace lokálních stavů v komponentě pro okamžitý ticker
       setMode(newMode);
-      setModeStart(startTimestamp);
+      setModeStart(startISO);
       setMinutesSinceMode(0);
     } catch (error) {
       console.error("Chyba při ukládání spánku:", error);

@@ -1,85 +1,47 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from sqlmodel import Session
 from typing import List
 
-from backend.crud import crud_diary as cd
-from backend.models import Child, DiaryCreate, DiaryRead, DiaryUpdate
-from backend.db import get_session
+from ..crud import crud_diary as cd
+from ..models import Child, DiaryCreate, DiaryRead, DiaryUpdate
+from ..db import get_session
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/children/{child_id}/diary",
+    tags=["Diary"]
+)
 
 def verify_child_ownership(session: Session, child_id: str, x_user_id: str):
+    """Ověří, zda dítě existuje a patří uživateli."""    
     child = session.get(Child, child_id)
-    if not child or child.user_id != x_user_id:
-        raise HTTPException(status_code=403, detail="Tohle dítě vám nepatří!")
+    if not child:
+        raise HTTPException(status_code=404, detail="Dítě nebylo nalezeno.")      
+    if child.user_id != x_user_id:
+        raise HTTPException(status_code=403, detail="Tohle dítě vám nepatří!")      
     return child
 
-@router.get("/children/{child_id}/diary", response_model=List[DiaryRead])
-def list_diary(
-    child_id: str, 
-    session: Session = Depends(get_session), 
-    x_user_id: str = Header(None)
-):
-    """Seznam všech záznamů v deníku dítěte s ověřením vlastníka."""
+@router.get("", response_model=List[DiaryRead])
+def get_all(child_id: str, session: Session = Depends(get_session), x_user_id: str = Header(...)):
     verify_child_ownership(session, child_id, x_user_id)
     return cd.get_diary_for_child(session, child_id)
 
-@router.post("/children/{child_id}/diary", response_model=DiaryRead)
-def create_diary_entry(
-    child_id: str, 
-    diary_data: DiaryCreate, 
-    session: Session = Depends(get_session), 
-    x_user_id: str = Header(None)
-):
-    """Vytvoření nového záznamu do deníku s ověřením vlastníka."""
+@router.post("", response_model=DiaryRead, status_code=201)
+def create(child_id: str, data: DiaryCreate, session: Session = Depends(get_session), x_user_id: str = Header(...)):
     verify_child_ownership(session, child_id, x_user_id)
-    return cd.create_diary_entry(session, child_id, diary_data)
+    return cd.create_diary_entry(session, child_id, data)
 
-@router.get("/children/{child_id}/diary/{diary_id}", response_model=DiaryRead)
-def get_diary_entry(
-    child_id: str, 
-    diary_id: str, 
-    session: Session = Depends(get_session), 
-    x_user_id: str = Header(None)
-):
-    """Detail jednoho záznamu z deníku s dvojitým ověřením (vlastník i vazba na dítě)."""
+@router.put("/{diary_id}", response_model=DiaryRead)
+def update(child_id: str, diary_id: str, data: DiaryUpdate, session: Session = Depends(get_session), x_user_id: str = Header(...)):
     verify_child_ownership(session, child_id, x_user_id)
-    
-    diary = cd.get_diary_entry(session, diary_id)
-    if not diary or diary.child_id != child_id:
-        raise HTTPException(status_code=404, detail="Diary entry not found")
-    return diary
+    updated = cd.update_diary_entry(session, child_id, diary_id, data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    return updated
 
-@router.put("/children/{child_id}/diary/{diary_id}", response_model=DiaryRead)
-def update_diary_entry(
-    child_id: str, 
-    diary_id: str, 
-    diary_data: DiaryUpdate, 
-    session: Session = Depends(get_session), 
-    x_user_id: str = Header(None)
-):
-    """Aktualizace záznamu v deníku s ověřením vlastníka."""
+@router.delete("/{diary_id}", status_code=204)
+def delete(child_id: str, diary_id: str, session: Session = Depends(get_session), x_user_id: str = Header(...)):
     verify_child_ownership(session, child_id, x_user_id)
-    
-    db_diary = cd.get_diary_entry(session, diary_id)
-    if not db_diary or db_diary.child_id != child_id:
-        raise HTTPException(status_code=404, detail="Diary entry not found")
-    
-    return cd.update_diary_entry(session, db_diary, diary_data)
-
-@router.delete("/children/{child_id}/diary/{diary_id}")
-def delete_diary_entry(
-    child_id: str, 
-    diary_id: str, 
-    session: Session = Depends(get_session), 
-    x_user_id: str = Header(None)
-):
-    """Smazání záznamu z deníku s ověřením vlastníka."""
-    verify_child_ownership(session, child_id, x_user_id)
-    
-    diary = cd.get_diary_entry(session, diary_id)
-    if not diary or diary.child_id != child_id:
-        raise HTTPException(status_code=404, detail="Diary entry not found")
-    
-    cd.delete_diary_entry(session, diary_id)
-    return {"status": "deleted", "diary_id": diary_id}
+    success = cd.delete_diary_entry(session, child_id, diary_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    return Response(status_code=204)

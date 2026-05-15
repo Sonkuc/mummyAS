@@ -6,7 +6,7 @@ import { formatDateLocal, toIsoDate } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
-import { Child, Milestone } from "@/components/storage/interfaces";
+import { Milestone } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
@@ -19,7 +19,7 @@ import { Alert, ScrollView, View } from "react-native";
 export default function EditMilestone() {
   const { milId } = useLocalSearchParams<{ milId: string }>();
   const router = useRouter();
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const { selectedChildId, selectedChild, updateMilestoneRecord } = useChild();
   const isInitialized = useRef(false);
   
   const [name, setName] = useState("");
@@ -29,7 +29,7 @@ export default function EditMilestone() {
   const [note, setNote] = useState("");
   
   const currentMilestone = useMemo(() => {
-    return selectedChild?.milestones?.find((m: Milestone) => m.id === milId);
+    return selectedChild?.milestones?.find((m: Milestone) => m.id.toString() === milId.toString());
   }, [milId, selectedChild]);
 
 
@@ -57,32 +57,22 @@ export default function EditMilestone() {
   }, [currentMilestone, milId]); // milId zde pro případ navigace mezi milníky
 
   const handleSave = async () => {
-    const finalName = name.trim();
-    if (!finalName || !selectedChildId || !milId || !selectedChild || !currentMilestone) return;
+  const finalName = name.trim();
+  if (!finalName || !selectedChildId || !milId) return;
 
-    const updatedMilestoneEntry: Milestone = {
-      ...currentMilestone,
+  try {
+    // Voláme specifickou funkci pro milník
+    await updateMilestoneRecord(selectedChildId, milId, {
       name: finalName,
       date: date,
       note: note.trim(),
-    };
+    });
     
-    const updatedChild: Child = {
-      ...selectedChild,
-      // Použijeme type assertion nebo explicitní fallback
-      milestones: (selectedChild.milestones || []).map((m) => 
-        m.id === milId ? updatedMilestoneEntry : m
-      ),
-    };
-
-    try {
-      await updateChild(updatedChild);
-      router.back();
-    } catch (error) {
-      console.error("Chyba při ukládání milníku:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit změny.");
-    }
-  };
+    router.back();
+  } catch (error) {
+    Alert.alert("Chyba", "Nepodařilo se uložit změny.");
+  }
+};
   
   return (
     <MainScreenContainer>

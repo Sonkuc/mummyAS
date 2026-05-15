@@ -58,7 +58,6 @@ export default function DiaryEdit() {
         text: noteText.trim(),
         date: date,
       });
-      
       router.back();
     } catch (error) {
       console.error(error);

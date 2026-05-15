@@ -27,8 +27,9 @@ export default function WeightHeightEdit() {
   const [head, setHead] = useState("");
   const [foot, setFoot] = useState("");
   const [clothes, setClothes] = useState("");
-  const { selectedChildId, selectedChild, updateChild } = useChild();
-
+  const { selectedChildId, selectedChild, updateWeightHeightRecord } = useChild();
+  const [isSaving, setIsSaving] = useState(false);
+  
   const [hideMode, setHideMode] = useState(false);
   const HIDE_MODE_KEY = "hideMode";
 
@@ -61,7 +62,6 @@ export default function WeightHeightEdit() {
 
   useEffect(() => {
     if (currentWhRecord) {
-      // zajistí, že výsledek je vždy string, nahradí tečku čárkou
       const formatForInput = (val: any) => {
         if (val === null || val === undefined) return "";
         return String(val).replace(".", ",");
@@ -73,7 +73,6 @@ export default function WeightHeightEdit() {
       setFoot(formatForInput(currentWhRecord.foot));
       setClothes(currentWhRecord.clothes ? String(currentWhRecord.clothes) : "");
 
-      // Zbytek logiky pro datum
       let rawDate = currentWhRecord.date;
       if (rawDate.includes("/") || rawDate.includes(".")) {
         rawDate = toIsoDate(rawDate);
@@ -87,45 +86,45 @@ export default function WeightHeightEdit() {
     }
   }, [currentWhRecord]);
         
-  const handleSave = async () => {
-    if (!selectedChildId || !whId || !selectedChild) return;
-    
-    const dateExists = selectedChild.wh?.some(
-      (wh: any) => wh.id !== whId && wh.date === date
-    );   
+const handleSave = async () => {
+  if (!selectedChildId || !whId || !selectedChild || isSaving) return;
+  
+  const dateExists = selectedChild.wh?.some(
+    (wh: any) => wh.id !== whId && wh.date === date
+  );   
 
-    if (dateExists) {
-      Alert.alert("Chyba", "Záznam pro toto datum už existuje.");
-      return;
-    }
+  if (dateExists) {
+    Alert.alert("Chyba", "Záznam pro toto datum už existuje.");
+    return;
+  }
 
-    // 1. Připravíme data pro konkrétní záznam (převod na čísla)
-    const updatedWhEntry = {
-      id: whId,
-      date: date,
-      weight: weight.replace(",", "."),
-      height: height.replace(",", "."),
-      head: head.replace(",", "."),
-      foot: foot.replace(",", "."),
-      clothes: clothes,
+  setIsSaving(true);
+  try {
+    const parseNum = (val: string) => {
+      const cleaned = val.replace(",", ".");
+      return cleaned === "" ? null : Number(cleaned);
     };
 
-    // 2. Vytvoříme nové pole měření
-    const updatedWhList = (selectedChild.wh || []).map((wh: any) => 
-      wh.id === whId ? updatedWhEntry : wh
-    );
+    // pouze DATA pro záznam
+    const updatedData = {
+      date: date,
+      weight: parseNum(weight),
+      height: parseNum(height),
+      head: parseNum(head),
+      foot: foot.trim() || null,
+      clothes: clothes.trim() || null,
+    };
 
-    // 3. Update Child objektu
-    const updatedChild = { ...selectedChild, wh: updatedWhList };
+    await updateWeightHeightRecord(selectedChildId, whId, updatedData);
 
-    try {
-      // updateChild v Contextu se postará o AsyncStorage i volání api.syncWeightHeight
-      await updateChild(updatedChild);
-      router.back();
-    } catch (error) {
-      console.error("Chyba při ukládání:", error);
-    }
-  };
+    router.back();
+  } catch (error) {
+    console.error("Chyba při ukládání:", error);
+    Alert.alert("Chyba", "Nepodařilo se aktualizovat data.");
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   return (
     <MainScreenContainer>

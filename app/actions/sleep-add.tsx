@@ -1,11 +1,11 @@
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
-import { normalizeTime } from "@/components/HelperFunctions";
+import { getCleanTime, normalizeTime } from "@/components/HelperFunctions";
 import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
-import { Child, SleepRecord } from "@/components/storage/interfaces";
+import { DisplaySleepRecord, SleepRecord, SleepSyncDay } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import TimeSelector from "@/components/TimeSelector";
 import Title from "@/components/Title";
@@ -17,9 +17,7 @@ import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from 'react-native-uuid';
 
-type DisplaySleepRecord = SleepRecord & { label: string };
-
-const renumberSleeps = (records: SleepRecord[]): DisplaySleepRecord[] => {
+const renumberSleeps = (records: any[]): DisplaySleepRecord[] => {
   let sleepCount = 0;
   return records.map((r) => {
     if (r.state === "sleep") {
@@ -30,14 +28,9 @@ const renumberSleeps = (records: SleepRecord[]): DisplaySleepRecord[] => {
   });
 };
 
-const getCleanTime = () => {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-};
-
 export default function SleepAdd() {
   const router = useRouter();
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const { selectedChildId, selectedChild, updateSleepDayRecord } = useChild();
   
   const [newDate, setNewDate] = useState(formatDateLocal(new Date()));  
   const [records, setRecords] = useState<DisplaySleepRecord[]>([]);
@@ -113,6 +106,7 @@ export default function SleepAdd() {
 
     const newRec: SleepRecord = { 
       id: uuid.v4() as string, 
+      child_id: selectedChildId || "",
       date: newDate, 
       time: norm, 
       state: newState 
@@ -129,7 +123,7 @@ export default function SleepAdd() {
 
   const saveChanges = async () => {
     // 1. Validace
-    if (!selectedChildId || !selectedChild || records.length === 0) return;
+    if (!selectedChildId || records.length === 0) return;
     if (errorMessage) {
       Alert.alert("Chyba", errorMessage);
       return;
@@ -137,27 +131,16 @@ export default function SleepAdd() {
 
     setIsSaving(true);
     try {
-      // 2. Příprava čistých dat (včetně ID pro offline identifikaci)
-      const newDayRecords: SleepRecord[] = records.map(({ label, ...rest }) => ({
-        id: rest.id || (uuid.v4() as string), 
-        child_id: selectedChildId,
+      // 2. Příprava dat pro backend 
+      const sleepSyncDay: SleepSyncDay = records.map(({ label, child_id, ...rest }) => ({
+        id: rest.id || (uuid.v4() as string),
         date: rest.date,
-        time: rest.time, // Zde jsou časy z tvého state 'records'
+        time: rest.time,
         state: rest.state
       }));
 
-      // 3. Odstranění starých záznamů pro TENTO den z lokální kopie
-      const otherDaysRecords = (selectedChild.sleepRecords || []).filter(
-        (r) => r.date !== newDate
-      );
-
-      // 4. Vytvoření finálního objektu dítěte
-      const updatedChild: Child = {
-        ...selectedChild,
-        sleepRecords: [...otherDaysRecords, ...newDayRecords]
-      };
-
-      await updateChild(updatedChild);
+      // 3. Použití nové funkce z kontextu (která zajistí lokální i vzdálený sync)
+      await updateSleepDayRecord(selectedChildId, newDate, sleepSyncDay);
 
       router.back();
     } catch (e) {

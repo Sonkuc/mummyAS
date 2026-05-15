@@ -5,6 +5,7 @@ import { useChartData } from "@/components/statisticBfSleep";
 import * as api from "@/components/storage/api";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
+import { useAuth } from "@/contexts/AuthContext";
 import { useChild } from "@/contexts/ChildContext";
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -14,11 +15,12 @@ export default function BreastfeedingStats() {
   const [stats, setStats] = useState<{ date: string; total_minutes: number }[]>([]);
   const { selectedChildId } = useChild();
   const [loading, setLoading] = useState(true);
-
+  const { user } = useAuth();
+  
   useEffect(() => {
     if (selectedChildId) {
       setLoading(true);
-      api.fetchBreastfeedingStats(selectedChildId)
+      api.fetchBreastfeedingStats(selectedChildId, user!.id)
         .then((data) => {
           setStats(data);
           setLoading(false);

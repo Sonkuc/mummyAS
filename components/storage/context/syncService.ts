@@ -1,43 +1,6 @@
 import { Child } from "@/components/storage/interfaces";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const mergeByDate = <T extends { date: string }>(
-  apiData: T[], 
-  localData: T[], 
-  isChildPending: boolean
-): T[] => {
-  // 1. Seznam všech unikátních dat z obou zdrojů
-  const allDates = Array.from(new Set([...apiData.map(d => d.date), ...localData.map(d => d.date)]));
-
-  const merged: T[] = [];
-
-  allDates.forEach(date => {
-    const apiDay = apiData.filter(r => r.date === date);
-    const localDay = localData.filter(r => r.date === date);
-
-    if (isChildPending) {
-      // Pokud v lokálních datech tento den existoval (i prázdné), věříme lokální verzi.
-      const dayWasTouchedLocally = localData.some(r => r.date === date) || 
-        (localDay.length === 0 && apiDay.length > 0 && isChildPending);
-      
-      if (dayWasTouchedLocally) {
-        merged.push(...localDay);
-      } else {
-        merged.push(...apiDay);
-      }
-    } else {
-      // Pokud nejsme v pending stavu, standardně upřednostníme API, 
-      if (apiDay.length > 0) {
-        merged.push(...apiDay);
-      } else {
-        merged.push(...localDay);
-      }
-    }
-  });
-
-  return merged;
-};
-
 // Pomocník pro "per-day" synchronizaci (Spánek, Kojení)
 export const syncDailyRecords = async (
   childId: string, 
@@ -107,4 +70,77 @@ export const removeFromPendingUpdates = async (
     );
     await AsyncStorage.setItem("pending_child_updates", JSON.stringify(pending));
   }
+};
+
+export const syncSectionByDate = async (
+  childId: string,
+  userId: string,
+  records: any[] | undefined,
+  syncFunction: (childId: string, date: string, data: any, userId: string) => Promise<any>
+) => {
+  if (!records || records.length === 0) return;
+
+  const grouped = records.reduce((acc, rec) => {
+    if (!acc[rec.date]) acc[rec.date] = [];
+    const { child_id, ...rest } = rec; // Očištění dat
+    acc[rec.date].push(rest);
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  for (const [date, data] of Object.entries(grouped)) {
+    try {
+      await syncFunction(childId, date, data, userId);
+    } catch (err) {
+      console.warn(`[SYNC] Failed for date ${date}`, err);
+    }
+  }
+};
+
+export const syncGenericSection = async (
+  label: string,
+  syncPromise: Promise<any>
+) => {
+  try {
+    await syncPromise;
+    console.log(`[SYNC] ${label} success.`);
+  } catch (err) {
+    console.warn(`[SYNC] ${label} failed.`, err);
+  }
+};
+
+export const addToPendingUpdates = async (childId: string, data: any) => {
+  const pending = safeParse(await AsyncStorage.getItem("pending_child_updates"), {});
+  pending[childId] = data;
+  await AsyncStorage.setItem("pending_child_updates", JSON.stringify(pending));
+};
+
+/**
+ * Setter pro AsyncStorage s podporou null (odstranění).
+ */
+export const setStoredSelectedChildId = async (id: string | null) => {
+  if (id) {
+    await AsyncStorage.setItem("selectedChildId", id);
+  } else {
+    await AsyncStorage.removeItem("selectedChildId");
+  }
+};
+
+/**
+ * Zpracuje chybu API uložením aktuálního stavu dítěte do pending fronty.
+ */
+export const handleSyncError = async (childId: string, updatedList: Child[]) => {
+  const currentChild = updatedList.find(c => c.id === childId);
+  if (currentChild) {
+    await addToPendingUpdates(childId, currentChild);
+  }
+};
+
+/**
+ * Helper pro přidání záznamu do smazané fronty (pro různé klíče).
+ */
+export const addToDeletionQueue = async (key: string, item: any) => {
+  const existing = await AsyncStorage.getItem(key);
+  const list = existing ? JSON.parse(existing) : [];
+  list.push(item);
+  await AsyncStorage.setItem(key, JSON.stringify(list));
 };

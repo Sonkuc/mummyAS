@@ -1,11 +1,11 @@
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
-import { normalizeTime } from "@/components/HelperFunctions";
+import { getCleanTime, normalizeTime } from "@/components/HelperFunctions";
 import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
-import type { BreastfeedingRecord, Child } from "@/components/storage/interfaces";
+import type { BreastfeedingSyncDay, DisplayBreastfeedingRecord } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import TimeSelector from "@/components/TimeSelector";
 import Title from "@/components/Title";
@@ -17,9 +17,7 @@ import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from "react-native-uuid";
 
-type DisplayBreastfeedingRecord = BreastfeedingRecord & { label: string };
-
-const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecord[] => {
+const renumberFeed = (records: any[]): DisplayBreastfeedingRecord[] => {
   let feedCount = 0;
   return records.map((r) => {
     if (r.state === "start") {
@@ -32,12 +30,11 @@ const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecor
 
 export default function BreastfeedingAdd() {
   const router = useRouter();
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const { selectedChildId, selectedChild, updateBreastfeedingDayRecord } = useChild();
 
-  const now = new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
   const [newDate, setNewDate] = useState(formatDateLocal(new Date()));
   const [records, setRecords] = useState<DisplayBreastfeedingRecord[]>([]);
-  const [newTime, setNewTime] = useState(now);
+  const [newTime, setNewTime] = useState(getCleanTime());
   const [newState, setNewState] = useState<"start" | "stop">("start");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false); // Indikátor ukládání
@@ -72,9 +69,7 @@ export default function BreastfeedingAdd() {
     if (isInvalid || !selectedChild) return;
 
     setRecords([]);
-    setNewTime(
-      new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })
-    );
+    setNewTime(getCleanTime());
     setNewState("start");
   };
 
@@ -109,33 +104,29 @@ export default function BreastfeedingAdd() {
 
     const norm = normalizeTime(newTime);
     if (!norm) {
-      Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
+      Alert.alert("Chybný čas", "Zadejte čas ve formátu HH:MM.");
       return;
     }
 
-    const newRec: BreastfeedingRecord = { id: uuid.v4(), date: newDate, time: norm, state: newState };
+    const newRec: any = {
+      id: uuid.v4() as string,
+      date: newDate,
+      time: norm,
+      state: newState,
+    };
 
-    const allRecords = [...records.map(r => ({
-      id: r.id,
-      date: r.date,
-      time: r.time,
-      state: r.state
-    })), newRec].sort((a, b) => a.time.localeCompare(b.time));
+    const allRecords = [...records.map(({ label, ...rest }) => rest), newRec]
+      .sort((a, b) => a.time.localeCompare(b.time));
+
     setRecords(renumberFeed(allRecords));
 
-    const now = new Date();
-    setNewTime(now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
-    const last = allRecords[allRecords.length - 1];
-    setNewState(last.state === "start" ? "stop" : "start");
+    // Automatické přepínání stavu pro pohodlí uživatele
+    setNewState(newState === "start" ? "stop" : "start");
+    setNewTime(getCleanTime());
   };
 
-  // --- LOGIKA UKLÁDÁNÍ NA BACKEND ---
   const saveChanges = async () => {
-    if (!selectedChildId || !selectedChild || records.length === 0) {
-      Alert.alert("Chyba", "Nebyl přidán žádný záznam.");
-      return;
-    }
-
+    if (!selectedChildId || records.length === 0) return;
     if (errorMessage) {
       Alert.alert("Chyba", errorMessage);
       return;
@@ -143,32 +134,21 @@ export default function BreastfeedingAdd() {
 
     setIsSaving(true);
     try {
-      // 1. Příprava čistých dat s unikátními ID 
-      const newDayRecords: BreastfeedingRecord[] = records.map(r => ({
-        id: r.id || (uuid.v4() as string),
-        date: newDate,
-        time: r.time,
-        state: r.state
+      // 1. Příprava dat (očištění od UI polí jako label)
+      const bfSyncDay: BreastfeedingSyncDay = records.map(({ label, ...rest }) => ({
+        id: rest.id,
+        date: rest.date,
+        time: rest.time,
+        state: rest.state,
       }));
 
-      // 2. Zachování záznamů z ostatních dnů
-      const otherDaysRecords = (selectedChild.breastfeedingRecords || []).filter(
-        (r) => r.date !== newDate
-      );
-
-      // 3. Sestavení nového objektu dítěte
-      const updatedChild: Child = {
-        ...selectedChild,
-        breastfeedingRecords: [...otherDaysRecords, ...newDayRecords]
-      };
-
-      // 4. Uložení skrze kontext
-      await updateChild(updatedChild);
+      // 2. Volání synchronizační funkce z Provideru
+      await updateBreastfeedingDayRecord(selectedChildId, newDate, bfSyncDay);
 
       router.back();
-    } catch (error) {
-      console.error("Chyba při ukládání kojení:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit záznamy.");
+    } catch (e) {
+      console.error("Chyba při ukládání kojení:", e);
+      Alert.alert("Chyba", "Záznamy se nepodařilo uložit.");
     } finally {
       setIsSaving(false);
     }

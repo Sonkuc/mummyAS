@@ -4,15 +4,15 @@ import React, { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import AddButton from "./AddButton";
 import CustomHeader from "./CustomHeader";
-import DateSelector from "./DateSelector";
 import GroupSection from "./GroupSection";
 import LookUp from "./LookUpButton";
 import MainScreenContainer from "./MainScreenContainer";
 import MyTextInput from "./MyTextInput";
 import Note from "./Note";
+import { FoodRecord, FoodRecordUpdate } from "./storage/interfaces";
 import Subtitle from "./Subtitle";
 import Title from "./Title";
-import { FoodRecord } from "./storage/interfaces";
+import ValidatedDateInput from "./ValidDateInput";
 
 type FoodItem = {
   label: string;
@@ -26,54 +26,48 @@ type Props = {
 };
 
 export default function FoodCategoryScreen({ title, categoryKey, dataList }: Props) {
-  const { selectedChild, updateChild, deleteFoodRecord } = useChild();
+  const { selectedChild, updateFoodRecord, deleteFoodRecord } = useChild();
   const [selectedFood, setSelectedFood] = useState<null | string>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newFoodLabel, setNewFoodLabel] = useState("");
 
   // --- POMOCNÝ FINDER ---
-  // Najde záznam v poli podle jména (labelu)
   const getRecord = (label: string) => 
     selectedChild?.foodRecords?.find(r => r.food_name === label);
 
   // --- JEDNOTNÁ FUNKCE PRO UKLÁDÁNÍ ---
-  const saveFoodData = async (label: string, updates: { date?: string, note?: string }) => {
+  const saveFoodData = async (label: string, updates: FoodRecordUpdate) => {
     if (!selectedChild) return;
 
     const currentRecords = selectedChild.foodRecords || [];
-    const existingIndex = currentRecords.findIndex(r => r.food_name === label);
+    const existingRecord = currentRecords.find(r => r.food_name === label);
 
     let updatedRecords: FoodRecord[];
 
-    if (existingIndex > -1) {
-      // 1. UPDATE: Jídlo v seznamu už je, upravíme ho
-      updatedRecords = [...currentRecords];
-      updatedRecords[existingIndex] = {
-        ...updatedRecords[existingIndex],
-        ...updates,
-        category: categoryKey // kategorie sedí
-      };
+    if (existingRecord) {
+      updatedRecords = currentRecords.map(r => 
+        r.food_name === label 
+          ? { 
+              ...r, 
+              ...updates, 
+              // Vždy zajistíme, že kategorie odpovídabledu, pokud tam už není
+              category: r.category || (categoryKey as any) 
+            } 
+          : r
+      );
     } else {
-      // 2. CREATE: Nové jídlo
       const newRecord: FoodRecord = {
-        id: `local-${Date.now()}`, // Dočasné ID pro offline/UI
+        id: `local-${Date.now()}`,
         child_id: selectedChild.id,
         food_name: label,
-        category: categoryKey,
+        category: categoryKey as any, 
         date: updates.date || "",
         note: updates.note || ""
       };
       updatedRecords = [...currentRecords, newRecord];
     }
 
-    try {
-      await updateChild({
-        ...selectedChild,
-        foodRecords: updatedRecords,
-      });
-    } catch (err) {
-      console.error("Chyba při ukládání jídla:", err);
-    }
+    await updateFoodRecord(selectedChild.id, updatedRecords);
   };
 
   const renderFoodItem = (label: string, buttonStyle: any) => {
@@ -119,30 +113,34 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
 
   // 1. Zavedená jídla (mají datum a patří do této kategorie nebo dataListu)
   const introducedFoods = (selectedChild?.foodRecords || [])
-    .filter(r => !!r.date && (
+    .filter(r => r.date && r.date.trim() !== "" && (
       dataList.some(item => item.label === r.food_name) || 
       r.category === categoryKey
     ));
 
-  // 2. Moje jídla (přidaná ručně, zatím bez data)
+  const introducedNames = new Set(introducedFoods.map(r => r.food_name));
+
+  // 2. Moje: Nemá datum, patří sem, není v dataListu a NENÍ už v zavedených
   const myFoods = (selectedChild?.foodRecords || [])
-    .filter(r => !r.date && r.category === categoryKey && !dataList.some(d => d.label === r.food_name));
+    .filter(r => 
+      (!r.date || r.date.trim() === "") && 
+      r.category === categoryKey && 
+      !dataList.some(d => d.label === r.food_name) &&
+      !introducedNames.has(r.food_name)
+    );
+    
+  const suggestedFoods = dataList.filter(item => 
+    !introducedNames.has(item.label) && getChildAgeInMonths() >= item.month
+  );
 
-  // 3. Navržená jídla (nejsou v foodRecords s datem a splňují věk)
-  const suggestedFoods = dataList.filter(item => {
-    const record = getRecord(item.label);
-    return !record?.date && getChildAgeInMonths() >= item.month;
-  });
-
-  // 4. Budoucí jídla (nejsou v foodRecords s datem a nesplňují věk)
-  const futureFoods = dataList.filter(item => {
-    const record = getRecord(item.label);
-    return !record?.date && getChildAgeInMonths() < item.month;
-  });
+  const futureFoods = dataList.filter(item => 
+    !introducedNames.has(item.label) && getChildAgeInMonths() < item.month
+  );
 
   // Změna data (Ukládání na backend)
-  const handleDateChange = async (foodLabel: string, date: Date) => {
-    const isoDate = date.toISOString().slice(0, 10);
+  const handleDateChange = async (foodLabel: string, date: Date | string) => {
+    const isoDate = typeof date === 'string' ? date : date.toISOString().slice(0, 10);
+    
     const record = getRecord(foodLabel);
     if (record?.date === isoDate) return;
 
@@ -152,7 +150,6 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
   // Smazání data (Prázdný string nebo null)
   const handleDateDelete = async () => {
     if (!selectedFood) return;
-    // Nastavením na prázdný string jídlo "od-zavedeme"
     await saveFoodData(selectedFood, { date: "" });
     setSelectedFood(null);
   };
@@ -271,11 +268,20 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
               <GroupSection style={styles.dateSelectorBox}>
                 <View style={styles.titleRow}>
                   <Subtitle style={{ color: COLORS.primary, marginTop: -10}}>{selectedFood}</Subtitle>
-                  <DateSelector
-                    date={record?.date ? new Date(record.date) : new Date()}
-                    onChange={date => handleDateChange(selectedFood, date)}
-                    birthISO={selectedChild ? selectedChild.birthDate : null}
-                  />
+                  <View style={styles.datePickerContainer}>
+                    <Text style={styles.label}>Datum zavedení (RRRR-MM-DD):</Text>
+                    <ValidatedDateInput
+                      value={record?.date || ""}
+                      onChange={(newDate) => {
+                        // Tady newDate už přichází jako validní string "YYYY-MM-DD"
+                        if (newDate) handleDateChange(selectedFood, new Date(newDate));
+                      }}
+                      birthISO={selectedChild?.birthDate}
+                      fallbackOnError="original"
+                      originalValue={record?.date || ""}
+                      placeholder="Např. 2024-05-20"
+                    />
+                  </View>
                 </View>
 
                 {/* Odstranění DATA */}
@@ -387,5 +393,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: COLORS.darkRedText,
+  },
+  label: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 8,
+    fontWeight: "500",
+  },
+  datePickerContainer: {
+    marginVertical: 15,
+    width: "100%",
   },
 });

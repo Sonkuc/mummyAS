@@ -3,14 +3,10 @@ from typing import List, Optional
 from ..models import Milestone, MilestoneCreate, MilestoneUpdate
 
 
-def create_milestone(
-    session: Session,
-    child_id: str,
-    data: MilestoneCreate
-):
+def create_milestone(session: Session, child_id: str, data: MilestoneCreate) -> Milestone:
     """Vytvoří nový milník a propojí ho s child_id."""
     rec = Milestone(
-        **data.dict(),
+        **data.model_dump(),
         child_id=child_id
     )
     session.add(rec)
@@ -23,15 +19,15 @@ def get_milestone(session: Session, milestone_id: str) -> Optional[Milestone]:
     return session.get(Milestone, milestone_id)
 
 def get_milestones_for_child(session: Session, child_id: str, date: Optional[str] = None) -> List[Milestone]:
-    """Vrátí všechny milníky pro dané dítě."""
+    """Vrátí všechny milníky pro dané dítě (volitelně filtrované datem)."""
     query = select(Milestone).where(Milestone.child_id == child_id)
     if date:
         query = query.where(Milestone.date == date)
     return session.exec(query).all()
 
 def update_milestone(session: Session, milestone: Milestone, milestone_data: MilestoneUpdate) -> Optional[Milestone]:
-    """Aktualizuje existující objekt milníku."""
-    update_dict = milestone_data.dict(exclude_unset=True)
+    """Aktualizuje existující objekt milníku v databázi."""
+    update_dict = milestone_data.model_dump(exclude_unset=True)
     for key, value in update_dict.items():
         setattr(milestone, key, value)
 
@@ -40,17 +36,7 @@ def update_milestone(session: Session, milestone: Milestone, milestone_data: Mil
     session.refresh(milestone)
     return milestone
 
-def delete_milestone(session: Session, milestone_id: str) -> bool:
-    """Smaže milník podle primárního UUID id."""
-    milestone = session.get(Milestone, milestone_id)
-    if not milestone:
-        return False
+def delete_milestone(session: Session, milestone: Milestone) -> None:
+    """Smaže předaný objekt milníku z databáze."""
     session.delete(milestone)
     session.commit()
-    return True
-
-def find_milestones_by_date(session: Session, child_id: str, date: str) -> List[Milestone]:
-    """Pomocná funkce pro vyhledání milníků v konkrétní den."""
-    return session.exec(
-        select(Milestone).where(Milestone.child_id == child_id, Milestone.date == date)
-    ).all()

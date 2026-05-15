@@ -3,7 +3,7 @@ import GroupSection from "@/components/GroupSection";
 import { normalizeTime } from "@/components/HelperFunctions";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import type { BreastfeedingRecord, Child } from "@/components/storage/interfaces";
+import type { BreastfeedingRecord, BreastfeedingSyncDay, DisplayBreastfeedingRecord } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import TimeSelector from "@/components/TimeSelector";
 import Title from "@/components/Title";
@@ -13,8 +13,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from "react-native-uuid";
-
-type DisplayBreastfeedingRecord = BreastfeedingRecord & { label: string };
 
 // číslování spánků
 const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecord[] => {
@@ -31,7 +29,7 @@ const renumberFeed = (records: BreastfeedingRecord[]): DisplayBreastfeedingRecor
 export default function BreastfeedingEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const router = useRouter();
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const { selectedChildId, selectedChild, updateBreastfeedingDayRecord } = useChild();
 
   const [records, setRecords] = useState<DisplayBreastfeedingRecord[]>([]);
   const [newTime, setNewTime] = useState("");
@@ -43,31 +41,22 @@ export default function BreastfeedingEdit() {
   useEffect(() => {
     if (!selectedChild?.breastfeedingRecords || !date) return;
 
-    // Inicializujeme pouze jednou při načtení
     if (!isInitialized.current) {
-      const dayRecords: BreastfeedingRecord[] = selectedChild.breastfeedingRecords
+      const dayRecords = selectedChild.breastfeedingRecords
         .filter((r) => r.date === date)
-        .map((r) => ({
-          id: r.id,
-          date: r.date,
-          time: r.time,
-          state: r.state as "start" | "stop"
-        }))
         .sort((a, b) => a.time.localeCompare(b.time));
 
       setRecords(renumberFeed(dayRecords));
 
+      // Nastavení dalšího logického stavu pro nové přidání
       if (dayRecords.length > 0) {
         const lastState = dayRecords[dayRecords.length - 1].state;
         setNewState(lastState === "start" ? "stop" : "start");
-      } else {
-        setNewState("start");
       }
       
-      setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
       isInitialized.current = true;
     }
-  }, [selectedChild?.id, date]); // Sledujeme ID a datum
+  }, [selectedChild?.id, date]);
   
   // Úprava času
   const updateTime = (index: number, newTimeValue: string) => {
@@ -95,66 +84,59 @@ export default function BreastfeedingEdit() {
   };
 
   const addRecord = () => {
-    // normalizace newTime před přidáním
     const norm = normalizeTime(newTime);
     if (!norm) {
-      Alert.alert("Chybný čas", "Zadej čas ve formátu HH:MM (0–23 h, 0–59 min).");
+      Alert.alert("Chybný čas", "Zadejte čas ve formátu HH:MM (0–23 h, 0–59 min).");
       return;
     }
 
     const newRec: BreastfeedingRecord = {
-      id: uuid.v4(),
+      id: uuid.v4() as string,
+      child_id: selectedChildId || "",
       date: date!,
       time: norm,
       state: newState,
     };
 
     setRecords((prev) => {
-      const withoutLabels: BreastfeedingRecord[] = prev.map(({ label, ...rest }) => rest);
+      const withoutLabels = prev.map(({ label, ...rest }) => rest);
       const updated = [...withoutLabels, newRec].sort((a, b) => a.time.localeCompare(b.time));
-      const renumbered = renumberFeed(updated);
-
-      // Najdeme poslední stav a přepneme opačný
+      
       const lastState = updated[updated.length - 1].state;
       setNewState(lastState === "start" ? "stop" : "start");
-
-      // Předvyplníme aktuální čas
+      
+      // Zachování tvého původního formátování času
       const now = new Date();
-      const currentTime = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
-      setNewTime(currentTime);
+      setNewTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
 
-      return renumbered;
+      return renumberFeed(updated);
     });
   };
 
   // Uložení změn
   const saveChanges = async () => {
-    if (!selectedChildId || !selectedChild || !date) return;
+    if (!selectedChildId || !date) return;
 
-    const normalizedDayRecords: BreastfeedingRecord[] = records.map(r => ({
-      id: r.id || uuid.v4(),
-      date: r.date,
-      time: normalizeTime(r.time) || "00:00",
-      state: r.state
+    // Příprava čistých dat
+    const bfSyncDay: BreastfeedingSyncDay = records.map((r) => ({
+      id: r.id,
+      date: date,
+      time: normalizeTime(r.time) || r.time,
+      state: r.state,
     }));
 
-    const otherDaysRecords = selectedChild.breastfeedingRecords?.filter(
-      (r) => r.date !== date
-    ) || [];
-
-    const updatedChild: Child = {
-      ...selectedChild,
-      // Pokud je normalizedDayRecords prázdné, do pole se pro tento den nic nepřidá. To je správně.
-      breastfeedingRecords: [...otherDaysRecords, ...normalizedDayRecords],
-    };
-
     try {
-      // TADY JE ZMĚNA: Potřebujeme předat informaci o tom, na který den se sahlo
-      // Pokud tvůj updateChild přijímá jen child, musíme upravit Provider.
-      await updateChild(updatedChild); 
-      router.back();
+      // Použití nové metody z kontextu (zajistí lokální update i offline frontu)
+      await updateBreastfeedingDayRecord(selectedChildId, date, bfSyncDay);
+
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/actions/breastfeeding");
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Kritická chyba při ukládání kojení:", error);
+      Alert.alert("Chyba", "Nepodařilo se uložit data.");
     }
   };
 

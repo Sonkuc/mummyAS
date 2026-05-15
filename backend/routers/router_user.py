@@ -1,90 +1,64 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlmodel import Session
-from ..models import UserProfile
 from ..db import get_session
+from ..models import UserProfile
+from ..crud import crud_user as cu # Importujeme náš CRUD
 
 router = APIRouter()
 
-@router.post("/profiles")
 def ensure_profile(
     profile_data: UserProfile, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(None) 
+    x_user_id: str = Header(...)
 ):
-    if x_user_id and profile_data.id != x_user_id:
+    """Zajistí existenci profilu po přihlášení."""
+    if profile_data.id != x_user_id:
         raise HTTPException(status_code=403, detail="Nemůžete vytvářet profil pro jiné ID")
-
-    db_profile = session.get(UserProfile, profile_data.id)
-    
-    if not db_profile:
-        print(f"DEBUG: Vytvářím úplně nový profil pro ID: {profile_data.id}")
-        new_profile = UserProfile(
-            id=profile_data.id,
-            email=profile_data.email,
-            gender=profile_data.gender
-        )
-        session.add(new_profile)
-    else:
-        print(f"DEBUG: Profil {profile_data.id} nalezen, aktualizuji email.")
-        db_profile.email = profile_data.email
-        session.add(db_profile)
-    
-    session.commit()
-    return {"status": "success"}
-
-@router.put("/profiles/{user_id}")
-def update_profile(
-    user_id: str, 
-    profile_data: dict, 
-    session: Session = Depends(get_session),
-    x_user_id: str = Header(None) # Přidáno
-):
-    if user_id != x_user_id:
-        raise HTTPException(status_code=403, detail="Můžete upravovat pouze svůj vlastní profil")
-
-    db_profile = session.get(UserProfile, user_id)
-    if not db_profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    
-    for key, value in profile_data.items():
-        # ID profilu by se nikdy nemělo měnit přes PUT
-        if key != "id":
-            setattr(db_profile, key, value)
-    
-    session.add(db_profile)
-    session.commit()
-    session.refresh(db_profile)
-    return db_profile
+    return cu.ensure_user_profile(session, profile_data)
 
 @router.get("/profiles/{user_id}")
 def get_profile(
     user_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
+    x_user_id: str = Header(...)
 ):
-    """Nové: Endpoint pro načtení vlastního profilu."""
+    """Načte profil přihlášeného uživatele."""
     if user_id != x_user_id:
         raise HTTPException(status_code=403, detail="Můžete prohlížet pouze svůj vlastní profil")
 
-    db_profile = session.get(UserProfile, user_id)
+    db_profile = cu.get_user_profile(session, user_id)
     if not db_profile:
         raise HTTPException(status_code=404, detail="Profil nenalezen")
     return db_profile
+
+@router.put("/profiles/{user_id}")
+def update_profile(
+    user_id: str, 
+    profile_data: UserProfile, 
+    session: Session = Depends(get_session),
+    x_user_id: str = Header(...)
+):
+    """Aktualizuje data v profilu."""
+    if user_id != x_user_id:
+        raise HTTPException(status_code=403, detail="Můžete upravovat pouze svůj vlastní profil")
+
+    updated_profile = cu.update_user_profile(session, user_id, profile_data)
+    if not updated_profile:
+        raise HTTPException(status_code=404, detail="Profil nenalezen")
+    return updated_profile
 
 @router.delete("/profiles/{user_id}")
 def delete_profile(
     user_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
+    x_user_id: str = Header(...)
 ):
-    # Hierarchická kontrola
+    """Smaže profil uživatele."""
     if user_id != x_user_id:
         raise HTTPException(status_code=403, detail="Můžete smazat pouze svůj vlastní profil")
 
-    db_profile = session.get(UserProfile, user_id)
-    if not db_profile:
+    success = cu.delete_user_profile(session, user_id)
+    if not success:
         raise HTTPException(status_code=404, detail="Profil nenalezen")
     
-    session.delete(db_profile)
-    session.commit()
-    return {"status": "deleted"}
+    return {"status": "deleted", "user_id": user_id}

@@ -1,44 +1,103 @@
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, List
+from typing import Optional, List, Any
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, JSON
 from enum import Enum
+from pydantic import model_validator
 
 # ============ USER MODELS ============
 
 class UserProfileBase(SQLModel):
     id: str = Field(primary_key=True)
     email: str
-    gender: str  # "mum" nebo "dad"
+    gender: str = "not_set"  # Přidán default pro stabilitu při registraci
 
 class UserProfile(UserProfileBase, table=True):
-    __tablename__ = "profiles"  
+    __tablename__ = "profiles"
     
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
+    # Hierarchie: Smazáním uživatele se smažou i děti
     children: List["Child"] = Relationship(
         back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "lazy": "selectin"
+        }
     )
 
 class UserProfileRead(UserProfileBase):
-    id: str
     created_at: datetime
 
 
 # ============ CHILD MODELS ============
+class CurrentModeFeed(SQLModel):
+    mode: str  # start / stop
+    start: str
 
+class CurrentModeSleep(SQLModel):
+    mode: str  # awake / sleep
+    start: str
+    
 class ChildBase(SQLModel):
-    id: Optional[str] = None
-    user_id: str = Field(foreign_key="profiles.id", nullable=False)
     name: str
     birthDate: str
     sex: str
     photo: Optional[str] = None
-    currentModeFeed: Optional[dict] = Field(default=None, sa_column=Column(JSON))
-    currentModeSleep: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    currentModeFeed: Optional[CurrentModeFeed] = Field(default=None, sa_column=Column(JSON))
+    currentModeSleep: Optional[CurrentModeSleep] = Field(default=None, sa_column=Column(JSON))
+
+# --- TABLE MODEL ---
+class Child(ChildBase, table=True):
+    __tablename__ = "children"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(foreign_key="profiles.id", index=True, ondelete="CASCADE")
     
+    # Vazba na rodiče
+    user: Optional["UserProfile"] = Relationship(back_populates="children")
+
+    # Vazby na aktivity s kaskádovým mazáním (HIERARCHIE)
+    milestones: List["Milestone"] = Relationship(
+        back_populates="child", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    teethRecords: List["TeethRecord"] = Relationship(
+        back_populates="child", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    words: List["Speaking"] = Relationship(
+        back_populates="child", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    wh: List["WeightHeight"] = Relationship(
+        back_populates="child", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    foodRecords: List["FoodRecord"] = Relationship(
+        back_populates="child", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    sleepRecords: List["SleepRecord"] = Relationship(
+        back_populates="child", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    breastfeedingRecords: List["BreastfeedingRecord"] = Relationship(
+        back_populates="child", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    diaryRecords: List["Diary"] = Relationship(
+        back_populates="child", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+# --- DTO MODELS (Pro API) ---
+class ChildCreate(ChildBase):
+    id: Optional[str] = None
+
+class ChildUpdate(SQLModel):
+    name: Optional[str] = None
+    birthDate: Optional[str] = None
+    sex: Optional[str] = None
+    photo: Optional[str] = None
+    currentModeFeed: Optional[CurrentModeFeed] = None
+    currentModeSleep: Optional[CurrentModeSleep] = None
+
 class ChildRead(ChildBase):
     id: str
     user_id: str = Field(foreign_key="profiles.id", nullable=False)
@@ -49,63 +108,7 @@ class ChildRead(ChildBase):
     foodRecords: List["FoodRecordRead"] = Field(default_factory=list)
     sleepRecords: List["SleepRecordRead"] = Field(default_factory=list)
     breastfeedingRecords: List["BreastfeedingRecordRead"] = Field(default_factory=list)   
-    diaryEntries: List["DiaryRead"] = Field(default_factory=list)
-
-class Child(ChildBase, table=True):
-    __tablename__ = "children"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    user_id: str = Field(foreign_key="profiles.id", index=True, ondelete="CASCADE")
-    user: Optional[UserProfile] = Relationship(back_populates="children")
-
-    milestones: List["Milestone"] = Relationship(
-        back_populates="child", 
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    teethRecords: List["TeethRecord"] = Relationship(
-        back_populates="child", 
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    words: List["Speaking"] = Relationship(
-        back_populates="child", 
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    wh: List["WeightHeight"] = Relationship(
-        back_populates="child", 
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    foodRecords: List["FoodRecord"] = Relationship(
-        back_populates="child", 
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    sleepRecords: List["SleepRecord"] = Relationship(
-        back_populates="child", 
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    breastfeedingRecords: List["BreastfeedingRecord"] = Relationship(
-        back_populates="child", 
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    diaryEntries: List["Diary"] = Relationship(
-        back_populates="child", 
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-
-class ChildCreate(SQLModel):
-    id: Optional[str] = None
-    user_id: str = Field(foreign_key="profiles.id", nullable=False)
-    name: str
-    birthDate: str
-    sex: str
-    photo: Optional[str] = None
-
-class ChildUpdate(SQLModel):
-    name: Optional[str] = None
-    birthDate: Optional[str] = None
-    sex: Optional[str] = None
-    photo: Optional[str] = None
-    currentModeFeed: Optional[dict] = None
-    currentModeSleep: Optional[dict] = None
+    diaryRecords: List["DiaryRead"] = Field(default_factory=list)
 
 # ============ MILESTONE MODELS ============
 
@@ -123,7 +126,7 @@ class Milestone(MilestoneBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     child_id: str = Field(foreign_key="children.id", index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    child: "Child" = Relationship(back_populates="milestones")
+    child: Optional["Child"] = Relationship(back_populates="milestones")
 
 class MilestoneCreate(MilestoneBase):
     pass
@@ -143,17 +146,14 @@ class WeightHeightBase(SQLModel):
     foot: Optional[str] = None
     clothes: Optional[str] = None
 
+    @model_validator(mode='before')
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate_empty_strings
-
-    @classmethod
-    def validate_empty_strings(cls, v):
-        if isinstance(v, dict):
-            for key in ["weight", "height", "head"]:
-                if v.get(key) == "":
-                    v[key] = None
-        return v
+    def validate_empty_to_none(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            for field in ["weight", "height", "head"]:
+                if data.get(field) == "":
+                    data[field] = None
+        return data
     
 class WeightHeightRead(WeightHeightBase):
     id: str
@@ -162,20 +162,13 @@ class WeightHeightRead(WeightHeightBase):
 
 class WeightHeight(WeightHeightBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="children.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True, ondelete="CASCADE")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    child: "Child" = Relationship(back_populates="wh")
+    child: Optional["Child"] = Relationship(back_populates="wh")
 
 class WeightHeightCreate(WeightHeightBase):
     pass
 
-class WeightHeightUpdate(SQLModel):
-    date: Optional[str] = None  # YYYY-MM-DD format
-    weight: Optional[float] = None
-    height: Optional[float] = None
-    head: Optional[float] = None
-    foot: Optional[str] = None
-    clothes: Optional[str] = None
 
 # ============ BREASTFEEDING MODELS ============
 class BreastfeedingState(str, Enum):
@@ -194,10 +187,11 @@ class BreastfeedingRecordRead(BreastfeedingRecordBase):
     created_at: datetime
 
 class BreastfeedingRecord(BreastfeedingRecordBase, table=True):
+    __tablename__ = "breastfeeding_records"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="children.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True, ondelete="CASCADE")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    child: "Child" = Relationship(back_populates="breastfeedingRecords")
+    child: Optional["Child"] = Relationship(back_populates="breastfeedingRecords")
 
 class BreastfeedingRecordCreate(BreastfeedingRecordBase):
     id: Optional[str] = None  
@@ -221,8 +215,6 @@ class SleepRecordBase(SQLModel):
     date: str           # YYYY-MM-DD
     time: str           # HH:MM
     state: SleepState  # "sleep" or "awake"
-    label: Optional[str] = None
-    extra: Optional[str] = None
     note: Optional[str] = None
 
 class SleepRecordRead(SleepRecordBase):
@@ -231,10 +223,11 @@ class SleepRecordRead(SleepRecordBase):
     created_at: datetime
 
 class SleepRecord(SleepRecordBase, table=True):
+    __tablename__ = "sleep_records"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="children.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True, ondelete="CASCADE")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    child: "Child" = Relationship(back_populates="sleepRecords")
+    child: Optional["Child"] = Relationship(back_populates="sleepRecords")
 
 class SleepRecordCreate(SleepRecordBase):
     id: Optional[str] = None
@@ -242,15 +235,14 @@ class SleepRecordCreate(SleepRecordBase):
 class SleepRecordUpdate(SQLModel):
     time: Optional[str] = None
     state: Optional[SleepState] = None
-    label: Optional[str] = None
-    extra: Optional[str] = None
     note: Optional[str] = None
 
 class SleepDaySummary(SQLModel):
     date: str
     total_minutes: int
 
-# --- ENTRY MODEL ---
+# ============ ENTRY MODELS ============
+
 class WordEntryBase(SQLModel):
     date: str  # YYYY-MM-DD
     note: Optional[str] = None
@@ -263,9 +255,9 @@ class WordEntry(WordEntryBase, table=True):
     # Relace zpět na hlavní slovo
     word: "Speaking" = Relationship(back_populates="entries")
 
-class WordEntryUpdate(SQLModel):
-    date: Optional[str] = None
-    note: Optional[str] = None
+class WordEntryRead(WordEntryBase):
+    id: str
+    word_id: str
 
 # --- MAIN WORD MODEL ---
 class SpeakingBase(SQLModel):
@@ -274,12 +266,12 @@ class SpeakingBase(SQLModel):
 class Speaking(SpeakingBase, table=True):
     __tablename__ = "speaking"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="children.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True, ondelete="CASCADE")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relace na historii výslovností
     entries: List[WordEntry] = Relationship(back_populates="word", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    child: "Child" = Relationship(back_populates="words")
+    child: Optional["Child"] = Relationship(back_populates="words")
 
 # --- SCHÉMATA PRO API (Pydantic / SQLModel) ---
 class WordEntryCreate(WordEntryBase):
@@ -297,7 +289,7 @@ class SpeakingRead(SpeakingBase):
     id: str
     child_id: str
     created_at: datetime
-    entries: List[WordEntryBase] = []
+    entries: List[WordEntryRead] = []
 
 # ============ TEETH MODELS ============
 
@@ -311,16 +303,15 @@ class TeethRecordRead(TeethRecordBase):
     created_at: datetime
 
 class TeethRecord(TeethRecordBase, table=True):
+    __tablename__ = "teeth_records"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="children.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True, ondelete="CASCADE")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    child: "Child" = Relationship(back_populates="teethRecords")
+    child: Optional["Child"] = Relationship(back_populates="teethRecords")
 
 class TeethRecordCreate(TeethRecordBase):
     pass
 
-class TeethRecordUpdate(SQLModel):
-    date: Optional[str] = None
 
 # ============ FOOD MODELS ============
 
@@ -336,7 +327,7 @@ class FoodCategory(str, Enum):
 class FoodRecordBase(SQLModel):
     food_name: str
     category: FoodCategory # "cereal", "fruit", ...
-    date: Optional[str] = "" # YYYY-MM-DD format
+    date: str # YYYY-MM-DD format
     note: Optional[str] = None
 
 class FoodRecordRead(FoodRecordBase):
@@ -345,10 +336,11 @@ class FoodRecordRead(FoodRecordBase):
     created_at: datetime
 
 class FoodRecord(FoodRecordBase, table=True):
+    __tablename__ = "food_records"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="children.id", index=True)
+    child_id: str = Field(foreign_key="children.id", index=True, ondelete="CASCADE")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    child: "Child" = Relationship(back_populates="foodRecords")
+    child: Optional["Child"] = Relationship(back_populates="foodRecords")
 
 class FoodRecordCreate(FoodRecordBase):
     pass
@@ -362,27 +354,27 @@ class FoodRecordUpdate(SQLModel):
 # ============ DIARY MODELS ============
 
 class DiaryBase(SQLModel):
-    text: str
     date: str  # YYYY-MM-DD
-    name: str  # HH:MM
-    category: Optional[str] = "obecné"
+    name: str
+    text: Optional[str] = Field(default=None, nullable=True)
+
 
 class Diary(DiaryBase, table=True):
+    __tablename__ = "diary_records"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    child_id: str = Field(foreign_key="children.id")
+    child_id: str = Field(foreign_key="children.id", index=True, ondelete="CASCADE")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    child: "Child" = Relationship(back_populates="diaryEntries")
+    child: Optional["Child"] = Relationship(back_populates="diaryRecords")
 
 class DiaryRead(DiaryBase):
     id: str
     child_id: str
     created_at: datetime
 
-class DiaryCreate(DiaryBase): # Dědí text, date, name, category. 
+class DiaryCreate(DiaryBase): # Dědí text, date, name, ...
     pass
 
 class DiaryUpdate(SQLModel):
-    text: Optional[str] = None
-    date: Optional[str] = None
     name: Optional[str] = None
-    category: Optional[str] = None
+    date: Optional[str] = None
+    text: Optional[str] = None

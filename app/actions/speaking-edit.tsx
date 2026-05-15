@@ -5,7 +5,6 @@ import GroupSection from "@/components/GroupSection";
 import { formatDateLocal, formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
-import { Child } from "@/components/storage/interfaces";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
@@ -18,7 +17,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View 
 export default function SpeakingEdit() {
   const { wordId } = useLocalSearchParams();
   const router = useRouter();
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const { selectedChildId, selectedChild, updateWordRecord } = useChild();
 
   const [name, setName] = useState("");
   const [entries, setEntries] = useState<{ id?: string; date: string; note?: string }[]>([]);
@@ -31,38 +30,23 @@ export default function SpeakingEdit() {
 
   useEffect(() => {
     if (!currentWord) return;
-
     if (!isInitialized.current) {
       setName(currentWord.name);
       setEntries(currentWord.entries ?? []);
       isInitialized.current = true;
     }
-  }, [currentWord?.id, wordId]);
+  }, [currentWord, wordId]);
 
   const handleSave = async () => {
     if (!selectedChildId || !wordId || !selectedChild) return;
 
-    // 1. Nová verze slova (aktualizované jméno a pole záznamů)
-    const updatedWord = {
-      ...currentWord,
-      name: name.trim(),
-      entries: entries.map(e => ({
-        id: e.id,
-        date: e.date,
-        note: e.note?.trim() || ""
-      })),
-    };
-
-    // 2. Vytvoříme kopii celého dítěte, kde v poli 'words' vyměníme to jedno slovo
-    const updatedChild: Child = {
-      ...selectedChild,
-      words: selectedChild.words?.map((w: any) => 
-        w.id === wordId ? updatedWord : w
-      ) || [],
-    };
-
     try {
-      await updateChild(updatedChild);
+      await updateWordRecord(
+        selectedChildId, 
+        wordId as string, 
+        name, 
+        entries
+      );
       
       router.back();
     } catch (error) {
@@ -71,33 +55,28 @@ export default function SpeakingEdit() {
     }
   };
 
-  const removeEntry = (entryToRemove: { id?: string; date: string; note?: string }) => {
-    setEntries(prev => prev.filter(e => {
-      // Pokud máme ID (z API nebo čerstvě vygenerované)
-      if (e.id && entryToRemove.id) {
-        return e.id !== entryToRemove.id;
-      }
-      // Fallback pro jistotu (shoda data a poznámky)
-      return !(e.date === entryToRemove.date && e.note === entryToRemove.note);
-    }));
-  };
-
   const addEntry = () => {
     if (!newDate.trim()) return;
     
-    // Přidáváme unikátní ID pro každé entry
-    setEntries(prev => [...prev, { 
-      id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+    const newEntry = { 
+      id: `local-entry-${Date.now()}`, // Označení lokálního záznamu
       date: newDate, 
-      note: newNote 
-    }]);
-  
+      note: newNote.trim() 
+    };
+
+    setEntries(prev => [...prev, newEntry]);
     setDate(formatDateLocal(new Date()));
     setNewNote("");
   };
 
+  const removeEntry = (idToRemove?: string) => {
+    if (!idToRemove) return;
+    setEntries(prev => prev.filter(e => e.id !== idToRemove));
+  };
+
   const sortedEntries = [...entries].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
 
   return (
     <MainScreenContainer>
@@ -119,7 +98,7 @@ export default function SpeakingEdit() {
               <Text style={styles.entryText}>Datum: {formatDateToCzech(entry.date)}</Text>
               <Text style={styles.entryText}>Poznámka: {entry.note}</Text>
             </View>
-            <TouchableOpacity onPress={() => removeEntry(entry)}>
+            <TouchableOpacity onPress={() => removeEntry(entry.id)}>
               <Text style={styles.delete}>🚮</Text>
             </TouchableOpacity>
           </GroupSection>

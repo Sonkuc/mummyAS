@@ -85,7 +85,6 @@ export default function ChildAdd() {
       milestones: [],
       words: [],
       foodRecords: [],
-      teethDates: {},
       teethRecords: [],
       sleepRecords: [],
       breastfeedingRecords: [],

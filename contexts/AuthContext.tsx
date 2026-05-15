@@ -25,33 +25,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Naslouchání změnám (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log("LOG: onAuthStateChange událost:", _event);
-      
-      // 1. Zpracování odhlášení
+
+      // 1. Okamžitá aktualizace session v RAM
+      setSession(session);
+
       if (_event === 'SIGNED_OUT') {
+        // 2. Vyčištění citlivých dat při odhlášení
         try {
-          await Promise.all([
-            AsyncStorage.removeItem("children"),
-            AsyncStorage.removeItem("pending_child_updates"),
-            AsyncStorage.removeItem("selectedChildId"),
-            AsyncStorage.removeItem("pending_child_deletions") // přidal jsem pro jistotu i frontu mazání
-          ]);
-          console.log("LOG: Odhlášeno - AsyncStorage kompletně vyčištěn");
+          const keys = ["children", "pending_child_updates", "selectedChildId", "pending_child_deletions"];
+          await AsyncStorage.multiRemove(keys);
         } catch (err) {
           console.error("LOG: Chyba při čištění AsyncStorage:", err);
         }
-      }
-
-      // 2. Nastavení session (toto musí proběhnout i při logoutu - session bude null)
-      setSession(session);
-
-      // 3. Zajištění profilu na backendu
-      if (session?.user) {
-        console.log("LOG: Volám ensureUserProfile pro:", session.user.id);
-        // Voláme bez awaitu, aby to neblokovalo UI, backend si s tím poradí
-        api.ensureUserProfile(session.user.id, session.user.email ?? "");
-      } else {
-        console.log("LOG: Žádný uživatel není přihlášen");
+      } else if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') {
+        // 3. Zajištění profilu pouze při přihlášení
+        if (session?.user) {
+          api.ensureUserProfile(session.user.id, session.user.email ?? "")
+            .catch(err => console.error("LOG: Nepodařilo se zajistit profil:", err));
+        }
       }
 
       setIsLoading(false);

@@ -6,6 +6,7 @@ import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
 import PhotoChooser from "@/components/PhotoChooser";
+import { ChildUpdate } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
@@ -87,12 +88,14 @@ export default function ChildEdit() {
     }
 
     try {
-      const updatedData = {
-        ...currentChild, 
+      const updatedData: ChildUpdate & { id: string } = {
+        id: currentChild.id,
         name: name.trim(),
         sex: sex,
         birthDate: formatDateLocal(birthDate),
         photo: finalPhotoUri,
+        currentModeFeed: currentChild.currentModeFeed,
+        currentModeSleep: currentChild.currentModeSleep,
       };
 
       await updateChild(updatedData);

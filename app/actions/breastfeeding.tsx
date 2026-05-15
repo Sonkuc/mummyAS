@@ -6,8 +6,7 @@ import { formatDuration, toTimestamp } from "@/components/HelperFunctions";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Note from "@/components/Note";
-import * as api from "@/components/storage/api";
-import type { BreastfeedingRecord, Child } from "@/components/storage/interfaces";
+import type { BreastfeedingRecord, Child, DisplayBreastfeedingRecord } from "@/components/storage/interfaces";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
@@ -17,9 +16,6 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight, ChartColumn, Milk, MilkOff } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import uuid from "react-native-uuid";
-
-type DisplayBreastfeedingRecord = BreastfeedingRecord & { label?: string, extra?: string; };
 
 export default function Breastfeeding() {
   const [records, setRecords] = useState<DisplayBreastfeedingRecord[]>([]);
@@ -27,32 +23,27 @@ export default function Breastfeeding() {
   const [minutesSinceStart, setMinutesSinceStart] = useState<number | null>(null);
   const [minutesSinceStop, setMinutesSinceStop] = useState<number | null>(null);
   const [mode, setMode] = useState<"start" | "stop" | "">("");
-  const [modeStart, setModeStart] = useState<number | null>(null);
+  const [modeStart, setModeStart] = useState<string | null>(null);
   const [brestSide, setBrestSide] = useState<"left" | "right">("right");
   const BREST_SIDE_KEY = "brestSideMode";
 
   const router = useRouter();
-  const { selectedChildId, selectedChild, reloadChildren, updateChild } = useChild();
+  const { selectedChildId, selectedChild, updateChild } = useChild();
   
   const clearState = async () => {
-    if (!selectedChildId || !selectedChild) return; 
+    if (!selectedChildId || !selectedChild) return;
+
+    const updatedChild = {
+      ...selectedChild,
+      currentModeFeed: null
+    };
 
     try {
-      // Kopie dítěte, vynulován currentModeFeed
-      const updatedChild = { 
-        ...selectedChild, 
-        currentModeFeed: null 
-      };
-
-      await api.updateChild(selectedChildId, updatedChild);
-        
-      // Lokální reset
+      await updateChild(updatedChild);
       setMode("");
       setModeStart(null);
       setMinutesSinceStart(null);
       setMinutesSinceStop(null);
-      
-      await reloadChildren();
     } catch (error) {
       Alert.alert("Chyba", "Nepodařilo se resetovat stav.");
     }
@@ -81,45 +72,38 @@ export default function Breastfeeding() {
     }
   };
 
-  const addRecord = async (label: string, newMode: "start" | "stop") => {
+  const addRecord = async (newMode: "start" | "stop") => {
     if (!selectedChildId || !selectedChild) return;
 
     const now = new Date();
     const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
     const date = now.toISOString().slice(0, 10);
-    const startTimestamp = Date.now();
+    const startISO = now.toISOString();
 
-    // 1. Vytvoříme nový záznam
     const newRec: BreastfeedingRecord = {
-      id: uuid.v4().toString(), // Použij uuid pro unikátní ID v offline režimu
+      id: `local-${Date.now()}`,
+      child_id: selectedChildId || "",
       date,
       time,
       state: newMode,
     };
 
-    // 2. Připravíme aktualizovaný objekt dítěte
     const updatedChild: Child = {
       ...selectedChild,
-      // Přidáme záznam k existujícím
       breastfeedingRecords: [...(selectedChild.breastfeedingRecords || []), newRec],
-      // Aktualizujeme live stav
-      currentModeFeed: { mode: newMode, start: startTimestamp }
+      currentModeFeed: { mode: newMode, start: startISO }
     };
 
     try {
-      // 3. Použijeme updateChild z Provideru! 
-      // Ten se postará o uložení do AsyncStorage a synchronizaci, až budeš online.
       await updateChild(updatedChild);
-
-      // Lokální UI stavy pro čítač (ty zůstávají stejné)
+      
+      // UI stavy
       setMode(newMode);
-      setModeStart(startTimestamp);
+      setModeStart(startISO);
       if (newMode === "stop") setMinutesSinceStart(null);
       if (newMode === "start") setMinutesSinceStop(null);
-
     } catch (error) {
-      console.error("Chyba při ukládání:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit záznam.");
+      console.error("Chyba při ukládání kojení:", error);
     }
   };
 
@@ -127,7 +111,7 @@ export default function Breastfeeding() {
     useCallback(() => {
       if (selectedChild?.breastfeedingRecords) {
         setRecords(
-          (selectedChild.breastfeedingRecords ?? []).map((rec) => ({
+          selectedChild.breastfeedingRecords.map((rec) => ({
             ...rec,
             label: rec.state === "start" ? "Začátek kojení:" : "Konec kojení:",
           }))
@@ -136,10 +120,10 @@ export default function Breastfeeding() {
 
       if (selectedChild?.currentModeFeed) {
         const { mode, start } = selectedChild.currentModeFeed;
-        setMode(mode);
+        setMode(mode as "start" | "stop");
         setModeStart(start);
 
-        const diff = Math.floor((Date.now() - start) / 60000);
+        const diff = Math.floor((Date.now() - new Date(start).getTime()) / 60000);
         if (mode === "stop") setMinutesSinceStop(diff);
         if (mode === "start") setMinutesSinceStart(diff);
       }
@@ -150,7 +134,7 @@ export default function Breastfeeding() {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (mode && modeStart) {
       const tick = () => {
-        const diffMinutes = Math.floor((Date.now() - modeStart) / 60000);
+        const diffMinutes = Math.floor((Date.now() - new Date(modeStart).getTime()) / 60000);
         if (mode === "stop") setMinutesSinceStop(diffMinutes);
         if (mode === "start") setMinutesSinceStart(diffMinutes);
       };
@@ -253,7 +237,7 @@ export default function Breastfeeding() {
                 Alert.alert(`${selectedChild?.name} už se kojí.`);
                 return;
               }
-              addRecord("Začátek kojení:", "start");
+              addRecord("start");
             }}
           >
             <Milk size={28} />
@@ -270,7 +254,7 @@ export default function Breastfeeding() {
                 Alert.alert(`${selectedChild?.name} se nekojí.`);
                 return;
               }
-              addRecord("Konec kojení:", "stop");
+              addRecord("stop");
             }}
           >
             <MilkOff color="white" size={28} />

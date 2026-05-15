@@ -2,7 +2,6 @@ import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import * as api from "@/components/storage/api";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
@@ -12,7 +11,7 @@ import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from "reac
 
 export default function Teeth() {
   const [selectedTooth, setSelectedTooth] = useState<null | string>(null);
-  const { updateChild, selectedChildId, allChildren } = useChild();
+  const { updateTeethRecord, selectedChildId, allChildren } = useChild();
   
   const selectedChild = useMemo(() => 
     allChildren.find(c => c.id === selectedChildId),
@@ -54,18 +53,10 @@ export default function Teeth() {
 
   // JEDNOTNÁ FUNKCE PRO SYNCHRONIZACI
   const syncChanges = async (updatedRecords: any[]) => {
-    if (!selectedChild) return;
+    if (!selectedChildId || !selectedChild) return;
     
-    // 1. Lokální update (UI + AsyncStorage) - proběhne okamžitě
-    const updatedChild = { ...selectedChild, teethRecords: updatedRecords };
-    await updateChild(updatedChild);
-
-    // 2. Odeslání na server (pokud selže, ChildProvider to zkusí znovu později)
-    try {
-      await api.syncTeethRecords(selectedChild.id, updatedRecords);
-    } catch (e) {
-      console.log("Sync uloženo pro pozdější odeslání.");
-    }
+    // Voláme novou, lehkou funkci
+    await updateTeethRecord(selectedChildId, updatedRecords);
   };
 
   // PŘIDÁNÍ NEBO ZMĚNA DATA

@@ -5,7 +5,6 @@ import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyPicker from "@/components/MyPicker";
 import MyTextInput from "@/components/MyTextInput";
-import { Child, Word } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
@@ -21,62 +20,30 @@ export default function SpeakingAdd() {
   const [selectedWord, setSelectedWord] = useState("");
   const [date, setDate] = useState(formatDateLocal(new Date()));
   const [note, setNote] = useState("");
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const { selectedChildId, selectedChild, addWordRecord } = useChild();
   
   const handleAdd = async () => {
-    let finalName = name.trim();
-    if (!selectedChildId) {
+    const finalName = name.trim();
+
+    if (!selectedChildId || !selectedChild) {
       Alert.alert("Chyba", "Není vybráno dítě.");
       return;
     }
 
-    if (!finalName) {
-      Alert.alert("Chyba", "Zadej nebo vyber slovo.");
-      return;
-    }
-
-    const existingWords = selectedChild?.words || [];
-    const nameExists = existingWords.some(
-      (w: any) => w.name.toLowerCase() === finalName.toLowerCase()
-    );
-
-    if (nameExists) {
-      Alert.alert("Info", "Toto slovo už v seznamu existuje.");
+    // Kontrola duplicity zůstává na frontendu pro rychlou reakci
+    if (selectedChild.words?.some(w => w.name.toLowerCase() === finalName.toLowerCase())) {
+      Alert.alert("Info", "Toto slovo už existuje.");
       return;
     }
 
     try {
-      // Příprava nového objektu slova (lokální simulace toho, co dělá backend)
-      const newWord: Word = {
-        id: `local-${Date.now()}`,
-        child_id: selectedChildId!,  // Add this required field
-        name: finalName,
-        entries: [
-          {
-            id: `entry-${Date.now()}`,
-            date: date,
-            note: note.trim() ? note.trim() : undefined
-          }
-        ]
-      };
+      await addWordRecord(selectedChildId, finalName, date, note.trim());
 
-      // Vytvoření aktualizované kopie dítěte
-      const updatedChild: Child = {
-        ...selectedChild!, 
-        words: [...existingWords, newWord]
-      };
-
-      // Uložení skrze context (zajistí lokální persistenci i sync na pozadí)
-      await updateChild(updatedChild);
-
-      // Návrat zpět
       router.back();
-
     } catch (error) {
-      console.error("Chyba při přípravě slova:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit slovo do paměti.");
+      Alert.alert("Chyba", "Nepodařilo se uložit slovo.");
     }
-  }; 
+  };
 
   return (
     <MainScreenContainer>

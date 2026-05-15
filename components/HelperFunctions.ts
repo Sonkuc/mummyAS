@@ -27,3 +27,8 @@ export const normalizeTime = (input: string): string | null => {
   if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
   return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}`;
 };
+
+export const getCleanTime = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};

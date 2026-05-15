@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlmodel import Session
+
 from ..crud import crud_speaking as cspeak
 from ..models import Child, SpeakingRead, SpeakingCreate, SpeakingUpdate
 from ..db import get_session
@@ -8,22 +9,20 @@ from ..db import get_session
 router = APIRouter()
 
 def verify_child_ownership(session: Session, child_id: str, x_user_id: str):
-    """Pomocná funkce pro ověření, zda dítě patří přihlášenému uživateli."""
-    if not x_user_id:
-        raise HTTPException(status_code=401, detail="X-User-Id header missing")
-    
+    """Ověří, zda dítě existuje a patří uživateli."""    
     child = session.get(Child, child_id)
-    if not child or child.user_id != x_user_id:
-        raise HTTPException(status_code=403, detail="Tohle dítě vám nepatří!")
+    if not child:
+        raise HTTPException(status_code=404, detail="Dítě nebylo nalezeno.")      
+    if child.user_id != x_user_id:
+        raise HTTPException(status_code=403, detail="Tohle dítě vám nepatří!")      
     return child
 
 @router.get("/children/{child_id}/words", response_model=List[SpeakingRead])
 def list_words(
     child_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
+    x_user_id: str = Header(...)
 ):
-    """Seznam slov dítěte s ověřením vlastníka."""
     verify_child_ownership(session, child_id, x_user_id)
     return cspeak.get_words_for_child(session, child_id)
 
@@ -32,9 +31,8 @@ def create_word(
     child_id: str,
     speaking_data: SpeakingCreate,
     session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
+    x_user_id: str = Header(...)
 ):
-    """Vytvoření nového slova s ověřením vlastníka."""
     verify_child_ownership(session, child_id, x_user_id)
     return cspeak.create_word(session, child_id, speaking_data)
 
@@ -44,54 +42,49 @@ def add_entry(
     word_id: str,
     entry_data: dict, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
+    x_user_id: str = Header(...)
 ):
-    """Přidání nové výslovnosti k existujícímu slovu s kontrolou vlastnictví."""
+    """Přidá novou výslovnost k existujícímu slovu s kontrolou integrity."""
     verify_child_ownership(session, child_id, x_user_id)
     
     w = cspeak.get_word(session, word_id)
     if not w or w.child_id != child_id:
-        raise HTTPException(status_code=404, detail="Word not found for this child")
+        raise HTTPException(status_code=404, detail="Slovo nebylo nalezeno")
     
-    return cspeak.add_word_entry(session, word_id, entry_data)
+    cspeak.add_word_entry(session, word_id, entry_data)
+    session.refresh(w)
+    return w
 
-@router.put("/children/{child_id}/words/{word_id}", response_model=SpeakingRead)
 def update_word(
     child_id: str, 
     word_id: str, 
     word_data: SpeakingUpdate,
     session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
+    x_user_id: str = Header(...)
 ):
-    """Aktualizace slova s ověřením vlastníka."""
     verify_child_ownership(session, child_id, x_user_id)
     
     w = cspeak.get_word(session, word_id)
     if not w or w.child_id != child_id:
         raise HTTPException(status_code=404, detail="Word not found for this child")
         
-    updated = cspeak.update_word(session, word_id, word_data)
-    return updated
+    return cspeak.update_word(session, word_id, word_data)
 
 @router.delete("/children/{child_id}/words/{word_id}")
 def delete_word(
     child_id: str, 
     word_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(None)
+    x_user_id: str = Header(...)
 ):
-    """Smazání slova s ověřením vlastníka."""
-    # 1. Nejdříve ověříme uživatele
     verify_child_ownership(session, child_id, x_user_id)
     
-    # 2. Poté ověříme, zda slovo patří tomuto dítěti
     w = cspeak.get_word(session, word_id)
-    if not w or str(w.child_id) != child_id:
+    if not w or w.child_id != child_id:
         raise HTTPException(status_code=404, detail="Word not found")
 
-    # 3. Volání CRUD smazání
     success = cspeak.delete_word(session, word_id)
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to delete word from database")
+        raise HTTPException(status_code=500, detail="Failed to delete word")
 
     return {"message": "Word deleted successfully"}

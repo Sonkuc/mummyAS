@@ -21,7 +21,6 @@ export default function Home() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setLogoutModalVisible(false);
-    // Redirect proběhne automaticky díky RootLayoutNav
   };
   
   const getCardColor = (gender: string) =>

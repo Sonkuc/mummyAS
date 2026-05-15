@@ -3,8 +3,7 @@ import GroupSection from "@/components/GroupSection";
 import { normalizeTime } from "@/components/HelperFunctions";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
-import { updateSleepDay } from "@/components/storage/api";
-import { SleepRecord } from "@/components/storage/interfaces";
+import { DisplaySleepRecord, SleepRecord, SleepSyncDay } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import TimeSelector from "@/components/TimeSelector";
 import Title from "@/components/Title";
@@ -14,8 +13,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from 'react-native-uuid';
-
-type DisplaySleepRecord = SleepRecord & { label: string };
 
 const renumberSleeps = (records: SleepRecord[]): DisplaySleepRecord[] => {
   let sleepCount = 0;
@@ -31,7 +28,7 @@ const renumberSleeps = (records: SleepRecord[]): DisplaySleepRecord[] => {
 export default function SleepEdit() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const router = useRouter();
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const { selectedChildId, selectedChild, updateSleepDayRecord } = useChild();
 
   const [records, setRecords] = useState<DisplaySleepRecord[]>([]);  const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [newTime, setNewTime] = useState("");
@@ -47,6 +44,7 @@ export default function SleepEdit() {
         .filter((r) => r.date === date)
         .map((r) => ({
           id: r.id,
+          child_id: r.child_id,
           date: r.date,
           time: r.time,
           state: r.state as "awake" | "sleep"
@@ -65,7 +63,7 @@ export default function SleepEdit() {
 
       isInitialized.current = true;
     }
-  }, [selectedChild?.id, date]); // Sledujeme jen ID dítěte a datum, ne celé pole records
+  }, [selectedChild?.id, date]);
 
   // Úprava času
   const updateTime = (index: number, newTimeValue: string) => {
@@ -101,6 +99,7 @@ export default function SleepEdit() {
 
     const newRec: SleepRecord = {
       id: uuid.v4() as string,
+      child_id: selectedChildId || "",
       date: date!,
       time: norm,
       state: newState,
@@ -112,7 +111,8 @@ export default function SleepEdit() {
       
       const lastState = updated[updated.length - 1].state;
       setNewState(lastState === "sleep" ? "awake" : "sleep");
-      setNewTime(new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }));
+      const now = new Date();
+      setNewTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
 
       return renumberSleeps(updated);
     });
@@ -120,54 +120,28 @@ export default function SleepEdit() {
 
   // Uložení změn (Bulk update)
   const saveChanges = async () => {
-    if (!selectedChildId || !selectedChild || !date) return;
+    if (!selectedChildId || !date) return;
 
-    // 1. Příprava čistých dat
-    const normalizedDayRecords = records.map((r) => ({
-      id: r.id, 
-      date: r.date,
+    // Příprava čistých dat (odstraníme label, aby odpovídal SleepSyncDay)
+    const sleepSyncDay: SleepSyncDay = records.map((r) => ({
+      id: r.id,
+      date: date,
       time: normalizeTime(r.time) || r.time,
       state: r.state,
     }));
 
     try {
-      // 2. LOKÁLNÍ ULOŽENÍ
-      const otherDaysRecords = (selectedChild.sleepRecords || []).filter(
-        (r) => r.date !== date
-      );
+      // Použití nové metody z kontextu (zajistí lokální update i offline frontu)
+      await updateSleepDayRecord(selectedChildId, date, sleepSyncDay);
 
-      const updatedChild = {
-        ...selectedChild,
-        sleepRecords: [...otherDaysRecords, ...normalizedDayRecords].sort(
-          (a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)
-        ),
-      };
-
-      // Uložíme do Contextu (toto aktualizuje AsyncStorage i stav aplikace)
-      await updateChild(updatedChild);
-
-      // 3. OKAMŽITÝ NÁVRAT (Nečekáme na server!)
-      // Použijeme podmínku, aby byl návrat co nejplynulejší
       if (router.canGoBack()) {
         router.back();
       } else {
-        router.replace("/actions/sleep");
+        router.replace("/actions/breastfeeding");
       }
-
-      // 4. SYNCHRONIZACE NA POZADÍ
-      // Tady je kritická změna: posíláme normalizedDayRecords (které mohou být [])
-      // a explicitně definujeme datum 'date'
-      updateSleepDay(selectedChildId, date, normalizedDayRecords)
-        .then(() => {
-          console.log(`[SYNC] Den ${date} úspěšně synchronizován (záznamů: ${normalizedDayRecords.length})`);
-        })
-        .catch((err) => {
-          console.warn("Sync na pozadí selhal, vyřeší se automaticky později.", err);
-        });
-
     } catch (error) {
-      console.error("Kritická chyba při lokálním ukládání:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit data do telefonu.");
+      console.error("Kritická chyba při ukládání kojení:", error);
+      Alert.alert("Chyba", "Nepodařilo se uložit data.");
     }
   };
 

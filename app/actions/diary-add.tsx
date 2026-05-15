@@ -4,7 +4,6 @@ import DateSelector from "@/components/DateSelector";
 import { formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyTextInput from "@/components/MyTextInput";
-import { Child } from "@/components/storage/interfaces";
 import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
@@ -15,41 +14,41 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInpu
 
 export default function DiaryAdd() {
   const router = useRouter();
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const { selectedChildId, selectedChild, addDiaryRecord } = useChild();
 
   // Stavy
   const [name, setName] = useState("");
   const [noteText, setNoteText] = useState("");
   const [date, setDate] = useState(formatDateLocal(new Date()));
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSave = async () => {
-    let finalName = name.trim();
-    // Validace analogicky k Milestone
-    if (!finalName || !selectedChildId || !selectedChild) {
+    const finalName = name.trim();
+    
+    // 1. Validace
+    if (!finalName) {
+      Alert.alert("Chybí název", "Prosím zadejte název záznamu.");
       return;
     }
+    if (!selectedChildId || !selectedChild) return;
 
     try {
-      // Definice nového záznamu (ID a struktura stejná jako u milníků)
-      const newRecord = {
-        id: `local-${Date.now()}`,
-        child_id: selectedChildId,
+      setIsSubmitting(true);
+
+      const diaryData = {
         name: finalName,
         text: noteText.trim() || undefined,
         date: date,
       };
 
-      // Vytvoření kopie dítěte s novým polem (přidáváme na začátek nebo konec dle preference)
-      const updatedChild: Child = {
-        ...selectedChild,
-        diaryRecords: [newRecord, ...(selectedChild.diaryRecords || [])],
-      };
+      await addDiaryRecord(selectedChildId, diaryData);
 
-      await updateChild(updatedChild);
       router.back();
     } catch (error) {
       console.error("Chyba při ukládání deníku:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit záznam.");
+      Alert.alert("Chyba", "Nepodařilo se uložit záznam. Zkuste to prosím znovu.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -105,7 +104,10 @@ export default function DiaryAdd() {
             />
           </View>
 
-          <CheckButton onPress={handleSave} />
+          <CheckButton 
+            onPress={handleSave}
+            disabled={isSubmitting}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </MainScreenContainer>

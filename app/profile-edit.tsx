@@ -7,7 +7,6 @@ import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useAuth } from "@/contexts/AuthContext";
-import { useChild } from "@/contexts/ChildContext";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
@@ -21,7 +20,6 @@ export default function ProfileEdit() {
   
   const [sex, setSex] = useState(user?.user_metadata?.parent_role || "");
   const [loading, setLoading] = useState(false);
-  const { allChildren, deleteChild } = useChild();
   
   // Stavy pro hesla
   const [oldPassword, setOldPassword] = useState("");
@@ -110,10 +108,6 @@ export default function ProfileEdit() {
     await api.deleteUserProfile(user.id);
     console.log("Backend smazán");
 
-    // B. VYČIŠTĚNÍ LOKÁLNÍCH DAT (Klíčový krok!)
-    // Tady musíme zajistit, aby ChildContext zapomněl všechny děti
-    // Pokud máš v useChild metodu pro reset, zavolej ji (např. setAllChildren([]))
-    
     await AsyncStorage.clear(); 
     console.log("AsyncStorage vyčištěn");
 
@@ -212,7 +206,6 @@ const styles = StyleSheet.create({
   form: { marginTop: 10 },
   labelSpacing: { marginTop: 25, marginBottom: 10 },
   
-  // Styly pro e-mail (read-only)
   readOnlyInput: {
     backgroundColor: "#f0f0f0",
     padding: 15,
