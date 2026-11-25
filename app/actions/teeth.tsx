@@ -172,7 +172,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   teethImage: {
-    width: undefined,
+    // pevná šířka i výška obalu – na webu se jinak obrázek roztáhl a usekl
+    width: "100%",
     height: "100%",
     resizeMode: "contain",
     marginTop: 20,

@@ -1,3 +1,4 @@
+import { isGuestMode } from "@/lib/guest";
 import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
@@ -50,7 +51,7 @@ export default function WeightHeight() {
   useEffect(() => {
     if (!selectedChild?.id) return;
     const FILTERS_KEY = `filters-${selectedChild.id}`;
-    AsyncStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+    if (!isGuestMode()) AsyncStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
   }, [filters, selectedChild?.id]);
 
   function getLastValue(arr: any[], currentDate: string, field: string) {
@@ -115,7 +116,7 @@ export default function WeightHeight() {
                       const diff = renderDifference(sortedNotes, wh.date, "weight", "kg");
                       return (
                         <Text style={styles.note}>
-                          <Text>⚖️ {wh.weight} kg </Text>
+                          <Text>⚖️ {String(wh.weight).replace(".", ",")} kg </Text>
                           {diff && <Text style={{ color: diff.color, fontSize: 12 }}>{diff.label}</Text>}
                         </Text>
                       );
@@ -124,7 +125,7 @@ export default function WeightHeight() {
                       const diff = renderDifference(sortedNotes, wh.date, "height", "cm");
                       return (
                         <Text style={styles.note}>
-                          <Text>📏 {wh.height} cm </Text>
+                          <Text>📏 {String(wh.height).replace(".", ",")} cm </Text>
                           {diff && <Text style={{ color: diff.color, fontSize: 12 }}>{diff.label}</Text>}
                         </Text>
                       );
@@ -133,7 +134,7 @@ export default function WeightHeight() {
                       const diff = renderDifference(sortedNotes, wh.date, "head", "cm");
                       return (
                         <Text style={styles.note}>
-                          <Text>👶 {wh.head} cm </Text>
+                          <Text>👶 {String(wh.head).replace(".", ",")} cm </Text>
                           {diff && <Text style={{ color: diff.color, fontSize: 12 }}>{diff.label}</Text>}
                         </Text>
                       );

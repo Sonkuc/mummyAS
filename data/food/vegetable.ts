@@ -27,7 +27,7 @@ export const VEGETABLE = [
   { month: 7, label: "Lilek" },
   { month: 7, label: "Mrkev" },
   { month: 9, label: "Okurka" },
-  { month: 7, label: "Patyzon" },
+  { month: 7, label: "Patizon" },
   { month: 7, label: "Pekingské zelí" },
   { month: 7, label: "Petržel" },
   { month: 9, label: "Pórek" },
@@ -37,7 +37,7 @@ export const VEGETABLE = [
   { month: 13, label: "Ředkvičky" },
   { month: 9, label: "Růžičková kapusta" },
   { month: 11, label: "Špenát" },
-  { month: 5, label: "Pastyňák" },
+  { month: 5, label: "Pastinák" },
   { month: 5, label: "Tykev" },
   { month: 9, label: "Tuřín" },
 ];

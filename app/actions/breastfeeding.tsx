@@ -1,3 +1,4 @@
+import { isGuestMode } from "@/lib/guest";
 import { showAlert } from "@/components/showAlert";
 import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
@@ -84,7 +85,7 @@ export default function Breastfeeding() {
     const newSide = breastSide === "left" ? "right" : "left";
     setBreastSide(newSide);
     try {
-      await AsyncStorage.setItem(BREAST_SIDE_KEY, JSON.stringify(newSide));
+      if (!isGuestMode()) await AsyncStorage.setItem(BREAST_SIDE_KEY, JSON.stringify(newSide));
     } catch (e) {
       console.error("Chyba při ukládání breastSide:", e);
     }

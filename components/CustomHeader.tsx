@@ -26,5 +26,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.backgroundContainer,
     justifyContent: "center",
     position: "relative",
+    // tlačítka v hlavičce (zpět, +) musí být nad obsahem obrazovky
+    // (na webu má každý View vlastní z-index kontext)
+    zIndex: 10,
   },
 });

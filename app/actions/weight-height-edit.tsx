@@ -1,3 +1,4 @@
+import { isGuestMode } from "@/lib/guest";
 import { showAlert } from "@/components/showAlert";
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
@@ -55,7 +56,7 @@ export default function WeightHeightEdit() {
     const newValue = !hideMode;
     setHideMode(newValue);
     try {
-      await AsyncStorage.setItem(HIDE_MODE_KEY, JSON.stringify(newValue));
+      if (!isGuestMode()) await AsyncStorage.setItem(HIDE_MODE_KEY, JSON.stringify(newValue));
     } catch (e) {
       console.error("Chyba při ukládání hideMode:", e);
     }
