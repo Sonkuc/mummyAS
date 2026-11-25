@@ -9,7 +9,7 @@ import { COLORS } from "@/constants/MyColors";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Register() {
   const router = useRouter();
@@ -53,6 +53,8 @@ export default function Register() {
       data: {
         gender: sex, 
       },
+      // Na webu vede odkaz z potvrzovacího e-mailu zpět na tuto aplikaci
+      ...(Platform.OS === "web" ? { emailRedirectTo: window.location.origin } : {}),
     },
     });
 
