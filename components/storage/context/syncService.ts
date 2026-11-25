@@ -1,4 +1,5 @@
 import { Child } from "@/components/storage/interfaces";
+import { isGuestMode } from "@/lib/guest";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const safeParse = (data: string | null, fallback: any) => {
@@ -7,6 +8,7 @@ export const safeParse = (data: string | null, fallback: any) => {
 };
 
 export const processDeletionQueue = async (key: string, deleteFn: (item: any) => Promise<any>) => {
+  if (isGuestMode()) return; // zkušební režim: nic neukládat
   const data = await AsyncStorage.getItem(key);
   if (!data) return;
   const items = JSON.parse(data);
@@ -28,6 +30,7 @@ export const removeFromPendingUpdates = async (
   recordId: string, 
   idField: string = 'id'
 ) => {
+  if (isGuestMode()) return; // zkušební režim: nic neukládat
   const pendingStr = await AsyncStorage.getItem("pending_child_updates");
   if (!pendingStr) return;
   
@@ -47,6 +50,7 @@ export const syncSectionByDate = async (
   records: any[] | undefined,
   syncFunction: (childId: string, date: string, data: any, userId: string) => Promise<any>
 ) => {
+  if (isGuestMode()) return; // zkušební režim: nic neukládat
   if (records === undefined) return;
 
   const grouped: Record<string, any[]> = {};
@@ -75,6 +79,7 @@ export const syncSectionByDate = async (
 };
 
 export const addToPendingUpdates = async (childId: string, data: any) => {
+  if (isGuestMode()) return; // zkušební režim: nic neukládat
   const pending = safeParse(await AsyncStorage.getItem("pending_child_updates"), {});
   pending[childId] = data;
   await AsyncStorage.setItem("pending_child_updates", JSON.stringify(pending));
@@ -84,6 +89,7 @@ export const addToPendingUpdates = async (childId: string, data: any) => {
  * Setter pro AsyncStorage s podporou null (odstranění).
  */
 export const setStoredSelectedChildId = async (id: string | null) => {
+  if (isGuestMode()) return; // zkušební režim: nic neukládat
   if (id) {
     await AsyncStorage.setItem("selectedChildId", id);
   } else {
@@ -95,6 +101,7 @@ export const setStoredSelectedChildId = async (id: string | null) => {
  * Zpracuje chybu API uložením aktuálního stavu dítěte do pending fronty.
  */
 export const handleSyncError = async (childId: string, updatedList: Child[]) => {
+  if (isGuestMode()) return; // zkušební režim: nic neukládat
   const currentChild = updatedList.find(c => c.id === childId);
   if (currentChild) {
     await addToPendingUpdates(childId, currentChild);
@@ -105,6 +112,7 @@ export const handleSyncError = async (childId: string, updatedList: Child[]) => 
  * Helper pro přidání záznamu do smazané fronty (pro různé klíče).
  */
 export const addToDeletionQueue = async (key: string, item: any) => {
+  if (isGuestMode()) return; // zkušební režim: nic neukládat
   const existing = await AsyncStorage.getItem(key);
   const list = existing ? JSON.parse(existing) : [];
   list.push(item);

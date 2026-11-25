@@ -7,6 +7,7 @@ import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChild } from "@/contexts/ChildContext";
+import { computeSleepStats } from "@/lib/localStats";
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -18,18 +19,27 @@ interface SleepStatEntry {
 }
 
 export default function SleepStats() {
-  const { selectedChildId } = useChild();
-  const { user } = useAuth();
+  const { selectedChildId, selectedChild } = useChild();
+  const { user, isGuest } = useAuth();
   const [periodMode, setPeriodMode] = useState<"week" | "month" | "halfYear">("week");
   const [dayMode, setDayMode] = useState<"day" | "plusNight">("plusNight");
   const [stats, setStats] = useState<SleepStatEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   // 1. Načtení dat 
+  // Ve zkušebním režimu přepočítat statistiky při každé změně záznamů
+  const guestRecords = isGuest ? selectedChild?.sleepRecords : null;
+
   useEffect(() => {
-    if (selectedChildId) {
+    if (isGuest) {
+      // Zkušební režim: statistiky se počítají z dat v paměti
+      setStats(computeSleepStats(selectedChild?.sleepRecords || []));
+      setLoading(false);
+      return;
+    }
+    if (selectedChildId && user) {
       setLoading(true);
-      api.fetchSleepStats(selectedChildId, user!.id)
+      api.fetchSleepStats(selectedChildId, user.id)
         .then((data) => {
           setStats(data);
           setLoading(false);
@@ -39,7 +49,8 @@ export default function SleepStats() {
           setLoading(false);
         });
     }
-  }, [selectedChildId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChildId, isGuest, guestRecords]);
 
   // 2. Zpracování dat pro graf
   const chartData = useChartData(stats, periodMode, dayMode);

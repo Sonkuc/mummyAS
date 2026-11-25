@@ -35,3 +35,14 @@ export const getCleanTime = () => {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
+/**
+ * Role rodiče z metadat uživatele Supabase.
+ * Registrace ukládá `gender` ("mum"/"dad"), úprava profilu `parent_role`
+ * ("maminka"/"tatinek") – sjednotíme to na "maminka" | "tatinek".
+ */
+export const getParentRole = (metadata?: Record<string, any> | null): "maminka" | "tatinek" => {
+  if (metadata?.parent_role === "tatinek" || metadata?.parent_role === "maminka") {
+    return metadata.parent_role;
+  }
+  return metadata?.gender === "dad" ? "tatinek" : "maminka";
+};

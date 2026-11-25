@@ -16,7 +16,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function Login() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { startGuest } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,6 +34,8 @@ export default function Login() {
         alert("Prosím zadejte svůj e-mail a heslo");
       } else if (error.message.includes("Invalid login credentials")) {
         alert("Nesprávný e-mail nebo heslo");
+      } else if (error.message.includes("Email not confirmed")) {
+        alert("E-mail ještě nebyl potvrzen. Klikni na odkaz v potvrzovacím e-mailu.");
       } else {
         alert(error.message); // ostatní chyby
       }
@@ -110,16 +112,36 @@ export default function Login() {
 };
 
   const handleResetPassword = async () => {
-    if (!user?.email) return;
+    // Uživatel na přihlašovací obrazovce ještě není přihlášený – bereme e-mail z formuláře
+    const targetEmail = email.trim();
+    if (!targetEmail) {
+      showAlert("Chybí e-mail", "Nejdřív zadej e-mail do přihlašovacího formuláře.");
+      return;
+    }
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      targetEmail,
+      Platform.OS === "web" ? { redirectTo: window.location.origin } : undefined
+    );
     setLoading(false);
 
     if (error) {
       showAlert("Chyba", error.message);
     } else {
       showAlert("E-mail odeslán", "Odkaz na reset hesla byl odeslán na váš e-mail.");
+      setResetModalVisible(false);
     }
+  };
+
+  const handleTryWithoutAccount = () => {
+    showAlert(
+      "Zkušební režim",
+      "Aplikaci si můžeš vyzkoušet bez registrace. Nic se ale neukládá do databáze – všechna zadaná data zmizí po odhlášení nebo obnovení stránky. Pro ukázku je předvyplněné jedno dítě.",
+      [
+        { text: "Zpět", style: "cancel" },
+        { text: "Vyzkoušet", onPress: () => { startGuest(); router.replace("/home"); } },
+      ]
+    );
   };
 
   return (
@@ -155,6 +177,9 @@ export default function Login() {
             <Pressable style={styles.button} onPress={handleGoogleLogin}>
               <Chrome color="white" size={20} />
               <Text style={styles.oauthText}> Pokračovat s Google</Text>
+            </Pressable>
+            <Pressable style={[styles.button, styles.guestButton]} onPress={handleTryWithoutAccount}>
+              <Text style={styles.guestText}>Vyzkoušet bez registrace</Text>
             </Pressable>
           </View>
 
@@ -222,6 +247,16 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
+  },
+  guestButton: {
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  guestText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: "600",
   },
   oauthButtonDisabled: {
     backgroundColor: "#ddd",

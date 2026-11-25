@@ -7,20 +7,30 @@ import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChild } from "@/contexts/ChildContext";
+import { computeBreastfeedingStats } from "@/lib/localStats";
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function BreastfeedingStats() {
   const [periodMode, setPeriodMode] = useState<"week" | "month" | "halfYear">("week");
   const [stats, setStats] = useState<{ date: string; total_minutes: number }[]>([]);
-  const { selectedChildId } = useChild();
+  const { selectedChildId, selectedChild } = useChild();
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   
+  // Ve zkušebním režimu přepočítat statistiky při každé změně záznamů
+  const guestRecords = isGuest ? selectedChild?.breastfeedingRecords : null;
+
   useEffect(() => {
-    if (selectedChildId) {
+    if (isGuest) {
+      // Zkušební režim: statistiky se počítají z dat v paměti
+      setStats(computeBreastfeedingStats(selectedChild?.breastfeedingRecords || []));
+      setLoading(false);
+      return;
+    }
+    if (selectedChildId && user) {
       setLoading(true);
-      api.fetchBreastfeedingStats(selectedChildId, user!.id)
+      api.fetchBreastfeedingStats(selectedChildId, user.id)
         .then((data) => {
           setStats(data);
           setLoading(false);
@@ -30,7 +40,8 @@ export default function BreastfeedingStats() {
           setLoading(false);
         });
     }
-  }, [selectedChildId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChildId, isGuest, guestRecords]);
 
   const chartData = useChartData(stats, periodMode, "day");
 

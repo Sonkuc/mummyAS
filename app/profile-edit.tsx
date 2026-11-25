@@ -1,3 +1,4 @@
+import { getParentRole } from "@/components/HelperFunctions";
 import { showAlert } from "@/components/showAlert";
 import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
@@ -19,7 +20,7 @@ export default function ProfileEdit() {
   const router = useRouter();
   const { user } = useAuth();
   
-  const [sex, setSex] = useState(user?.user_metadata?.parent_role || "");
+  const [sex, setSex] = useState<string>(getParentRole(user?.user_metadata));
   const [loading, setLoading] = useState(false);
   
   // Stavy pro hesla
@@ -28,8 +29,8 @@ export default function ProfileEdit() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-  if (user?.user_metadata?.parent_role) {
-    setSex(user.user_metadata.parent_role);
+  if (user) {
+    setSex(getParentRole(user.user_metadata));
   }
 }, [user]);
 
@@ -50,7 +51,7 @@ export default function ProfileEdit() {
     
     // 2. Příprava dat pro update
     const updateData: any = {
-      data: { parent_role: sex }
+      data: { parent_role: sex, gender: sex === "tatinek" ? "dad" : "mum" }
     };
 
     // Pokud uživatel vyplnil nové heslo, přidáme ho do updatu

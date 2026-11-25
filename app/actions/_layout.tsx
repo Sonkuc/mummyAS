@@ -1,26 +1,8 @@
-import { ChildProvider } from "@/contexts/ChildContext";
-import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import "react-native-reanimated";
 
-import { useColorScheme } from "@/hooks/useColorScheme";
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  if (!loaded) { return null; }
-
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <ChildProvider>
-        <Stack screenOptions={{ headerShown: false }}/>
-        <StatusBar style="auto" />
-      </ChildProvider>
-    </ThemeProvider>
-  );
+// Data dětí poskytuje jediný ChildProvider v kořenovém app/_layout.tsx.
+// (Dřívější vnořený ChildProvider tady vytvářel druhou, oddělenou kopii dat,
+// takže změny v sekci „akce“ nebyly vidět na úvodní obrazovce a naopak.)
+export default function ActionsLayout() {
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

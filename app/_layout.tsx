@@ -31,7 +31,7 @@ export default function RootLayout() {
 
 // Vidí na useAuth() a useChild()
 function RootLayoutNav() {
-  const { session, isLoading: isAuthLoading } = useAuth(); 
+  const { session, isGuest, isLoading: isAuthLoading } = useAuth(); 
   const segments = useSegments(); 
   const router = useRouter();
   const { isDataLoaded } = useChild();
@@ -52,15 +52,17 @@ function RootLayoutNav() {
     // Používáme setImmediate nebo setTimeout 0, aby se operace provedla 
     // až po dokončení renderovacího cyklu - bezpečnější pro router.replace
     const timeout = setTimeout(() => {
-      if (!session && !inAuthGroup) {
+      const isLoggedIn = !!session || isGuest;
+      if (!isLoggedIn && !inAuthGroup) {
         router.replace('/auth/login');
       } else if (session && inAuthGroup) {
+        // (host ve zkušebním režimu smí na přihlášení/registraci – tím režim opouští)
         router.replace('/home');
       }
     }, 0);
 
     return () => clearTimeout(timeout);
-  }, [session, segments, isAuthLoading, isReady]);
+  }, [session, isGuest, segments, isAuthLoading, isReady]);
 
   // Pokud se vše ještě načítá, zobrazíme splash screen (logo)
   if (isAuthLoading || !isReady) {

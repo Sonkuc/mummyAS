@@ -1,6 +1,7 @@
 import EditPencil from "@/components/EditPencil";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
+import { getParentRole } from "@/components/HelperFunctions";
 import { getPhotoSource } from "@/components/PhotoFunctions";
 import { COLORS } from "@/constants/MyColors";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,13 +15,25 @@ import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 export default function Home() {
   const router = useRouter();
   const { allChildren, setSelectedChildId, isDataLoaded } = useChild();
-  const { user } = useAuth(); 
+  const { user, isGuest, exitGuest } = useAuth(); 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
-  const parentRole = user?.user_metadata?.parent_role || "maminka";
+  const parentRole = getParentRole(user?.user_metadata);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
     setLogoutModalVisible(false);
+    if (isGuest) {
+      // Ukončení zkušebního režimu – data v paměti se zahodí
+      router.replace("/auth/login");
+      exitGuest();
+      return;
+    }
+    await supabase.auth.signOut();
+  };
+
+  const handleGuestRegister = () => {
+    setLogoutModalVisible(false);
+    router.replace("/auth/register");
+    exitGuest();
   };
   
   const getCardColor = (gender: string) =>
@@ -59,6 +72,14 @@ export default function Home() {
         </View>
         <Image source={require("@/assets/images/logo2.png")} style={styles.logo} />
         </View>
+      {isGuest && (
+        <View style={styles.guestBanner}>
+          <Text style={styles.guestBannerText}>Zkušební režim, data se neukládají</Text>
+          <Pressable onPress={handleGuestRegister}>
+            <Text style={styles.guestBannerLink}>Zaregistrovat se</Text>
+          </Pressable>
+        </View>
+      )}
       <View style={styles.bottom}>
         <MyButton title="Přidat dítko" onPress={() => router.push("/child-add")}/>  
       </View>
@@ -112,6 +133,7 @@ export default function Home() {
           onPress={() => setLogoutModalVisible(false)}
         >
           <View style={styles.logoutModalContent}>
+            {!isGuest && (
             <View style={styles.absoluteEdit}>
           <EditPencil
             color={COLORS.primary}
@@ -125,15 +147,21 @@ export default function Home() {
             }}
           />
         </View>
+            )}
 
-        <Text style={styles.logoutTitle}>Uživatel</Text>
-        <Text style={styles.userEmail}>{user?.email}</Text>
+        <Text style={styles.logoutTitle}>{isGuest ? "Zkušební režim" : "Uživatel"}</Text>
+        <Text style={styles.userEmail}>
+          {isGuest ? "Data se neukládají a po odchodu zmizí." : user?.email}
+        </Text>
+        {isGuest && (
+          <MyButton title="Zaregistrovat se" onPress={handleGuestRegister} />
+        )}
             
             <View style={styles.divider} />
 
             <Pressable style={styles.logoutButton} onPress={handleLogout}>
               <LogOut color={"#ff4444"} size={20} />
-              <Text style={styles.logoutText}>Odhlásit se</Text>
+              <Text style={styles.logoutText}>{isGuest ? "Ukončit zkušební režim" : "Odhlásit se"}</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -247,6 +275,27 @@ const styles = StyleSheet.create({
     color: 'red',
     fontSize: 16,
     fontWeight: '600',
+  },
+  guestBanner: {
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderColor: COLORS.primary,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginHorizontal: 20,
+  },
+  guestBannerText: {
+    color: "#666",
+    fontSize: 14,
+  },
+  guestBannerLink: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: "bold",
+    marginTop: 4,
+    textDecorationLine: "underline",
   },
   absoluteEdit: {
     position: 'absolute',

@@ -3,7 +3,7 @@ import { Redirect } from "expo-router";
 import { Image, StyleSheet, View } from "react-native";
 
 export default function Index() {
-  const { session, isLoading } = useAuth();
+  const { session, isGuest, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -16,7 +16,7 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={session ? "/home" : "/auth/login"} />;
+  return <Redirect href={session || isGuest ? "/home" : "/auth/login"} />;
 }
 
 const styles = StyleSheet.create({

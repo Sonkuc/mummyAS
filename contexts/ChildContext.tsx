@@ -3,6 +3,8 @@ import { BASE_URL } from "@/components/storage/api";
 import * as utils from "@/components/storage/context/syncService";
 import { BreastfeedingSyncDay, Child, ChildUpdate, DiaryCreate, DiaryUpdate, FoodRecord, Milestone, SleepSyncDay, WeightHeight, Word } from "@/components/storage/interfaces";
 import { useAuth } from "@/contexts/AuthContext";
+import { createDemoChildren } from "@/lib/demoData";
+import { isGuestMode } from "@/lib/guest";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -37,7 +39,7 @@ type ChildContextType = {
 const ChildContext = createContext<ChildContextType | undefined>(undefined);
 
 export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
-  const { session, user } = useAuth();
+  const { session, user, isGuest } = useAuth();
   const [allChildren, setAllChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildIdState] = useState<string | null>(null);
   const syncInProgress = useRef(false);
@@ -48,13 +50,25 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     allChildrenRef.current = allChildren;
   }, [allChildren]);
 
+  // Zkušební režim: ukázková data se nahrají jen jednou při vstupu do režimu
+  const guestSeeded = useRef(false);
   useEffect(() => {
+    if (isGuest) {
+      if (guestSeeded.current) return;
+      guestSeeded.current = true;
+      // Zkušební režim: ukázková data jen v paměti
+      setAllChildren(createDemoChildren());
+      setSelectedChildIdState(null);
+      setIsDataLoaded(true);
+      return;
+    }
+    guestSeeded.current = false;
     if (!session) {
       setAllChildren([]);
       setSelectedChildIdState(null);
       AsyncStorage.removeItem("selectedChildId");
     }
-  }, [session]);
+  }, [session, isGuest]);
 
   const selectedChild = useMemo(() => {
     return allChildren.find(c => c.id === selectedChildId) || null;
@@ -62,6 +76,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Pomocník pro zápis do cache
   const updateLocalCache = async (newList: Child[]) => {
+    if (isGuestMode()) return; // zkušební režim: nic neukládat
     await AsyncStorage.setItem("children", JSON.stringify(newList));
   };
 
@@ -174,6 +189,10 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, processAllDeletions]);
 
   const reloadChildren = useCallback(async () => {
+    if (isGuestMode()) {
+      setIsDataLoaded(true);
+      return;
+    }
     if (!user?.id) return;
   
     setIsDataLoaded(false);

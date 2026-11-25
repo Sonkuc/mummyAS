@@ -10,8 +10,8 @@ import Subtitle from "@/components/Subtitle";
 import Title from "@/components/Title";
 import ValidatedDateInput from "@/components/ValidDateInput";
 import { COLORS } from "@/constants/MyColors";
+import { useAuth } from "@/contexts/AuthContext";
 import { useChild } from "@/contexts/ChildContext";
-import { supabase } from "@/lib/supabase";
 import { File, Paths } from 'expo-file-system';
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -25,6 +25,7 @@ export default function ChildAdd() {
   const [birthDate, setBirthDate] = useState<Date>(new Date());
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const { updateChild, setSelectedChildId, allChildren } = useChild();
+  const { user, isGuest } = useAuth();
 
   const childId = useMemo(() => uuid.v4() as string, []);
 
@@ -39,11 +40,10 @@ export default function ChildAdd() {
       return;
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
+    // Ve zkušebním režimu není účet – dítě se drží jen v paměti
+    const userId = isGuest ? "guest" : user?.id;
+    if (!userId) {
       alert("Chyba: Pro přidání dítěte musíš být přihlášená.");
-      console.error("User session error:", userError);
       return;
     }
 
@@ -80,7 +80,7 @@ export default function ChildAdd() {
 
     const newChildData: Child = {
       id: childId, // UUID
-      user_id: user.id, // UUID
+      user_id: userId, // UUID
       name: name.trim(),
       sex: sex,
       birthDate: formatDateLocal(birthDate), // YYYY-MM-DD

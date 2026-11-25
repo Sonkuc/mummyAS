@@ -51,7 +51,8 @@ export default function Register() {
       options: {
       // Uloží do user_metadata
       data: {
-        gender: sex, 
+        gender: sex,
+        parent_role: sex === "dad" ? "tatinek" : "maminka",
       },
       // Na webu vede odkaz z potvrzovacího e-mailu zpět na tuto aplikaci
       ...(Platform.OS === "web" ? { emailRedirectTo: window.location.origin } : {}),

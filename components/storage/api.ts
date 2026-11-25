@@ -1,6 +1,7 @@
 // API functions for backend integration using fetch
 // Assumes backend is running on http://localhost:8000 (adjust if needed, e.g., for mobile use your machine's IP)
 
+import { GuestModeError, isGuestMode } from "@/lib/guest";
 import { supabase } from "@/lib/supabase";
 import { BreastfeedingRecord, BreastfeedingSyncDay, Child, ChildUpdate, Diary, DiaryCreate, DiaryUpdate, FoodRecord, FoodRecordCreate, Milestone, SleepRecord, SleepSyncDay, TeethRecord, WeightHeight, Word, WordEntry, WordUpdatePayload } from "./interfaces";
 
@@ -11,6 +12,8 @@ export const BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://192.168.31.1
 // fetch, který ke každému požadavku přidá přihlašovací token Supabase
 // (Authorization: Bearer ...). Backend podle něj ověřuje uživatele.
 const authFetch = async (input: string, init: RequestInit = {}): Promise<Response> => {
+  // Ve zkušebním režimu se backend nikdy nevolá
+  if (isGuestMode()) throw new GuestModeError();
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   const headers = new Headers(init.headers);

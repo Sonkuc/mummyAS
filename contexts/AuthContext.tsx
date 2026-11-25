@@ -1,22 +1,46 @@
 import * as api from "@/components/storage/api";
+import { setGuestMode } from "@/lib/guest";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Session, User } from '@supabase/supabase-js';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 type AuthContextType = {
   session: Session | null;
   user: User | null;
   userProfile: any | null;
   isLoading: boolean;
+  /** Zkušební režim bez účtu – data jen v paměti, nic se neukládá. */
+  isGuest: boolean;
+  startGuest: () => void;
+  exitGuest: () => void;
 };
 
-const AuthContext = createContext<AuthContextType>({ session: null, user: null, userProfile: null, isLoading: true });
+const AuthContext = createContext<AuthContextType>({
+  session: null,
+  user: null,
+  userProfile: null,
+  isLoading: true,
+  isGuest: false,
+  startGuest: () => {},
+  exitGuest: () => {},
+});
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [isGuest, setIsGuest] = useState(false);
+
+  const startGuest = useCallback(() => {
+    setGuestMode(true);
+    setIsGuest(true);
+  }, []);
+
+  const exitGuest = useCallback(() => {
+    setGuestMode(false);
+    setIsGuest(false);
+  }, []);
 
   useEffect(() => {
     // Získání session při startu
@@ -30,6 +54,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // 1. Okamžitá aktualizace session v RAM
       setSession(session);
+
+      // Skutečné přihlášení ukončí zkušební režim
+      if (session) {
+        setGuestMode(false);
+        setIsGuest(false);
+      }
 
       if (_event === 'SIGNED_OUT') {
         // 2. Vyčištění citlivých dat při odhlášení
@@ -84,7 +114,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, userProfile, isLoading }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, userProfile, isLoading, isGuest, startGuest, exitGuest }}>
       {children}
     </AuthContext.Provider>
   );
