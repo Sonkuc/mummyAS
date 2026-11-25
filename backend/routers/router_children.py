@@ -34,9 +34,12 @@ def create_child(
     x_user_id: str = Depends(get_current_user_id)
 ):
     if child_data.id:
-        return cc.update_child(session, str(child_data.id), child_data, x_user_id)
-    
-    return cc.create_child(session, child_data, x_user_id)
+        child = cc.update_child(session, str(child_data.id), child_data, x_user_id)
+    else:
+        child = cc.create_child(session, child_data, x_user_id)
+    if not child:
+        raise HTTPException(status_code=409, detail="Dítě s tímto ID nelze uložit")
+    return child
 
 @router.put("/children/{child_id}", response_model=ChildRead)
 def update_child(
@@ -47,7 +50,7 @@ def update_child(
 ):
     child = cc.update_child(session, child_id, child_data, x_user_id)
     if not child:
-        raise HTTPException(status_code=400, detail="Update failed")
+        raise HTTPException(status_code=409, detail="Dítě s tímto ID nelze uložit")
     return child
 
 @router.delete("/children/{child_id}")

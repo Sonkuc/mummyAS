@@ -1,6 +1,7 @@
 from sqlmodel import Session, select
 from typing import List, Optional
 from ..models import Child, ChildCreate, ChildUpdate, Speaking
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload 
 
 def create_child(session: Session, child_data: ChildCreate, user_id: str) -> Child:
@@ -11,7 +12,7 @@ def create_child(session: Session, child_data: ChildCreate, user_id: str) -> Chi
     session.add(db_child)
     try:
         session.commit()
-    except Exception:
+    except IntegrityError:
         session.rollback()
         # Pokud už ID existuje, zkusíme update místo failu
         return update_child(session, str(db_child.id), child_data, user_id)
@@ -72,7 +73,12 @@ def update_child(session: Session, child_id: str, child_data: ChildUpdate, user_
         db_child.user_id = user_id # Pojistka vlastnictví
         session.add(db_child)
 
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        # ID už existuje, ale patří jinému uživateli – nic neměníme
+        session.rollback()
+        return None
     session.refresh(db_child)
     return get_child(session, db_child.id, user_id)
 
