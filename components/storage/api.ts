@@ -21,6 +21,13 @@ const authFetch = async (input: string, init: RequestInit = {}): Promise<Respons
   return fetch(input, { ...init, headers });
 };
 
+// Query parametry pro stav časovače (kojení / spánek)
+const timerQuery = (timer?: { mode: string; start: string } | null) => {
+  if (timer === null) return "?clear_timer=true";
+  if (!timer) return "";
+  return `?timer_mode=${encodeURIComponent(timer.mode)}&timer_start=${encodeURIComponent(timer.start)}`;
+};
+
 // ============ USER API FUNCTIONS ============
 
 export const ensureUserProfile = async (userId: string, email: string) => {
@@ -215,11 +222,12 @@ export const updateBreastfeedingDay = async (
   date: string, 
   bfData: BreastfeedingSyncDay, // Pole objektů {time, state, note}
   userId: string,
-  clearTimer: boolean = false
+  // null = smazat časovač, objekt = nastavit (start v UTC), undefined = neměnit
+  timer?: { mode: "start" | "stop"; start: string } | null
 ): Promise<{ records: BreastfeedingRecord[], currentModeFeed: { mode: "start" | "stop"; start: string } | null }> => {
   
   // Přidáme query parametr ?clear_timer=true v případě resetu
-  const url = `${BASE_URL}/children/${childId}/breastfeeding/day/${date}${clearTimer ? '?clear_timer=true' : ''}`;
+  const url = `${BASE_URL}/children/${childId}/breastfeeding/day/${date}${timerQuery(timer)}`;
   
   const response = await authFetch(url, {
     method: 'PUT',
@@ -255,10 +263,11 @@ export const updateSleepDay = async (
   date: string, 
   sleepData: SleepSyncDay, 
   userId: string,
-  clearTimer: boolean = false
+  // null = smazat časovač, objekt = nastavit (start v UTC), undefined = neměnit
+  timer?: { mode: "awake" | "sleep"; start: string } | null
 ): Promise<{ records: SleepRecord[], currentModeSleep: { mode: "awake" | "sleep"; start: string } | null }> => {
   
-  const url = `${BASE_URL}/children/${childId}/sleep/day/${date}${clearTimer ? '?clear_timer=true' : ''}`;
+  const url = `${BASE_URL}/children/${childId}/sleep/day/${date}${timerQuery(timer)}`;
 
   const response = await authFetch(url, {
     method: 'PUT',

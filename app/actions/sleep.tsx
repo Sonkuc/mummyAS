@@ -353,12 +353,12 @@ export default function Sleep() {
                 <View style={{ marginTop: 6, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 4 }}>
                   {nightSleepMinutes > 0 && (
                     <Text style={styles.totalText}>
-                      Denní spánek: {Math.floor(dayOnlyMinutes / 60)}h {dayOnlyMinutes % 60}m
+                      Denní spánek: {formatDuration(dayOnlyMinutes)}
                     </Text>
                   )}
                   
                   <Text style={[styles.totalText, { fontWeight: 'bold' }]}>
-                    Celkem spánku: {Math.floor(totalSleepMinutes / 60)}h {totalSleepMinutes % 60}m
+                    Celkem spánku: {formatDuration(totalSleepMinutes)}
                   </Text>
                 </View>
               </GroupSection>

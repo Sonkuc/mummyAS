@@ -1,3 +1,4 @@
+import { formatDuration } from "@/components/HelperFunctions";
 import { COLORS } from "@/constants/MyColors";
 import { Dimensions, Text } from "react-native";
 import { BarChart as BarChartComponent } from "react-native-chart-kit";
@@ -41,13 +42,7 @@ export function MyBarChart({ title, data, dayMode = "day" }: Props) {
             const totalHours = parseFloat(value);
             if (isNaN(totalHours) || totalHours === 0) return "0 h";
 
-            const h = Math.floor(totalHours);
-            const m = Math.round((totalHours - h) * 60);
-
-            // Formátování
-            if (m === 0) return `${h}h`;
-            if (h === 0) return `${m}m`;
-            return `${h}h ${m}m`;
+            return formatDuration(Math.round(totalHours * 60));
           },
         }}
         style={{

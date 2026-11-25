@@ -28,7 +28,7 @@ export const validateDate = (
 ): string | null => {
   // 1. Základní kontrola formátu
   if (!isValidDateString(date)) {
-    return "Zadej platné datum ve formátu RRRR-MM-DD.";
+    return "Zadej platné datum ve formátu DD.MM.RRRR.";
   }
 
   // Převod na Date objekty pro spolehlivé porovnání

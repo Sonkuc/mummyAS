@@ -99,7 +99,8 @@ export default function Breastfeeding() {
     const minutes = String(now.getMinutes()).padStart(2, "0");
     const time = `${hours}:${minutes}`;
     const date = formatDateLocal(now);
-    const localISOStart = `${date}T${time}:00.000Z`;
+    // Začátek časovače jako skutečný UTC (stejně jako u spánku)
+    const localISOStart = new Date(`${date}T${time}:00`).toISOString();
 
     const newRec: DisplayBreastfeedingRecord = {
       id: `local-${Date.now()}`,
@@ -166,8 +167,7 @@ export default function Breastfeeding() {
         startTimeMs = null;
       } else if (selectedChild.currentModeFeed && selectedChild.currentModeFeed.start) {
         activeMode = selectedChild.currentModeFeed.mode as "start" | "stop";
-        const cleanStart = selectedChild.currentModeFeed.start.replace("Z", "");
-        startTimeMs = Date.parse(cleanStart);
+        startTimeMs = Date.parse(selectedChild.currentModeFeed.start);
       } else if (selectedChild.breastfeedingRecords.length > 0) {
         const sortedRecs = [...selectedChild.breastfeedingRecords].sort(
           (a, b) => toTimestamp(a.date, a.time) - toTimestamp(b.date, b.time)
@@ -417,13 +417,7 @@ export default function Breastfeeding() {
               </View>
             ))}
             <Text style={styles.totalText}>
-              Celkový čas kojení: {
-                totalFeedMinutes === 0 
-                  ? "0 m" 
-                  : totalFeedMinutes % 60 === 0
-                    ? `${Math.floor(totalFeedMinutes / 60)} h`
-                    : `${Math.floor(totalFeedMinutes / 60)} h ${totalFeedMinutes % 60} m`
-              }
+              Celkový čas kojení: {formatDuration(totalFeedMinutes)}
             </Text>
           </GroupSection>
         ))}

@@ -14,34 +14,47 @@ type Props = {
   originalValue?: string;
 };
 
+// Hodnota (value / onChange) je vždy ISO „YYYY-MM-DD“, uživateli se ale
+// zobrazuje a píše v českém formátu „DD.MM.YYYY“.
+const isoToCzech = (iso: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : iso || "";
+};
+const czechToIso = (cz: string) => {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(cz);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : cz;
+};
+
 export default function ValidatedDateInput({ value, onChange, ...props }: Props) {
-  const [internal, setInternal] = useState(value);
+  const [internal, setInternal] = useState(isoToCzech(value));
 
   // KLÍČOVÉ: Synchronizace, když se datum změní v DateSelectoru
   useEffect(() => {
-    if (value && value !== internal) {
-      setInternal(value);
+    if (value && value !== czechToIso(internal)) {
+      setInternal(isoToCzech(value));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   const handleDateInput = (txt: string) => {
     let t = txt.replace(/[^\d]/g, "");
     if (t.length > 8) t = t.slice(0, 8);
 
+    // DDMMYYYY -> DD.MM.YYYY
     let formatted = t;
-    if (t.length > 4) formatted = t.slice(0, 4) + "-" + t.slice(4);
-    if (t.length > 6) formatted = formatted.slice(0, 7) + "-" + t.slice(6);
+    if (t.length > 2) formatted = t.slice(0, 2) + "." + t.slice(2);
+    if (t.length > 4) formatted = formatted.slice(0, 5) + "." + t.slice(4);
 
     setInternal(formatted);
-    
-    // Validní ISO má přesně 10 znaků (YYYY-MM-DD)
+
+    // Kompletní datum má přesně 10 znaků (DD.MM.YYYY)
     if (formatted.length === 10) {
-      onChange(formatted);
+      onChange(czechToIso(formatted));
     }
   };
 
   const handleBlur = () => {
-    const error = validateDate(internal, props.birthISO ?? null, props.allowPastDates);
+    const error = validateDate(czechToIso(internal), props.birthISO ?? null, props.allowPastDates);
     if (error) {
       showAlert("Chybné datum", error);
       // Fallback logika
@@ -49,7 +62,7 @@ export default function ValidatedDateInput({ value, onChange, ...props }: Props)
         ? props.originalValue 
         : formatDateLocal(new Date());
       
-      setInternal(fallback);
+      setInternal(isoToCzech(fallback));
       onChange(fallback);
     }
   };
@@ -61,6 +74,7 @@ export default function ValidatedDateInput({ value, onChange, ...props }: Props)
       onChangeText={handleDateInput}
       onBlur={handleBlur}
       keyboardType="numeric"
+      placeholder={props.placeholder ?? "DD.MM.RRRR"}
     />
   );
 }

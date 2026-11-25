@@ -99,7 +99,8 @@ export default function SleepAdd() {
       return;
     }
 
-    const norm = normalizeTime(newTime);
+    // Výběr času ukazuje aktuální čas, i když ho uživatel nezměnil
+    const norm = normalizeTime(newTime || getCleanTime());
     if (!norm) {
       showAlert("Chybný čas", "Zadejte čas ve formátu HH:MM.");
       return;

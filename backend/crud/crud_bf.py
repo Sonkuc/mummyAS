@@ -1,6 +1,5 @@
 from sqlmodel import Session, select, delete
 from typing import List, Optional, Tuple
-from datetime import datetime
 from ..models import (
     BreastfeedingRecord,
     BreastfeedingRecordCreate,
@@ -66,25 +65,12 @@ def sync_bf_day(
         if has_explicit_mode:
             child.currentModeFeed = explicit_mode
             updated_mode = explicit_mode
-        # AUTOMATICKÝ DOPOCET (fallback pokud frontend nic neposlal)
-        elif sorted_data:
-            last_record = sorted_data[-1]
-            try:
-                dt_str = f"{date} {last_record.time}"
-                dt_obj = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
-                iso_start = dt_obj.strftime("%Y-%m-%dT%H:%M:00") + "Z"
-            except ValueError:
-                iso_start = datetime.utcnow().replace(second=0, microsecond=0).isoformat() + "Z"
-                
-            updated_mode = {
-                "mode": last_record.state.value if hasattr(last_record.state, 'value') else last_record.state,
-                "start": iso_start
-            }
-            child.currentModeFeed = updated_mode
         else:
-            child.currentModeFeed = None
-            updated_mode = None
-            
+            # Frontend časovač neposlal (např. dávková synchronizace offline dat) –
+            # necháme ho beze změny. Čas začátku posílá vždy frontend v UTC, protože
+            # backend nezná časové pásmo uživatele.
+            updated_mode = child.currentModeFeed
+
         session.add(child)
 
     session.commit()

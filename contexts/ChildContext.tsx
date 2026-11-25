@@ -38,6 +38,16 @@ type ChildContextType = {
 
 const ChildContext = createContext<ChildContextType | undefined>(undefined);
 
+/**
+ * Stav časovače podle nejnovějšího záznamu (datum + čas v místním čase).
+ * Start se ukládá jako skutečný UTC (ISO 8601 se „Z“).
+ */
+function timerFromLatest<S extends string>(records: { date: string; time: string; state: S }[]) {
+  if (records.length === 0) return null;
+  const latest = [...records].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[records.length - 1];
+  return { mode: latest.state, start: new Date(`${latest.date}T${latest.time}:00`).toISOString() };
+}
+
 export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
   const { session, user, isGuest } = useAuth();
   const [allChildren, setAllChildren] = useState<Child[]>([]);
@@ -377,22 +387,15 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
             id: item.id || `local-${Date.now()}-${Math.random()}` // Generování ID pokud chybí
           }));
 
-          // Pokud volající nepředal explicitní stav časovače, dopočítáme ho
-          // ze stejné logiky jako backend: poslední záznam dne určuje aktivní mód.
-          let resolvedModeFeed = modeFeed;
-          if (modeFeed === undefined) {
-            if (bfData.length > 0) {
-              const sortedData = [...bfData].sort((a, b) => a.time.localeCompare(b.time));
-              const lastRec = sortedData[sortedData.length - 1];
-              resolvedModeFeed = { mode: lastRec.state, start: new Date(`${date}T${lastRec.time}:00`).toISOString() };
-            } else {
-              resolvedModeFeed = null;
-            }
-          }
+          const allRecords = [...otherDaysRecords, ...recordsWithChildId];
+
+          // Pokud volající nepředal explicitní stav časovače (např. editace dne),
+          // určí ho nejnovější záznam ze všech dní.
+          const resolvedModeFeed = modeFeed !== undefined ? modeFeed : timerFromLatest(allRecords);
 
           return {
             ...child,
-            breastfeedingRecords: [...otherDaysRecords, ...recordsWithChildId],
+            breastfeedingRecords: allRecords,
             currentModeFeed: resolvedModeFeed,
           };
         });
@@ -404,8 +407,9 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
 
       // 2. Odeslání na API
       try {
-        const shouldClearTimer = currentModeFeed === null;
-        const apiResponse = await api.updateBreastfeedingDay(childId, date, bfData, user!.id, shouldClearTimer);
+        // Časovač posíláme vždy explicitně se startem v UTC (backend nezná časové pásmo)
+        const timerToSend = provisionalList.find(c => c.id === childId)?.currentModeFeed ?? null;
+        const apiResponse = await api.updateBreastfeedingDay(childId, date, bfData, user!.id, timerToSend);
 
         const finalList = provisionalList.map((child) => {
           if (child.id !== childId) return child;
@@ -413,11 +417,9 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
 
           // Server je zdroj pravdy; provisional (resolvedModeFeed) je jen fallback,
           // kdyby z nějakého důvodu apiResponse neobsahovala currentModeFeed.
-          const finalModeFeed = currentModeFeed !== undefined
-            ? currentModeFeed
-            : apiResponse.currentModeFeed !== undefined
-              ? apiResponse.currentModeFeed
-              : child.currentModeFeed;
+          const finalModeFeed = apiResponse.currentModeFeed !== undefined
+            ? apiResponse.currentModeFeed
+            : child.currentModeFeed;
 
           return {
             ...child,
@@ -462,20 +464,12 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
             id: item.id || `local-${Date.now()}-${Math.random()}`
           }));
 
-          let resolvedModeSleep = modeSleep;
-          if (modeSleep === undefined) {
-            if (sleepData.length > 0) {
-              const sortedData = [...sleepData].sort((a, b) => a.time.localeCompare(b.time));
-              const lastRec = sortedData[sortedData.length - 1];
-              resolvedModeSleep = { mode: lastRec.state, start: new Date(`${date}T${lastRec.time}:00`).toISOString() };
-            } else {
-              resolvedModeSleep = null;
-            }
-          }
+          const allRecords = [...otherDaysRecords, ...recordsWithChildId];
+          const resolvedModeSleep = modeSleep !== undefined ? modeSleep : timerFromLatest(allRecords);
 
           return {
             ...child,
-            sleepRecords: [...otherDaysRecords, ...recordsWithChildId],
+            sleepRecords: allRecords,
             currentModeSleep: resolvedModeSleep,
           };
         });
@@ -485,18 +479,17 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       await updateLocalCache(provisionalList);
 
       try {
-        const shouldClearTimer = currentModeSleep === null;
-        const apiResponse = await api.updateSleepDay(childId, date, sleepData, user!.id, shouldClearTimer);
+        // Časovač posíláme vždy explicitně se startem v UTC (backend nezná časové pásmo)
+        const timerToSend = provisionalList.find(c => c.id === childId)?.currentModeSleep ?? null;
+        const apiResponse = await api.updateSleepDay(childId, date, sleepData, user!.id, timerToSend);
 
         const finalList = provisionalList.map((child) => {
           if (child.id !== childId) return child;
           const otherDaysRecords = (child.sleepRecords || []).filter(r => r.date !== date);
 
-          const finalModeSleep = currentModeSleep !== undefined
-            ? currentModeSleep          // explicit null (reset) or explicit object (new record) — trust the client
-            : apiResponse.currentModeSleep !== undefined
-              ? apiResponse.currentModeSleep
-              : child.currentModeSleep;
+          const finalModeSleep = apiResponse.currentModeSleep !== undefined
+            ? apiResponse.currentModeSleep
+            : child.currentModeSleep;
 
           return {
             ...child,

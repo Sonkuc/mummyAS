@@ -1,7 +1,7 @@
 import { showAlert } from "@/components/showAlert";
 import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
-import { normalizeTime } from "@/components/HelperFunctions";
+import { normalizeTime, getCleanTime } from "@/components/HelperFunctions";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import { DisplaySleepRecord, SleepRecord, SleepSyncDay } from "@/components/storage/interfaces";
@@ -92,7 +92,8 @@ export default function SleepEdit() {
   };
 
   const addRecord = () => {
-    const norm = normalizeTime(newTime);
+    // Výběr času ukazuje aktuální čas, i když ho uživatel nezměnil
+    const norm = normalizeTime(newTime || getCleanTime());
     if (!norm) {
       showAlert("Chybný čas", "Zadejte čas ve formátu HH:MM.");
       return;

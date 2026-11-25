@@ -6,6 +6,7 @@ from datetime import datetime
 from ..crud import crud_bf as cbf
 from ..models import Child, BreastfeedingRecordCreate, BreastfeedingRecord, BreastfeedingRecordRead, BreastfeedingDaySummary, BreastfeedingSyncResponse
 from ..auth import get_current_user_id
+from ..timer import parse_timer
 from ..db import get_session
 
 router = APIRouter()
@@ -48,19 +49,22 @@ def update_bf_day(
     date: str, 
     bf_data: List[BreastfeedingRecordCreate],
     clear_timer: bool = Query(False), 
+    timer_mode: Optional[str] = Query(None),
+    timer_start: Optional[str] = Query(None),
     session: Session = Depends(get_session),
     x_user_id: str = Depends(get_current_user_id)
 ):
     """Synchronizuje záznamy pro celý den a vrací je spolu s novým stavem časovače."""
     verify_child_ownership(session, child_id, x_user_id)
     
-    if clear_timer:
-        # Frontend si vyžádal smazání časovače
+    explicit_timer = parse_timer(timer_mode, timer_start, ("start", "stop"))
+    if clear_timer or explicit_timer is not None:
+        # Frontend poslal přesný stav časovače (start v UTC), nebo si vyžádal jeho smazání
         records, current_mode = cbf.sync_bf_day(
-            session, child_id, date, bf_data, explicit_mode=None, has_explicit_mode=True
+            session, child_id, date, bf_data, explicit_mode=explicit_timer, has_explicit_mode=True
         )
     else:
-        # Klasický sync, necháme backend běžet postaru (případně dopočítat automaticky)
+        # Starší klienti: backend dopočítá časovač z posledního záznamu dne
         records, current_mode = cbf.sync_bf_day(
             session, child_id, date, bf_data, has_explicit_mode=False
         )
