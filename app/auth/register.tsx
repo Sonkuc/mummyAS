@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
@@ -8,7 +9,7 @@ import { COLORS } from "@/constants/MyColors";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Register() {
   const router = useRouter();
@@ -22,22 +23,22 @@ export default function Register() {
   const handleRegister = async () => {
     // 1. Základní validace
     if (!email.trim() || !password || !confirmPassword) {
-      Alert.alert("Chyba", "Vyplňte prosím všechna pole.");
+      showAlert("Chyba", "Vyplňte prosím všechna pole.");
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Chyba", "Hesla se neshodují.");
+      showAlert("Chyba", "Hesla se neshodují.");
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert("Chyba", "Heslo musí mít alespoň 6 znaků.");
+      showAlert("Chyba", "Heslo musí mít alespoň 6 znaků.");
       return;
     }
 
     if (!sex) {
-      Alert.alert("Chyba", "Vyberte prosím, zda jste maminka nebo tatínek.");
+      showAlert("Chyba", "Vyberte prosím, zda jste maminka nebo tatínek.");
       return;
     }
 
@@ -58,7 +59,7 @@ export default function Register() {
     setLoading(false);
 
     if (error) {
-      Alert.alert("Chyba registrace", error.message);
+      showAlert("Chyba registrace", error.message);
       return;
     }
 
@@ -67,7 +68,7 @@ export default function Register() {
       // Pokud je automatické potvrzení zapnuto, uživatel je rovnou přihlášen
       router.replace("/home");
     } else {
-      Alert.alert(
+      showAlert(
         "Registrace úspěšná", 
         "Zkontrolujte svůj e-mail pro potvrzení účtu.",
         [{ text: "OK", onPress: () => router.replace("/auth/login") }]

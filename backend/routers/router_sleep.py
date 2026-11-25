@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlmodel import Session, select
 
 from ..crud import crud_sleep as cs
-from ..models import Child, SleepRecord, SleepRecordCreate, SleepRecordRead, SleepDaySummary
+from ..models import Child, SleepRecord, SleepRecordCreate, SleepRecordRead, SleepDaySummary, SleepSyncResponse
 from ..db import get_session
 
 router = APIRouter()
@@ -99,17 +99,31 @@ def get_sleep(
         raise HTTPException(status_code=404, detail="Sleep record not found")
     return rec
 
-@router.put("/children/{child_id}/sleep/day/{date}", response_model=List[SleepRecordRead])
+@router.put("/children/{child_id}/sleep/day/{date}", response_model=SleepSyncResponse)
 def update_sleep_day(
     child_id: str, 
     date: str, 
-    sleep_data: List[SleepRecordCreate], 
+    sleep_data: List[SleepRecordCreate],
+    clear_timer: bool = Query(False),
     session: Session = Depends(get_session),
     x_user_id: str = Header(...)
 ):
-    """Aktualizace celého dne spánku (Upsert logika)."""
+    """Aktualizace celého dne spánku a synchronizace stavu časovače."""
     verify_child_ownership(session, child_id, x_user_id)
-    return cs.sync_sleep_day(session, child_id, date, sleep_data)
+    
+    if clear_timer:
+        records, current_mode = cs.sync_sleep_day(
+            session, child_id, date, sleep_data, explicit_mode=None, has_explicit_mode=True
+        )
+    else:
+        records, current_mode = cs.sync_sleep_day(
+            session, child_id, date, sleep_data, has_explicit_mode=False
+        )
+    
+    return {
+        "records": records,
+        "currentModeSleep": current_mode
+    }
 
 @router.delete("/children/{child_id}/sleep/{sleep_id}")
 def delete_sleep(

@@ -1,9 +1,12 @@
 export const formatDuration = (minutes: number) => {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    if (h > 0) return `${h} h ${m} min`;
-    return `${m} min`;
-  };
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0) {
+    if (m === 0) return `${h} h`;
+    return `${h} h ${m} min`;
+  }
+  return `${m} min`;
+};
 
 export const toTimestamp = (dateStr: string, timeStr: string) => {
     let year = 0, month = 0, day = 0;

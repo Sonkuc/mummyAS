@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
@@ -12,7 +13,7 @@ import { useChild } from "@/contexts/ChildContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 export default function WeightHeightAdd() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function WeightHeightAdd() {
     // Kontrola duplicity (ponecháme)
     const dateExists = selectedChild.wh?.some((entry: any) => entry.date === date);
     if (dateExists) {
-        Alert.alert("Chyba", "Záznam pro toto datum již existuje.");
+        showAlert("Chyba", "Záznam pro toto datum již existuje.");
         return;
     }
 
@@ -81,7 +82,7 @@ export default function WeightHeightAdd() {
 
         router.back();
     } catch (error) {
-        Alert.alert("Chyba", "Nepodařilo se uložit data.");
+        showAlert("Chyba", "Nepodařilo se uložit data.");
     } finally {
         setIsSaving(false);
     }

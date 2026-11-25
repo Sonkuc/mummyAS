@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import MyTextInput from "@/components/MyTextInput";
@@ -9,7 +10,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from 'expo-web-browser';
 import { Chrome, HelpCircle, X } from "lucide-react-native";
 import { useState } from "react";
-import { Alert, Image, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View } from "react-native";
+import { Image, Platform, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View } from "react-native";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -44,6 +45,17 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
   try {
+    if (Platform.OS === "web") {
+      // Web: klasické přesměrování na Google a zpět na tuto stránku.
+      // Supabase (detectSessionInUrl) si session z URL převezme sám.
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) throw error;
+      return;
+    }
+
     const redirectUri = "exp://192.168.31.152:8081/--/auth/callback";
     
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -104,9 +116,9 @@ export default function Login() {
     setLoading(false);
 
     if (error) {
-      Alert.alert("Chyba", error.message);
+      showAlert("Chyba", error.message);
     } else {
-      Alert.alert("E-mail odeslán", "Odkaz na reset hesla byl odeslán na váš e-mail.");
+      showAlert("E-mail odeslán", "Odkaz na reset hesla byl odeslán na váš e-mail.");
     }
   };
 

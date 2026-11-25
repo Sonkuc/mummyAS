@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
@@ -11,7 +12,7 @@ import ValidatedDateInput from "@/components/ValidDateInput";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
 
 export default function DiaryEdit() {
   const { diaryId } = useLocalSearchParams<{ diaryId: string }>();
@@ -43,7 +44,7 @@ export default function DiaryEdit() {
       isInitialized.current = true;
     } else if (!currentRecord && !isInitialized.current && selectedChild) {
       // Pokud záznam neexistuje (např. byl smazán v jiném okně)
-      Alert.alert("Chyba", "Záznam nebyl nalezen.");
+      showAlert("Chyba", "Záznam nebyl nalezen.");
       router.back();
     }
   }, [currentRecord, selectedChild]);
@@ -61,7 +62,7 @@ export default function DiaryEdit() {
       router.back();
     } catch (error) {
       console.error(error);
-      Alert.alert("Chyba", "Nepodařilo se uložit změny.");
+      showAlert("Chyba", "Nepodařilo se uložit změny.");
     }
   };
 

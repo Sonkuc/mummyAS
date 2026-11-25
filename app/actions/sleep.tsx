@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
@@ -13,7 +14,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { ChartColumn, Eye, EyeClosed } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Sleep() {
   const [records, setRecords] = useState<any[]>([]);
@@ -21,42 +22,53 @@ export default function Sleep() {
   const [mode, setMode] = useState<"awake" | "sleep" | "">("");
   const [modeStart, setModeStart] = useState<string | null>(null);
   const [minutesSinceMode, setMinutesSinceMode] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const router = useRouter();
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  const { selectedChildId, selectedChild, updateSleepDayRecord, isDataLoaded } = useChild();
 
   // RESET STAVU
   const clearState = async () => {
     if (!selectedChildId || !selectedChild) return;
     
-    const updatedChild = {
-      ...selectedChild,
-      currentModeSleep: null 
-    };
+    const today = new Date().toISOString().slice(0, 10);
+    const todaysCleanRecords = (selectedChild.sleepRecords || [])
+      .filter((r) => r.date === today)
+      .map(({ id, date: d, time: t, state: s, note: n }) => ({
+        id,
+        date: d,
+        time: t,
+        state: s,
+        note: n || undefined
+      }));
 
     try {
-      await updateChild(updatedChild);
+      setIsSubmitting(true);
+      // Předáváme null jako 4. parametr pro vynulování běžícího timeru na serveru/v cache
+      await updateSleepDayRecord(selectedChildId, today, todaysCleanRecords, null);
       
       // Reset lokálních stavů v komponentě
       setMode("");
       setModeStart(null);
       setMinutesSinceMode(null);
     } catch (error) {
-      Alert.alert("Chyba", "Nepodařilo se resetovat stav.");
+      showAlert("Chyba", "Nepodařilo se resetovat stav.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // NAČTENÍ DAT A SYNCHRONIZACE
   useFocusEffect(
     useCallback(() => {
-      if (selectedChild?.sleepRecords) {
-        setRecords(
-          selectedChild.sleepRecords.map((rec) => ({
-            ...rec,
-            label: rec.state === "sleep" ? "Spánek od:" : "Vzhůru od:",
-          }))
-        );
-      }
+      if (!isDataLoaded || !selectedChild || !selectedChild.sleepRecords) return;
+
+      setRecords(
+        selectedChild.sleepRecords.map((rec) => ({
+          ...rec,
+          label: rec.state === "sleep" ? "Spánek od:" : "Vzhůru od:",
+        }))
+      );
 
       if (selectedChild?.currentModeSleep) {
         const { mode, start } = selectedChild?.currentModeSleep;
@@ -64,8 +76,12 @@ export default function Sleep() {
         setModeStart(start);
         const diff = Math.floor((Date.now() - new Date(start).getTime()) / 60000);
         setMinutesSinceMode(diff);
+      } else {
+        setMode("");
+        setModeStart(null);
+        setMinutesSinceMode(null);
       }
-    }, [selectedChild])
+    }, [selectedChild, isDataLoaded])
   );
 
   // TICKER
@@ -84,13 +100,9 @@ export default function Sleep() {
 
   // POMOCNÁ FUNKCE PRO KONTROLU
   const getLastMode = (): "awake" | "sleep" | null => {
-    if (selectedChild?.currentModeSleep?.mode) {
-      return selectedChild.currentModeSleep.mode as "awake" | "sleep";
-    }
-    const last = selectedChild?.sleepRecords?.[selectedChild.sleepRecords.length - 1];
-    return (last?.state as "awake" | "sleep") ?? null;
+    return (selectedChild?.currentModeSleep?.mode as "awake" | "sleep") ?? null;
   };
-
+  
   // PŘIDÁNÍ ZÁZNAMU
   const addRecord = async (newMode: "awake" | "sleep") => {
     if (!selectedChildId || !selectedChild) return;
@@ -100,36 +112,43 @@ export default function Sleep() {
     const date = now.toISOString().slice(0, 10);
     const startISO = now.toISOString();
 
-    // 2. Vytvoříme lokální záznam 
     const newRec = {
       id: `local-${Date.now()}`, 
       child_id: selectedChildId,
       date,
       time,
       state: newMode,
+      note: ""
     };
 
-    // 3. Připravíme aktualizované dítě
-    const updatedChild = {
-      ...selectedChild,
-      // Přidáme záznam k existujícím
-      sleepRecords: [...(selectedChild.sleepRecords || []), newRec],
-      // Nastavíme live režim pro čítač
-      currentModeSleep: { mode: newMode, start: startISO }
-    };
+    // 1. Optimistický update lokálního stavu pro okamžitou odezvu v UI
+    setRecords(prev => [...prev, newRec]);
+
+    // 2. Příprava polí pro odeslání (pouze záznamy z daného dne)
+    const allRecords = [...(selectedChild.sleepRecords || []), newRec];
+    const todaysSyncData = allRecords
+      .filter((r) => r.date === date)
+      .map(({ id, date: d, time: t, state: s, note: n }) => ({
+        id,
+        date: d,
+        time: t,
+        state: s,
+        note: n || undefined
+      }));
 
     try {
-      // 4. Magický update, který funguje offline:
-      // Uloží do paměti mobilu a přidá do fronty pro odeslání
-      await updateChild(updatedChild);
+      const newTimerState = { mode: newMode, start: startISO };
 
-      // Aktualizace lokálních stavů v komponentě pro okamžitý ticker
+      // Okamžitě zapneme čítač v UI
       setMode(newMode);
       setModeStart(startISO);
       setMinutesSinceMode(0);
+
+      await updateSleepDayRecord(selectedChildId, date, todaysSyncData, newTimerState);
     } catch (error) {
       console.error("Chyba při ukládání spánku:", error);
-      // Díky updateChild uživatel chybu neuvidí, data jsou v lokální cache
+      showAlert("Chyba", "Nepodařilo se synchronizovat záznam se serverem.");
+      setRecords(prev => prev.filter(r => r.id !== newRec.id));
     }
   };
 
@@ -213,6 +232,17 @@ export default function Sleep() {
     return groups;
   }, [records]);
 
+  if (!isDataLoaded || !selectedChild || isSubmitting) {
+    return (
+      <MainScreenContainer>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Načítám data o spánku...</Text>
+        </View>
+      </MainScreenContainer>
+    );
+  }
+
   return (
     <MainScreenContainer>
       <CustomHeader backTargetPath="/actions">
@@ -230,7 +260,7 @@ export default function Sleep() {
             ]}
             onPress={() => {
               if (getLastMode() === "awake") {
-                Alert.alert(`${selectedChild?.name} už je vzhůru.`);
+                showAlert(`${selectedChild?.name} už je vzhůru.`);
                 return;
               }
               addRecord("awake");
@@ -245,7 +275,7 @@ export default function Sleep() {
             ]}
             onPress={() => {
               if (getLastMode() === "sleep") {
-                Alert.alert(`${selectedChild?.name} už spí.`);
+                showAlert(`${selectedChild?.name} už spí.`);
                 return;
               }
               addRecord("sleep");
@@ -289,22 +319,28 @@ export default function Sleep() {
                     <Note 
                       initialText={rec.note} 
                       onSave={async (newNoteText) => {
-                        // 1. Bezpečnostní pojistka
-                        if (!selectedChild || !selectedChild.sleepRecords) return;
+                        if (!selectedChildId || !selectedChild || !selectedChild.sleepRecords) return;
     
-                        // 2. Vytvoření nového pole záznamů
+                        // 1. Vytvoření nového pole záznamů
                         const updatedRecords = selectedChild.sleepRecords.map(r => 
                           r.id === rec.id ? { ...r, note: newNoteText } : r
-                        );
-                        
-                        // 3. Odeslání na server/provider
+                        );                        
+                        setRecords(updatedRecords);                        
+                        const daySyncData = updatedRecords
+                          .filter(r => r.date === rec.date)
+                          .map(({ id, date: d, time: t, state: s, note: n }) => ({
+                            id,
+                            date: d,
+                            time: t,
+                            state: s,
+                            note: n || undefined
+                          }));
+
                         try {
-                          await updateChild({
-                            ...selectedChild,
-                            sleepRecords: updatedRecords
-                          });
+                          // 4. Odeslání očištěných dat do provideru
+                          await updateSleepDayRecord(selectedChildId, rec.date, daySyncData);
                         } catch (err) {
-                          Alert.alert("Chyba", "Nepodařilo se uložit poznámku.");
+                          showAlert("Chyba", "Nepodařilo se uložit poznámku.");
                         }
                       }} 
                     />
@@ -403,5 +439,15 @@ const styles = StyleSheet.create({
     bottom: 25,
     left: 30,
     zIndex: 100,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 15,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#666",
   },
 });

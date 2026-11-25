@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
 import { normalizeTime } from "@/components/HelperFunctions";
@@ -11,7 +12,7 @@ import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from "react-native-uuid";
 
 // číslování spánků
@@ -69,7 +70,7 @@ export default function BreastfeedingEdit() {
 
   // Smazání záznamu
   const deleteRecord = (index: number) => {
-    Alert.alert("Smazat záznam?", "Opravdu chceš tento záznam smazat?", [
+    showAlert("Smazat záznam?", "Opravdu chceš tento záznam smazat?", [
       { text: "Zrušit", style: "cancel" },
       {
         text: "Smazat",
@@ -86,7 +87,7 @@ export default function BreastfeedingEdit() {
   const addRecord = () => {
     const norm = normalizeTime(newTime);
     if (!norm) {
-      Alert.alert("Chybný čas", "Zadejte čas ve formátu HH:MM (0–23 h, 0–59 min).");
+      showAlert("Chybný čas", "Zadejte čas ve formátu HH:MM (0–23 h, 0–59 min).");
       return;
     }
 
@@ -136,7 +137,7 @@ export default function BreastfeedingEdit() {
       }
     } catch (error) {
       console.error("Kritická chyba při ukládání kojení:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit data.");
+      showAlert("Chyba", "Nepodařilo se uložit data.");
     }
   };
 

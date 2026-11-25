@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
@@ -10,7 +11,7 @@ import ValidatedDateInput from "@/components/ValidDateInput";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
 
 export default function DiaryAdd() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function DiaryAdd() {
     
     // 1. Validace
     if (!finalName) {
-      Alert.alert("Chybí název", "Prosím zadejte název záznamu.");
+      showAlert("Chybí název", "Prosím zadejte název záznamu.");
       return;
     }
     if (!selectedChildId || !selectedChild) return;
@@ -46,7 +47,7 @@ export default function DiaryAdd() {
       router.back();
     } catch (error) {
       console.error("Chyba při ukládání deníku:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit záznam. Zkuste to prosím znovu.");
+      showAlert("Chyba", "Nepodařilo se uložit záznam. Zkuste to prosím znovu.");
     } finally {
       setIsSubmitting(false);
     }

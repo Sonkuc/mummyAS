@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
@@ -14,7 +15,7 @@ import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from 'react-native-uuid';
 
 const renumberSleeps = (records: any[]): DisplaySleepRecord[] => {
@@ -76,7 +77,7 @@ export default function SleepAdd() {
   };
 
   const deleteRecord = (index: number) => {
-    Alert.alert("Smazat záznam?", "Opravdu chceš tento záznam smazat?", [
+    showAlert("Smazat záznam?", "Opravdu chceš tento záznam smazat?", [
       { text: "Zrušit", style: "cancel" },
       {
         text: "Smazat",
@@ -94,13 +95,13 @@ export default function SleepAdd() {
 
   const addRecord = () => {
     if (errorMessage) {
-      Alert.alert("Chyba", errorMessage);
+      showAlert("Chyba", errorMessage);
       return;
     }
 
     const norm = normalizeTime(newTime);
     if (!norm) {
-      Alert.alert("Chybný čas", "Zadejte čas ve formátu HH:MM.");
+      showAlert("Chybný čas", "Zadejte čas ve formátu HH:MM.");
       return;
     }
 
@@ -125,7 +126,7 @@ export default function SleepAdd() {
     // 1. Validace
     if (!selectedChildId || records.length === 0) return;
     if (errorMessage) {
-      Alert.alert("Chyba", errorMessage);
+      showAlert("Chyba", errorMessage);
       return;
     }
 
@@ -145,7 +146,7 @@ export default function SleepAdd() {
       router.back();
     } catch (e) {
       console.error("Chyba při ukládání spánku:", e);
-      Alert.alert("Chyba", "Záznamy se nepodařilo uložit.");
+      showAlert("Chyba", "Záznamy se nepodařilo uložit.");
     } finally {
       setIsSaving(false);
     }

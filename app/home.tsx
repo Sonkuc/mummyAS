@@ -13,7 +13,7 @@ import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function Home() {
   const router = useRouter();
-  const { allChildren, setSelectedChildId } = useChild();
+  const { allChildren, setSelectedChildId, isDataLoaded } = useChild();
   const { user } = useAuth(); 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const parentRole = user?.user_metadata?.parent_role || "maminka";
@@ -32,6 +32,14 @@ export default function Home() {
     gender === "chlapec" ? COLORS.boyIcon :       
     gender === "divka"   ? COLORS.girlIcon :      
     "gray";   
+  
+  if (!isDataLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
+        <Image source={require("@/assets/images/logo2.png")} style={styles.logo} />
+      </View>
+    );
+  }
     return (
     <MainScreenContainer scrollable contentContainerStyle={{ alignItems: "center" }}>
       <Pressable 

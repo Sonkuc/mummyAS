@@ -70,7 +70,7 @@ export default function Note({ initialText, onSave }: NoteProps) {
             <TextInput
               style={styles.input}
               multiline
-              placeholder="Např. pil jen z levého, u kojení usnul..."
+              placeholder="Obsah poznámky..."
               value={text}
               onChangeText={setText}
               textAlignVertical="top"

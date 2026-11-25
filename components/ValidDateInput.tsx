@@ -1,5 +1,6 @@
+import { showAlert } from "@/components/showAlert";
 import React, { useEffect, useState } from "react";
-import { Alert, StyleSheet, TextInput } from "react-native";
+import { StyleSheet, TextInput } from "react-native";
 import { validateDate } from "./ValidateDate";
 
 type Props = {
@@ -41,7 +42,7 @@ export default function ValidatedDateInput({ value, onChange, ...props }: Props)
   const handleBlur = () => {
     const error = validateDate(internal, props.birthISO ?? null, props.allowPastDates);
     if (error) {
-      Alert.alert("Chybné datum", error);
+      showAlert("Chybné datum", error);
       // Fallback logika
       const fallback = (props.fallbackOnError === "original" && props.originalValue) 
         ? props.originalValue 

@@ -6,10 +6,11 @@ from ..crud import crud_user as cu # Importujeme náš CRUD
 
 router = APIRouter()
 
+@router.post("/profiles")
 def ensure_profile(
     profile_data: UserProfile, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Header(..., alias="X-User-Id")
 ):
     """Zajistí existenci profilu po přihlášení."""
     if profile_data.id != x_user_id:
@@ -42,7 +43,7 @@ def update_profile(
     if user_id != x_user_id:
         raise HTTPException(status_code=403, detail="Můžete upravovat pouze svůj vlastní profil")
 
-    updated_profile = cu.update_user_profile(session, user_id, profile_data)
+    updated_profile = cu.update_user_profile(session, user_id, profile_data.dict(exclude_unset=True))
     if not updated_profile:
         raise HTTPException(status_code=404, detail="Profil nenalezen")
     return updated_profile

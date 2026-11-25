@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CustomHeader from "@/components/CustomHeader";
 import GroupSection from "@/components/GroupSection";
 import { normalizeTime } from "@/components/HelperFunctions";
@@ -11,7 +12,7 @@ import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from 'react-native-uuid';
 
 const renumberSleeps = (records: SleepRecord[]): DisplaySleepRecord[] => {
@@ -76,7 +77,7 @@ export default function SleepEdit() {
   
   // Smazání záznamu
   const deleteRecord = (index: number) => {
-    Alert.alert("Smazat záznam?", "Opravdu chceš tento záznam smazat?", [
+    showAlert("Smazat záznam?", "Opravdu chceš tento záznam smazat?", [
       { text: "Zrušit", style: "cancel" },
       {
         text: "Smazat",
@@ -93,7 +94,7 @@ export default function SleepEdit() {
   const addRecord = () => {
     const norm = normalizeTime(newTime);
     if (!norm) {
-      Alert.alert("Chybný čas", "Zadejte čas ve formátu HH:MM.");
+      showAlert("Chybný čas", "Zadejte čas ve formátu HH:MM.");
       return;
     }
 
@@ -141,7 +142,7 @@ export default function SleepEdit() {
       }
     } catch (error) {
       console.error("Kritická chyba při ukládání kojení:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit data.");
+      showAlert("Chyba", "Nepodařilo se uložit data.");
     }
   };
 

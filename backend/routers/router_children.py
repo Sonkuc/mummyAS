@@ -32,6 +32,9 @@ def create_child(
     session: Session = Depends(get_session),
     x_user_id: str = Header(...)
 ):
+    if child_data.id:
+        return cc.update_child(session, str(child_data.id), child_data, x_user_id)
+    
     return cc.create_child(session, child_data, x_user_id)
 
 @router.put("/children/{child_id}", response_model=ChildRead)

@@ -1,7 +1,8 @@
+import { showAlert } from "@/components/showAlert";
 import { useChild } from "@/contexts/ChildContext";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Alert, Pressable, Text } from "react-native";
+import { Pressable, Text } from "react-native";
 
 type Props = {
   type: "child" | "milestone" | "word" | "wh" | "diary"; 
@@ -21,7 +22,7 @@ export default function DeleteButton({ type, childId, recordId, onDeleteSuccess 
   } = useChild();
 
   const handleDelete = async () => {
-    Alert.alert(
+    showAlert(
       "Smazat",
       "Opravdu chceš tento záznam odstranit?",
       [
@@ -52,7 +53,7 @@ export default function DeleteButton({ type, childId, recordId, onDeleteSuccess 
       onDeleteSuccess?.();
             } catch (err) {
               console.error("Chyba při mazání:", err);
-              Alert.alert("Chyba", "Nepodařilo se záznam odstranit.");
+              showAlert("Chyba", "Nepodařilo se záznam odstranit.");
             }
           },
         },

@@ -15,7 +15,7 @@ import { supabase } from "@/lib/supabase";
 import { File, Paths } from 'expo-file-system';
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import uuid from "react-native-uuid";
 
 export default function ChildAdd() {
@@ -62,6 +62,9 @@ export default function ChildAdd() {
     if (photoUri) {
       if (photoUri.startsWith("avatar")) {
         finalPhotoUri = photoUri;
+      } else if (Platform.OS === "web") {
+        // Na webu je fotka už zmenšená jako data URL (base64) – uloží se přímo
+        finalPhotoUri = photoUri;
       } else {
         try {
           const sourceFile = new File(photoUri);
@@ -102,7 +105,7 @@ export default function ChildAdd() {
       // Nastavíme jako aktivní dítě
       await setSelectedChildId(childId);
 
-      router.back();
+      router.replace("/")
     } catch (error) {
       console.error("Kritická chyba při přidávání:", error);
       alert("Nepodařilo se uložit data.");

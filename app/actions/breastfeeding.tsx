@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import AddButton from "@/components/AddButton";
 import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
@@ -6,7 +7,7 @@ import { formatDuration, toTimestamp } from "@/components/HelperFunctions";
 import { formatDateToCzech } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Note from "@/components/Note";
-import type { BreastfeedingRecord, Child, DisplayBreastfeedingRecord } from "@/components/storage/interfaces";
+import type { DisplayBreastfeedingRecord } from "@/components/storage/interfaces";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
@@ -15,7 +16,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight, ChartColumn, Milk, MilkOff } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Breastfeeding() {
   const [records, setRecords] = useState<DisplayBreastfeedingRecord[]>([]);
@@ -24,51 +25,68 @@ export default function Breastfeeding() {
   const [minutesSinceStop, setMinutesSinceStop] = useState<number | null>(null);
   const [mode, setMode] = useState<"start" | "stop" | "">("");
   const [modeStart, setModeStart] = useState<string | null>(null);
-  const [brestSide, setBrestSide] = useState<"left" | "right">("right");
-  const BREST_SIDE_KEY = "brestSideMode";
+  const [breastSide, setBreastSide] = useState<"left" | "right">("right");
+  const BREAST_SIDE_KEY = "breastSideMode";
+
+  const [isStorageLoading, setIsStorageLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const router = useRouter();
-  const { selectedChildId, selectedChild, updateChild } = useChild();
+  // Využití isDataLoaded z globálního ChildContextu
+  const { selectedChildId, selectedChild, updateBreastfeedingDayRecord, isDataLoaded } = useChild();
   
   const clearState = async () => {
     if (!selectedChildId || !selectedChild) return;
 
-    const updatedChild = {
-      ...selectedChild,
-      currentModeFeed: null
-    };
+    const today = new Date().toISOString().slice(0, 10);
+    const todaysCleanRecords = (selectedChild.breastfeedingRecords || [])
+      .filter((r) => r.date === today)
+      .map(({ id, date: d, time: t, state: s, note: n }) => ({
+        id,
+        date: d,
+        time: t,
+        state: s,
+        note: n || undefined
+      }));
 
     try {
-      await updateChild(updatedChild);
+      setIsSubmitting(true);
+      await updateBreastfeedingDayRecord(selectedChildId, today, todaysCleanRecords, null);
+      
       setMode("");
       setModeStart(null);
       setMinutesSinceStart(null);
       setMinutesSinceStop(null);
     } catch (error) {
-      Alert.alert("Chyba", "Nepodařilo se resetovat stav.");
+      console.error("Chyba při resetu stavu:", error);
+      showAlert("Chyba", "Nepodařilo se resetovat stav.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   useEffect(() => {
     (async () => {
       try {
-        const stored = await AsyncStorage.getItem(BREST_SIDE_KEY);
+        const stored = await AsyncStorage.getItem(BREAST_SIDE_KEY);
         if (stored) {
-          setBrestSide(JSON.parse(stored));
+          setBreastSide(JSON.parse(stored));
         }
       } catch (e) {
-        console.error("Chyba při načítání brestSide:", e);
+        console.error("Chyba při načítání breastSide:", e);
+      } finally {
+        setIsStorageLoading(false); 
       }
     })();
   }, []);
 
-  const toggleBrestSide = async () => {
-    const newSide = brestSide === "left" ? "right" : "left";
-    setBrestSide(newSide);
+  const toggleBreastSide = async () => {
+    const newSide = breastSide === "left" ? "right" : "left";
+    setBreastSide(newSide);
     try {
-      await AsyncStorage.setItem(BREST_SIDE_KEY, JSON.stringify(newSide));
+      await AsyncStorage.setItem(BREAST_SIDE_KEY, JSON.stringify(newSide));
     } catch (e) {
-      console.error("Chyba při ukládání brestSide:", e);
+      console.error("Chyba při ukládání breastSide:", e);
     }
   };
 
@@ -76,67 +94,135 @@ export default function Breastfeeding() {
     if (!selectedChildId || !selectedChild) return;
 
     const now = new Date();
-    const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const time = `${hours}:${minutes}`;
     const date = now.toISOString().slice(0, 10);
-    const startISO = now.toISOString();
+    const localISOStart = `${date}T${time}:00.000Z`;
 
-    const newRec: BreastfeedingRecord = {
+    const newRec: DisplayBreastfeedingRecord = {
       id: `local-${Date.now()}`,
-      child_id: selectedChildId || "",
+      child_id: selectedChildId,
       date,
       time,
       state: newMode,
+      label: newMode === "start" ? "Začátek kojení:" : "Konec kojení:",
+      note: ""
     };
 
-    const updatedChild: Child = {
-      ...selectedChild,
-      breastfeedingRecords: [...(selectedChild.breastfeedingRecords || []), newRec],
-      currentModeFeed: { mode: newMode, start: startISO }
-    };
+    // Optimistický update lokálního stavu, aby aplikace reagovala okamžitě i offline
+    setRecords(prev => [...prev, newRec]);
+
+    const allRecords = [...(selectedChild.breastfeedingRecords || []), newRec];
+    const todaysSyncData = allRecords
+      .filter((r) => r.date === date)
+      .map(({ id, date: d, time: t, state: s, note: n }) => ({
+        id,
+        date: d,
+        time: t,
+        state: s,
+        note: n || undefined
+      }));
 
     try {
-      await updateChild(updatedChild);
-      
-      // UI stavy
+      const newTimerState = { mode: newMode, start: localISOStart };
+
       setMode(newMode);
-      setModeStart(startISO);
-      if (newMode === "stop") setMinutesSinceStart(null);
-      if (newMode === "start") setMinutesSinceStop(null);
+      setModeStart(localISOStart);
+      
+      if (newMode === "stop") {
+        setMinutesSinceStart(null);
+        setMinutesSinceStop(0);
+      } else {
+        setMinutesSinceStop(null);
+        setMinutesSinceStart(0);
+      }
+
+      await updateBreastfeedingDayRecord(selectedChildId, date, todaysSyncData, newTimerState);
     } catch (error) {
       console.error("Chyba při ukládání kojení:", error);
+      showAlert("Chyba", "Nepodařilo se synchronizovat záznam se serverem.");
+      setRecords(prev => prev.filter(r => r.id !== newRec.id));
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      if (selectedChild?.breastfeedingRecords) {
-        setRecords(
-          selectedChild.breastfeedingRecords.map((rec) => ({
-            ...rec,
-            label: rec.state === "start" ? "Začátek kojení:" : "Konec kojení:",
-          }))
+      if (!isDataLoaded || !selectedChild || !selectedChild.breastfeedingRecords) return;
+
+      setRecords(
+        selectedChild.breastfeedingRecords.map((rec) => ({
+          ...rec,
+          label: rec.state === "start" ? "Začátek kojení:" : "Konec kojení:",
+        }))
+      );
+
+      let activeMode: "start" | "stop" | "" = "";
+      let startTimeMs: number | null = null;
+
+      if (selectedChild.currentModeFeed === null) {
+        activeMode = "";
+        startTimeMs = null;
+      } else if (selectedChild.currentModeFeed && selectedChild.currentModeFeed.start) {
+        activeMode = selectedChild.currentModeFeed.mode as "start" | "stop";
+        const cleanStart = selectedChild.currentModeFeed.start.replace("Z", "");
+        startTimeMs = Date.parse(cleanStart);
+      } else if (selectedChild.breastfeedingRecords.length > 0) {
+        const sortedRecs = [...selectedChild.breastfeedingRecords].sort(
+          (a, b) => toTimestamp(a.date, a.time) - toTimestamp(b.date, b.time)
         );
+        const lastRec = sortedRecs[sortedRecs.length - 1];
+        if (lastRec) {
+          activeMode = lastRec.state as "start" | "stop";
+          startTimeMs = toTimestamp(lastRec.date, lastRec.time);
+        }
       }
 
-      if (selectedChild?.currentModeFeed) {
-        const { mode, start } = selectedChild.currentModeFeed;
-        setMode(mode as "start" | "stop");
-        setModeStart(start);
+      if (activeMode && startTimeMs && !isNaN(startTimeMs)) {
+        const nowTime = Date.now();
+        let diff = Math.floor((nowTime - startTimeMs) / 60000);
 
-        const diff = Math.floor((Date.now() - new Date(start).getTime()) / 60000);
-        if (mode === "stop") setMinutesSinceStop(diff);
-        if (mode === "start") setMinutesSinceStart(diff);
+        if (diff < -5 || diff > 1440) {
+          setMode("");
+          setModeStart(null);
+          setMinutesSinceStart(null);
+          setMinutesSinceStop(null);
+          return;
+        }
+
+        if (diff < 0) diff = 0;
+
+        setMode(activeMode);
+        setModeStart(new Date(startTimeMs).toISOString());
+
+        if (activeMode === "stop") {
+          setMinutesSinceStop(diff);
+          setMinutesSinceStart(null);
+        } else if (activeMode === "start") {
+          setMinutesSinceStart(diff);
+          setMinutesSinceStop(null);
+        }
+      } else {
+        setMode("");
+        setModeStart(null);
+        setMinutesSinceStart(null);
+        setMinutesSinceStop(null);
       }
-    }, [selectedChild])
+    }, [selectedChild, isDataLoaded])
   );
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (mode && modeStart) {
       const tick = () => {
-        const diffMinutes = Math.floor((Date.now() - new Date(modeStart).getTime()) / 60000);
-        if (mode === "stop") setMinutesSinceStop(diffMinutes);
-        if (mode === "start") setMinutesSinceStart(diffMinutes);
+        const startTime = Date.parse(modeStart);
+        if (!isNaN(startTime)) {
+          let diffMinutes = Math.floor((Date.now() - startTime) / 60000);
+          if (diffMinutes < 0) diffMinutes = 0;
+
+          if (mode === "stop") setMinutesSinceStop(diffMinutes);
+          if (mode === "start") setMinutesSinceStart(diffMinutes);
+        }
       };
       tick();
       interval = setInterval(tick, 60000);
@@ -149,7 +235,6 @@ export default function Breastfeeding() {
   const grouped = useMemo(() => {
     if (!records.length) return [];
 
-    // 1. Všechny záznamy seřadíme chronologicky napříč všemi dny
     const allSorted = [...records]
       .map(r => ({ ...r, ts: toTimestamp(r.date, r.time) }))
       .sort((a, b) => a.ts - b.ts);
@@ -157,11 +242,9 @@ export default function Breastfeeding() {
     const dayMap: Record<string, { date: string; totalFeedMinutes: number; records: any[] }> = {};
     const feedCounters: Record<string, number> = {};
 
-    // 2. Procházíme seřazené záznamy a párujeme je
     for (let i = 0; i < allSorted.length; i++) {
       const curr = allSorted[i];
       
-      // Inicializace dne v mapě (pokud ještě neexistuje)
       if (!dayMap[curr.date]) {
         dayMap[curr.date] = { date: curr.date, totalFeedMinutes: 0, records: [] };
         feedCounters[curr.date] = 1;
@@ -171,13 +254,11 @@ export default function Breastfeeding() {
       let label = "";
 
       if (curr.state === "start") {
-        // Hledáme k tomuto startu následující stop (i kdyby byl v jiný den)
         const nextStop = allSorted.slice(i + 1).find(r => r.state === "stop");
         
         if (nextStop) {
           const minutes = Math.floor((nextStop.ts - curr.ts) / 60000);
           if (minutes > 0) {
-            // Započítáme minuty ke dni, kdy kojení ZAČALO
             dayMap[curr.date].totalFeedMinutes += minutes;
             extra = ` → ${formatDuration(minutes)}`;
           }
@@ -185,38 +266,33 @@ export default function Breastfeeding() {
         label = `Začátek ${feedCounters[curr.date]++}. kojení: ${curr.time}`;
         dayMap[curr.date].records.push({ ...curr, label, extra });
       } else {
-        // U stop záznamu jen vytvoříme popisek a přidáme ho k danému dni
         label = `Konec kojení: ${curr.time}`;
         dayMap[curr.date].records.push({ ...curr, label });
       }
     }
 
-    // 3. Převedeme mapu na pole a seřadíme dny sestupně (nejnovější nahoře)
     return Object.values(dayMap)
       .map(day => ({
         ...day,
-        // Záznamy v rámci dne seřadíme sestupně podle času
         records: day.records.sort((a, b) => b.ts - a.ts)
       }))
       .sort((a, b) => b.date.localeCompare(a.date));
   }, [records]);
 
   const getLastMode = (): "start" | "stop" | null => {
-    // 1. Priorita je live stav z backendu/contextu (ten je globální)
-    if (selectedChild?.currentModeFeed?.mode) {
-      return selectedChild.currentModeFeed.mode;
-    }
-    
-    // 2. Fallback na poslední uložený záznam (seřazený globálně)
-    const allRecs = selectedChild?.breastfeedingRecords ?? [];
-    if (allRecs.length === 0) return null;
-    
-    const last = [...allRecs].sort((a, b) => 
-      toTimestamp(a.date, a.time) - toTimestamp(b.date, b.time)
-    )[allRecs.length - 1];
-    
-    return last?.state ?? null;
+    return (selectedChild?.currentModeFeed?.mode as "start" | "stop") ?? null;
   };
+
+  if (isStorageLoading || !selectedChild || !isDataLoaded || isSubmitting) {
+    return (
+      <MainScreenContainer>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Načítám data o kojení...</Text>
+        </View>
+      </MainScreenContainer>
+    );
+  }
 
   return (
     <MainScreenContainer>
@@ -234,7 +310,7 @@ export default function Breastfeeding() {
             ]}
             onPress={() => {
               if (getLastMode() === "start") {
-                Alert.alert(`${selectedChild?.name} už se kojí.`);
+                showAlert(`${selectedChild?.name} už se kojí.`);
                 return;
               }
               addRecord("start");
@@ -251,7 +327,7 @@ export default function Breastfeeding() {
             ]}
             onPress={() => {
               if (getLastMode() === "stop") {
-                Alert.alert(`${selectedChild?.name} se nekojí.`);
+                showAlert(`${selectedChild?.name} se nekojí.`);
                 return;
               }
               addRecord("stop");
@@ -278,9 +354,9 @@ export default function Breastfeeding() {
           <Text style={styles.counterText}>
             Teď je na řadě
           </Text>
-          <Pressable style={styles.breastButton} onPress={toggleBrestSide}>
-            {brestSide === "left" && <ArrowLeft color="white" size={28} />}
-            {brestSide === "right" && <ArrowRight color="white" size={28} />}
+          <Pressable style={styles.breastButton} onPress={toggleBreastSide}>
+            {breastSide === "left" && <ArrowLeft color="white" size={28} />}
+            {breastSide === "right" && <ArrowRight color="white" size={28} />}
           </Pressable>
           <Text style={styles.counterText}>
             prso.
@@ -299,26 +375,38 @@ export default function Breastfeeding() {
               <Text style={styles.dateTitle}>{formatDateToCzech(date)}</Text>
             </View>
             {records.map((rec) => (
-              <View key={rec.id} style={styles.row}>
+              <View key={`${rec.id}-${rec.state}-${rec.time}`} style={styles.row}>
                 <Note 
                   initialText={rec.note} 
                   onSave={async (newNoteText) => {
                     // 1. Bezpečnostní pojistka
-                    if (!selectedChild || !selectedChild.breastfeedingRecords) return;
+                    if (!selectedChildId || !selectedChild || !selectedChild.breastfeedingRecords) return;
 
-                    // 2. Vytvoření nového pole záznamů
+                    // 2. Vytvoření nového pole se změněnou poznámkou
                     const updatedRecords = selectedChild.breastfeedingRecords.map(r => 
                       r.id === rec.id ? { ...r, note: newNoteText } : r
                     );
                     
-                    // 3. Odeslání na server/provider
+                    // 3. Příprava očištěných dat POUZE pro den, kterého se poznámka týká
+                    const daySyncData = updatedRecords
+                      .filter(r => r.date === rec.date)
+                      .map(({ id, date: d, time: t, state: s, note: n }) => ({
+                        id,
+                        date: d,
+                        time: t,
+                        state: s,
+                        note: n || undefined
+                      }));
+
                     try {
-                      await updateChild({
-                        ...selectedChild,
-                        breastfeedingRecords: updatedRecords
-                      });
+                      if (!selectedChildId) {
+                        showAlert("Chyba", "Dítě není vybráno.");
+                        return;
+                      }
+                      await updateBreastfeedingDayRecord(selectedChildId, rec.date, daySyncData);
                     } catch (err) {
-                      Alert.alert("Chyba", "Nepodařilo se uložit poznámku.");
+                      console.error("Chyba při ukládání poznámky kojení:", err);
+                      showAlert("Chyba", "Nepodařilo se uložit poznámku.");
                     }
                   }} 
                 />
@@ -328,7 +416,13 @@ export default function Breastfeeding() {
               </View>
             ))}
             <Text style={styles.totalText}>
-              Celkový čas kojení: {Math.floor(totalFeedMinutes / 60)} h {totalFeedMinutes % 60} m
+              Celkový čas kojení: {
+                totalFeedMinutes === 0 
+                  ? "0 m" 
+                  : totalFeedMinutes % 60 === 0
+                    ? `${Math.floor(totalFeedMinutes / 60)} h`
+                    : `${Math.floor(totalFeedMinutes / 60)} h ${totalFeedMinutes % 60} m`
+              }
             </Text>
           </GroupSection>
         ))}
@@ -429,5 +523,15 @@ const styles = StyleSheet.create({
     color: '#888',
     fontStyle: 'italic',
     marginLeft: 10,
-  }
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 15,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#666",
+  },
 });

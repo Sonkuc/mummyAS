@@ -24,6 +24,10 @@ export default function DateSelector({ date, onChange, birthISO }: Props) {
 
   const safeDate =
     date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+  const minDate =
+    birthISO && !isNaN(new Date(birthISO).getTime())
+      ? new Date(birthISO)
+      : new Date(1950, 0, 1);
   const safeTempDate =
     tempDate instanceof Date && !isNaN(tempDate.getTime())
       ? tempDate
@@ -39,6 +43,19 @@ export default function DateSelector({ date, onChange, birthISO }: Props) {
        <Modal visible={show} transparent={true} animationType="slide">
         <View style={styles.modalContainer}>
           <View style={[styles.modalContent, { backgroundColor: isDark ? "#222" : "#fff" }]}>
+            {Platform.OS === "web" ? (
+              <input
+                type="date"
+                value={toInputDate(safeTempDate)}
+                max={toInputDate(new Date())}
+                min={toInputDate(minDate)}
+                onChange={(e) => {
+                  const d = fromInputDate(e.target.value);
+                  if (d) setTempDate(d);
+                }}
+                style={webInputStyle(isDark)}
+              />
+            ) : (
             <DateTimePicker
               value={safeTempDate}
               mode="date"
@@ -61,10 +78,9 @@ export default function DateSelector({ date, onChange, birthISO }: Props) {
             themeVariant={isDark ? "dark" : "light"}
             style={{ width: "100%" }}
             maximumDate={new Date()}
-            minimumDate={birthISO && !isNaN(new Date(birthISO).getTime())
-              ? new Date(birthISO) 
-              : new Date(1950, 0, 1)}
+            minimumDate={minDate}
             />
+            )}
             <View style={styles.buttonRow}>
               <Pressable onPress={() => setShow(false)} style={styles.cancelButton}>
                 <Text style={[styles.buttonText, { color: isDark ? "#fff" : "#000" }]}>Zrušit</Text>
@@ -85,6 +101,26 @@ export default function DateSelector({ date, onChange, birthISO }: Props) {
     </View>
   );
 }
+
+// Pomocné funkce pro webový <input type="date"> (formát YYYY-MM-DD v místním čase)
+const pad = (n: number) => String(n).padStart(2, "0");
+const toInputDate = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const fromInputDate = (value: string): Date | null => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+};
+const webInputStyle = (isDark: boolean) => ({
+  fontSize: 18,
+  padding: 10,
+  borderRadius: 8,
+  border: "1px solid #ccc",
+  backgroundColor: isDark ? "#333" : "#fff",
+  color: isDark ? "#fff" : "#000",
+  width: "100%",
+  boxSizing: "border-box" as const,
+});
 
 const styles = StyleSheet.create({
   wrapper: {

@@ -63,9 +63,9 @@ function RootLayoutNav() {
   }, [session, segments, isAuthLoading, isReady]);
 
   // Pokud se vše ještě načítá, zobrazíme splash screen (logo)
-  if (isAuthLoading || !isReady || (session && !isDataLoaded)) {
+  if (isAuthLoading || !isReady) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: "#fff0f5" }}>
         <Image source={require("@/assets/images/logo2.png")} style={styles.logo} />
       </View>
     );

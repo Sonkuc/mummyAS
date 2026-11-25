@@ -3,30 +3,29 @@
 
 import { BreastfeedingRecord, BreastfeedingSyncDay, Child, ChildUpdate, Diary, DiaryCreate, DiaryUpdate, FoodRecord, FoodRecordCreate, Milestone, SleepRecord, SleepSyncDay, TeethRecord, WeightHeight, Word, WordEntry, WordUpdatePayload } from "./interfaces";
 
-const BASE_URL = 'http://192.168.31.152:8000'; // Change to your backend URL for mobile testing
+// Adresa backendu: při buildu se bere z EXPO_PUBLIC_API_URL (soubor .env v kořeni projektu
+// nebo proměnná prostředí na hostingu), jinak lokální IP pro testování doma.
+export const BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://192.168.31.152:8000').replace(/\/+$/, '');
 
 // ============ USER API FUNCTIONS ============
 
-export const ensureUserProfile = async (userId: string, email: string, gender: string = "not_set") => {
-  const payload = { id: userId, email, gender };
+export const ensureUserProfile = async (userId: string, email: string) => {
+  const response = await fetch(`${BASE_URL}/profiles`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "X-User-Id": userId 
+    },
+    body: JSON.stringify({ id: userId, email }),
+  });
 
-  try {
-    const response = await fetch(`${BASE_URL}/profiles`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'X-User-Id': userId  // Nutné pro validaci v routeru
-      },
-      body: JSON.stringify(payload),
-    });
-    
-    if (!response.ok) {
-      console.error("Failed to ensure profile", await response.text());
-    }
-    return await response.json();
-  } catch (err) {
-    console.error("Network Error:", err);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Failed to ensure profile", errorText);
+    throw new Error(`Profile sync failed: ${errorText}`); 
   }
+
+  return await response.json(); 
 };
 
 export const deleteUserProfile = async (userId: string): Promise<void> => {
@@ -64,14 +63,6 @@ export const createChild = async (childData: any, userId: string): Promise<any> 
     console.error(`[API ERROR] CreateChild:`, errorData);
     throw new Error('Failed to create child');
   }
-  return response.json();
-};
-
-export const fetchChild = async (childId: string, userId: string): Promise<Child> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}`, {
-    headers: { 'X-User-Id': userId },
-  });
-  if (!response.ok) throw new Error('Failed to fetch child');
   return response.json();
 };
 
@@ -113,15 +104,6 @@ export const deleteChild = async (childId: string, userId: string): Promise<void
 
 // ============ MILESTONE API FUNCTIONS ============
 
-// Vrací pole milníků pro konkrétní dítě
-export const fetchMilestones = async (childId: string, userId: string): Promise<Milestone[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/milestones`, {
-    headers: { 'X-User-Id': userId }
-  });
-  if (!response.ok) throw new Error('Failed to fetch milestones');
-  return response.json() as Promise<Milestone[]>;
-};
-
 // Vytvoření milníku
 export const createMilestone = async (
   childId: string, 
@@ -134,15 +116,6 @@ export const createMilestone = async (
     body: JSON.stringify(milestoneData),
   });
   if (!response.ok) throw new Error('Failed to create milestone');
-  return response.json() as Promise<Milestone>;
-};
-
-// Detail jednoho milníku
-export const fetchMilestone = async (childId: string, milestoneId: string, userId: string): Promise<Milestone> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/milestones/${milestoneId}`, {
-    headers: { 'X-User-Id': userId }
-  });
-  if (!response.ok) throw new Error('Failed to fetch milestone');
   return response.json() as Promise<Milestone>;
 };
 
@@ -201,15 +174,6 @@ export const deleteMilestone = async (childId: string, milestoneId: string, user
 
 // ============ WEIGHT/HEIGHT API FUNCTIONS ============
 
-// Získání všech záznamů
-export const fetchWeightHeights = async (childId: string, userId: string): Promise<WeightHeight[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/weight-height`, {
-    headers: { 'X-User-Id': userId }
-  });
-  if (!response.ok) throw new Error('Failed to fetch weight/height records');
-  return response.json();
-};
-
 export const syncWeightHeights = async (childId: string, records: WeightHeight[], userId: string): Promise<WeightHeight[]> => {
   const payload = records.map(rec => ({
     date: rec.date,
@@ -232,24 +196,18 @@ export const syncWeightHeights = async (childId: string, records: WeightHeight[]
 
 // ============ BREASTFEEDING API FUNCTIONS ============
 
-export const fetchBreastfeedingRecords = async (childId: string, userId: string, date?: string): Promise<BreastfeedingRecord[]> => {
-  const url = new URL(`${BASE_URL}/children/${childId}/breastfeeding`);
-  if (date) url.searchParams.append('date', date);
-
-  const response = await fetch(url.toString(), {
-    headers: { 'X-User-Id': userId }
-  });
-  if (!response.ok) throw new Error('Nepodařilo se načíst záznamy kojení');
-  return response.json();
-};
-
 export const updateBreastfeedingDay = async (
   childId: string, 
   date: string, 
   bfData: BreastfeedingSyncDay, // Pole objektů {time, state, note}
-  userId: string
-): Promise<BreastfeedingRecord[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/breastfeeding/day/${date}`, {
+  userId: string,
+  clearTimer: boolean = false
+): Promise<{ records: BreastfeedingRecord[], currentModeFeed: { mode: "start" | "stop"; start: string } | null }> => {
+  
+  // Přidáme query parametr ?clear_timer=true v případě resetu
+  const url = `${BASE_URL}/children/${childId}/breastfeeding/day/${date}${clearTimer ? '?clear_timer=true' : ''}`;
+  
+  const response = await fetch(url, {
     method: 'PUT',
     headers: { 
       'Content-Type': 'application/json', 
@@ -263,6 +221,7 @@ export const updateBreastfeedingDay = async (
     throw new Error(errorData.detail || 'Chyba při synchronizaci dne kojení');
   }
   
+  // Vrací objekt s klíči { records, currentModeFeed }
   return response.json();
 };
 
@@ -274,45 +233,33 @@ export const fetchBreastfeedingStats = async (childId: string, userId: string): 
   return response.json();
 };
 
-export const deleteBreastfeedingRecord = async (childId: string, bfId: string, userId: string): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/breastfeeding/${bfId}`, {
-    method: 'DELETE',
-    headers: { 'X-User-Id': userId },
-  });
-  if (!response.ok) throw new Error('Nepodařilo se smazat záznam kojení');
-};
-
-export const fetchBreastfeedingRecord = async (childId: string, bfId: string, userId: string): Promise<BreastfeedingRecord> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/breastfeeding/${bfId}`, {
-    headers: { 'X-User-Id': userId }
-  });
-  if (!response.ok) throw new Error('Záznam kojení nebyl nalezen');
-  return response.json();
-};
-
 // ============ SLEEP API FUNCTIONS ============
 
-export const fetchSleepRecords = async (childId: string, userId: string, date?: string): Promise<SleepRecord[]> => {
-  const url = new URL(`${BASE_URL}/children/${childId}/sleep`);
-  if (date) url.searchParams.append('date', date);
-
-  const response = await fetch(url.toString(), {
-    headers: { 'X-User-Id': userId }
-  });
-  if (!response.ok) throw new Error('Failed to fetch sleep records');
-  return response.json();
-};
-
-export const fetchSleepRecord = async (
+// Aktualizace celého dne
+export const updateSleepDay = async (
   childId: string, 
-  sleepId: string, 
-  userId: string
-): Promise<SleepRecord> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/sleep/${sleepId}`, {
-    headers: { 'X-User-Id': userId }
+  date: string, 
+  sleepData: SleepSyncDay, 
+  userId: string,
+  clearTimer: boolean = false
+): Promise<{ records: SleepRecord[], currentModeSleep: { mode: "awake" | "sleep"; start: string } | null }> => {
+  
+  const url = `${BASE_URL}/children/${childId}/sleep/day/${date}${clearTimer ? '?clear_timer=true' : ''}`;
+
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: { 
+      'Content-Type': 'application/json', 
+      'X-User-Id': userId 
+    },
+    body: JSON.stringify(sleepData),
   });
-  if (!response.ok) throw new Error('Failed to fetch sleep record');
-  return response.json() as Promise<SleepRecord>;
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Chyba při synchronizaci dne spánku');
+  }
+  
+  return response.json();
 };
 
 // Statistiky pro grafy
@@ -324,34 +271,7 @@ export const fetchSleepStats = async (childId: string, userId: string): Promise<
   return response.json();
 };
 
-// Aktualizace celého dne
-export const updateSleepDay = async (
-  childId: string, 
-  date: string, 
-  sleepData: SleepSyncDay, 
-  userId: string
-): Promise<SleepRecord[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/sleep/day/${date}`, {
-    method: 'PUT',
-    headers: { 
-      'Content-Type': 'application/json', 
-      'X-User-Id': userId 
-    },
-    body: JSON.stringify(sleepData),
-  });
-  if (!response.ok) throw new Error('Failed to update sleep day');
-  return response.json() as Promise<SleepRecord[]>;
-};
-
 // ============ SPEAKING (WORD) API FUNCTIONS ============
-
-export const fetchWords = async (child_id: string, userId: string): Promise<Word[]> => {
-  const response = await fetch(`${BASE_URL}/children/${child_id}/words`, {
-    headers: { 'X-User-Id': userId }
-  });
-  if (!response.ok) throw new Error('Failed to fetch words');
-  return response.json();
-};
 
 export const createWord = async (childId: string, data: { name: string; entries: Omit<WordEntry, 'id'>[] }, userId: string): Promise<Word> => {
   const response = await fetch(`${BASE_URL}/children/${childId}/words`, {
@@ -363,13 +283,22 @@ export const createWord = async (childId: string, data: { name: string; entries:
   return response.json();
 };
 
-export const updateWord = async (childId: string, wordId: string, data: { name: string; entries: Omit<WordEntry, 'id'>[] }, userId: string): Promise<Word> => {
+export const updateWord = async (
+  childId: string, 
+  wordId: string, 
+  data: { name: string; entries: Omit<WordEntry, 'id'>[] }, 
+  userId: string
+): Promise<Word> => {
   const response = await fetch(`${BASE_URL}/children/${childId}/words/${wordId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error('Failed to update word');
+
+  if (!response.ok) {
+    throw new Error(`Failed to update word (Status: ${response.status})`);
+  }
+  
   return response.json();
 };
 
@@ -396,10 +325,12 @@ export const syncWords = async (childId: string, words: Word[], userId: string):
         try {
           syncedWords[i] = await updateWord(childId, word.id.toString(), payload, userId);
         } catch (err: any) {
-          // Pokud slovo na serveru neexistuje (např. po resetu DB), vytvoříme ho znovu
           if (err.message.includes("404")) {
+            console.log(`[SYNC-WORD] Slovo ${word.name} na serveru neexistuje, vytvářím znovu...`);
             syncedWords[i] = await createWord(childId, payload, userId);
-          } else throw err;
+          } else {
+            throw err;
+          }
         }
       }
     } catch (err) {
@@ -419,16 +350,7 @@ export const deleteWord = async (childId: string, wordId: string, userId: string
 
 // ============ TEETH API FUNCTIONS ============
 
-// 1. Načtení dat 
-export const fetchTeethRecords = async (childId: string, userId: string): Promise<TeethRecord[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/teeth`, {
-    headers: { 'X-User-Id': userId }
-  });
-  if (!response.ok) throw new Error('Failed to fetch teeth records');
-  return response.json();
-};
-
-// 2. Funkce pro veškeré změny 
+// Funkce pro veškeré změny 
 export const syncTeethRecords = async (
   childId: string, 
   userId: string, 
@@ -451,15 +373,6 @@ export const syncTeethRecords = async (
 };
 
 // ============ FOOD API FUNCTIONS ============
-
-// 1. Načtení všech záznamů
-export const fetchFoodRecords = async (childId: string, userId: string): Promise<FoodRecord[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/food`, {
-    headers: { 'X-User-Id': userId }
-  });
-  if (!response.ok) throw new Error('Failed to fetch food records');
-  return response.json();
-};
 
 export const syncFoodRecords = async (
   childId: string, 
@@ -496,23 +409,6 @@ export const deleteFoodRecord = async (
 };
 
 // ============ DIARY API FUNCTIONS ============
-
-export const fetchDiaryEntries = async (childId: string, userId: string): Promise<Diary[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/diary`, {
-    method: 'GET',
-    headers: { 
-      'X-User-Id': userId,
-      'Accept': 'application/json'
-    }
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || 'Failed to fetch diary entries');
-  }
-  
-  return response.json();
-};
 
 export const createDiaryEntry = async (
   childId: string, 

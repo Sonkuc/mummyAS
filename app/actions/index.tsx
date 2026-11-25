@@ -137,17 +137,18 @@ export default function Actions() {
 
       <View style={styles.buttonContainer}>
         {actions.map((action: Action) => (
-          <MyButton
-            key={action.route as string} 
-            title={action.title}
-            onPress={() => router.push(action.route)}
-            icon={action.icon}
-          />
+          <View key={action.route as string} style={styles.buttonWrapper}>
+            <MyButton
+              title={action.title}
+              onPress={() => router.push(action.route)}
+              icon={action.icon}
+            />
+          </View>
         ))}
       </View>
       <View>
         {message && (
-          <Subtitle style={{ marginTop: 20, textAlign: "center", color: COLORS.primary }}>
+          <Subtitle style={styles.birthdayMessage}>
             {message}
           </Subtitle>
         )}
@@ -158,7 +159,13 @@ export default function Actions() {
 
 const styles = StyleSheet.create({
   buttonContainer: {
-    marginTop: 20,
+    marginTop: 5,
+    alignItems: "center",
+    marginBottom: -10,
+  },
+  buttonWrapper: {
+    marginBottom: -5, 
+    width: "100%",  
     alignItems: "center",
   },
   avatarContainer: {
@@ -200,5 +207,11 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 12,
     fontWeight: "bold",
+  },
+  birthdayMessage: {
+    marginVertical: 15,
+    textAlign: "center",
+    color: COLORS.primary,
+    fontWeight: "500",
   },
 });

@@ -57,6 +57,27 @@ export default function TimeSelector({ time, onChange }: Props) {
       <Modal visible={show} transparent={true} animationType="slide">
         <View style={styles.modalContainer}>
           <View style={[styles.modalContent, { backgroundColor: isDark ? "#222" : "#fff" }]}>
+            {Platform.OS === "web" ? (
+              <input
+                type="time"
+                step={60}
+                value={tempTime || getCleanTime()}
+                onChange={(e) => {
+                  const m = /^(\d{2}):(\d{2})/.exec(e.target.value);
+                  if (m) setTempTime(`${m[1]}:${m[2]}`);
+                }}
+                style={{
+                  fontSize: 18,
+                  padding: 10,
+                  borderRadius: 8,
+                  border: "1px solid #ccc",
+                  backgroundColor: isDark ? "#333" : "#fff",
+                  color: isDark ? "#fff" : "#000",
+                  width: "100%",
+                  boxSizing: "border-box",
+                }}
+              />
+            ) : (
             <DateTimePicker
               value={safeValue} // Teď obsahuje rok 2026, ne 1970
               mode="time"
@@ -78,6 +99,7 @@ export default function TimeSelector({ time, onChange }: Props) {
               themeVariant={isDark ? "dark" : "light"}
               style={{ width: "100%" }}
             />
+            )}
             <View style={styles.buttonRow}>
               <Pressable onPress={() => setShow(false)} style={styles.cancelButton}>
                 <Text style={[styles.buttonText, { color: isDark ? "#fff" : "#000" }]}>Zrušit</Text>

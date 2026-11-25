@@ -1,4 +1,5 @@
 import * as api from "@/components/storage/api";
+import { BASE_URL } from "@/components/storage/api";
 import * as utils from "@/components/storage/context/syncService";
 import { BreastfeedingSyncDay, Child, ChildUpdate, DiaryCreate, DiaryUpdate, FoodRecord, Milestone, SleepSyncDay, WeightHeight, Word } from "@/components/storage/interfaces";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,11 +11,11 @@ type ChildContextType = {
   selectedChildId: string | null;
   setSelectedChildId: (id: string | null) => Promise<void>;
   allChildren: Child[];
-    updateChild: (childData: Partial<Child> & { id: string }) => Promise<void>;
+  updateChild: (childData: Partial<Child> & { id: string }) => Promise<void>;
   reloadChildren: () => Promise<void>;
   deleteChild: (id: string) => Promise<void>;
-  updateSleepDayRecord: (childId: string, date: string, sleepData: SleepSyncDay) => Promise<void>;
-  updateBreastfeedingDayRecord: (childId: string, date: string, bfData: BreastfeedingSyncDay) => Promise<void>;
+  updateSleepDayRecord: (childId: string, date: string, sleepData: SleepSyncDay, currentModeSleep?: Child["currentModeSleep"]) => Promise<void>;
+  updateBreastfeedingDayRecord: (childId: string, date: string, bfData: BreastfeedingSyncDay, currentModeFeed?: { mode: "start" | "stop"; start: string } | null) => Promise<void>;
   addWeightHeightRecord: (childId: string, record: Omit<WeightHeight, 'id' | 'child_id'>) => Promise<void>;
   updateWeightHeightRecord: (childId: string, whId: string, updatedEntry: any) => Promise<void>;
   deleteWeightHeightRecord: (childId: string, whId: string) => Promise<void>;
@@ -42,6 +43,11 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
   const syncInProgress = useRef(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
+  const allChildrenRef = useRef<Child[]>([]);
+  useEffect(() => {
+    allChildrenRef.current = allChildren;
+  }, [allChildren]);
+
   useEffect(() => {
     if (!session) {
       setAllChildren([]);
@@ -59,19 +65,51 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     await AsyncStorage.setItem("children", JSON.stringify(newList));
   };
 
+  const processAllDeletions = useCallback(async (userId: string) => {
+    // Spustí všechny fronty smazání paralelně
+    await Promise.all([
+      utils.processDeletionQueue("pending_child_deletions", (id) => 
+        api.deleteChild(id, userId)
+      ),
+      utils.processDeletionQueue("pending_milestone_deletions", (i) => 
+        api.deleteMilestone(i.childId, i.milId, userId)
+      ),
+      utils.processDeletionQueue("pending_word_deletions", (i) => 
+        api.deleteWord(i.childId, i.wordId, userId)
+      ),
+      utils.processDeletionQueue("pending_diary_deletions", (i) => 
+        api.deleteDiaryEntry(i.childId, userId, i.diaryId)
+      ),
+      utils.processDeletionQueue("pending_food_deletions", (i) => 
+        api.deleteFoodRecord(i.childId, i.foodLabel, userId)
+      ),
+      utils.processDeletionQueue("pending_bf_day_deletions", (i) => 
+        api.updateBreastfeedingDay(i.childId, i.date, [], userId)
+      ),
+      utils.processDeletionQueue("pending_sleep_day_deletions", (i) => 
+        api.updateSleepDay(i.childId, i.date, [], userId)
+      ),
+    ]);
+  }, []);
+
   const syncOfflineData = useCallback(async (userId?: string) => {
     if (syncInProgress.current) return [];
     const currentUserId = userId || user?.id;
-    if (!currentUserId) {
-      console.warn("LOG: SyncOfflineData přerušen - userId není k dispozici");
-      return [];
-    }
+    if (!currentUserId) return [];
 
-    console.log("LOG: Start syncOfflineData pro uživatele:", currentUserId);
     syncInProgress.current = true;
 
     try {
+      try {
+        // Můžeš použít dedikovaný endpoint (např. /health nebo /profiles) s malým timeoutem
+        // Pokud tento fetch selže, víme, že jsme offline a rovnou končíme.
+        await fetch(`${BASE_URL}/profiles`, { method: 'HEAD' });
+      } catch (netErr) {
+        console.log("ℹ️ [SYNC] Backend je nedostupný, synchronizace odložena.");
+        return []; // Tímto vyskočíme a nespustíme žádné cykly ani processAllDeletions
+      }
       const offlineData = await AsyncStorage.getItem("pending_child_updates");
+      
       if (!offlineData) {
         await processAllDeletions(currentUserId);
         return [];
@@ -82,59 +120,44 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
 
       for (const [originalId, childData] of Object.entries(pendingUpdates)) {
         try {
-          // --- KROK 0: ZÁKLADNÍ INFO ---
-          const basicInfo: ChildUpdate = {
-            name: childData.name,
-            birthDate: childData.birthDate,
-            sex: childData.sex,
-            photo: childData.photo,
-            currentModeFeed: childData.currentModeFeed,
-            currentModeSleep: childData.currentModeSleep,
-          };
-          await api.updateChild(originalId, basicInfo, currentUserId);
+          // Update základních info a návrat "pravdy" z DB
+          await api.updateChild(originalId, childData, currentUserId);
 
-          // --- KROK 1 & 2: DENNÍ ZÁZNAMY (Spánek, Kojení) ---
-          await utils.syncSectionByDate(originalId, currentUserId, childData.sleepRecords, api.updateSleepDay);
-          await utils.syncSectionByDate(originalId, currentUserId, childData.breastfeedingRecords, api.updateBreastfeedingDay);
+          // 1. Hromadné sekce (Milníky, Slova, Zuby, Váha, Jídlo)
+          await Promise.all([
+            api.syncWeightHeights(originalId, childData.wh || [], currentUserId),
+            api.syncTeethRecords(originalId, currentUserId, childData.teethRecords || []),
+            api.syncFoodRecords(originalId, childData.foodRecords || [], currentUserId),
+            api.syncMilestones(originalId, childData.milestones || [], currentUserId),
+            api.syncWords(originalId, childData.words || [], currentUserId),
+          ]);
 
-          // --- KROK 3 - 7: GENERICKÉ SEKCE ---
-          await utils.syncGenericSection("Milníky", api.syncMilestones(originalId, childData.milestones || [], currentUserId));
-          await utils.syncGenericSection("Jídlo", api.syncFoodRecords(originalId, childData.foodRecords || [], currentUserId));
-          await utils.syncGenericSection("Váha/Výška", api.syncWeightHeights(originalId, childData.wh || [], currentUserId));
-          await utils.syncGenericSection("Zuby", api.syncTeethRecords(originalId, currentUserId, childData.teethRecords || []));
-          await utils.syncGenericSection("Slova", api.syncWords(originalId, childData.words || [], currentUserId));
-
-          // --- KROK 8: DENÍK (Specifická logika pro lokální IDs) ---
+          // 2. Denní záznamy (Spánek, Kojení) - seskupeno podle data uvnitř helperu
+          await utils.syncSectionByDate(originalId, currentUserId, childData.sleepRecords || [], api.updateSleepDay);
+          await utils.syncSectionByDate(originalId, currentUserId, childData.breastfeedingRecords || [], api.updateBreastfeedingDay);
+          
+          // 3. Deník (pokud není hromadný sync na backendu)
           if (childData.diaryRecords) {
-            const updatedDiary = [];
             for (const record of childData.diaryRecords) {
-              try {
-                const { id, created_at, child_id, ...diaryData } = record;
-                if (id.startsWith("local-")) {
-                  const saved = await api.createDiaryEntry(originalId, currentUserId, diaryData);
-                  updatedDiary.push(saved);
-                } else {
-                  const updated = await api.updateDiaryEntry(originalId, currentUserId, id, diaryData);
-                  updatedDiary.push(updated);
-                }
-              } catch (err) {
-                console.warn(`[SYNC] Deník (${record.name}) selhal, ponechávám původní`, err);
-                updatedDiary.push(record);
+              const { id, ...diaryData } = record;
+              if (id.startsWith("local-")) {
+                await api.createDiaryEntry(originalId, currentUserId, diaryData);
+              } else {
+                await api.updateDiaryEntry(originalId, currentUserId, id, diaryData);
               }
             }
-            childData.diaryRecords = updatedDiary;
           }
 
           syncedIds.push(originalId);
         } catch (err) {
-          console.warn(`[SYNC] Dítě ${childData.name} selhalo, zkusím příště.`, err);
+          console.warn(`[SYNC] Dítě ${childData.name} selhalo`, err);
         }
       }
 
-      // --- MAZÁNÍ FRONTY ---
+      // 5. Vyřízení smazaných věcí
       await processAllDeletions(currentUserId);
 
-      // --- VYČIŠTĚNÍ PENDING UPDATES ---
+      // 6. Vyčištění fronty
       if (syncedIds.length > 0) {
         const remaining = { ...pendingUpdates };
         syncedIds.forEach(id => delete remaining[id]);
@@ -143,83 +166,104 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
 
       return syncedIds;
     } catch (error) {
-      console.error("[SYNC] Kritická chyba v syncOfflineData:", error);
+      console.error("[SYNC] Kritická chyba:", error);
       return [];
     } finally {
       syncInProgress.current = false;
     }
-  }, [user]);
-
-  const processAllDeletions = async (userId: string) => {
-    await utils.processDeletionQueue("pending_child_deletions", (id) => api.deleteChild(id, userId));
-    await utils.processDeletionQueue("pending_milestone_deletions", (i) => api.deleteMilestone(i.childId, i.milId, userId));
-    await utils.processDeletionQueue("pending_word_deletions", (i) => api.deleteWord(i.childId, i.wordId, userId));
-    await utils.processDeletionQueue("pending_diary_deletions", (i) => api.deleteDiaryEntry(i.childId, userId, i.diaryId));
-    await utils.processDeletionQueue("pending_food_deletions", (i) => api.deleteFoodRecord(i.childId, i.foodLabel, userId));
-  };
+  }, [user, processAllDeletions]);
 
   const reloadChildren = useCallback(async () => {
     if (!user?.id) return;
-
-    // 1. Rychlý start z disku (beze změny)
-    const stored = await AsyncStorage.getItem("children");
-    const localCache = utils.safeParse(stored, []) as Child[];
-    if (localCache.length > 0) setAllChildren(localCache);
+  
+    setIsDataLoaded(false);
 
     try {
-      const syncedIds = await syncOfflineData(user.id);
+      // Pokud nelze navázat spojení, vyvoláme chybu dřív, než dojde k fetchChildren
+      await fetch(`${BASE_URL}/profiles`, { method: 'HEAD' });
+
+      // Synchronizace offline dat (pokud jsme online)
+      await syncOfflineData(user.id);
       
-      // 2. Fetch dětí už obsahuje VŠECHNA vnořená data (milestones, diary, atd.)
-      const [childrenFromAPI, offlineDataStr] = await Promise.all([
-        api.fetchChildren(user.id).catch(() => []),
-        AsyncStorage.getItem("pending_child_updates")
-      ]);
+      // Fetch čerstvých dat z API
+      const childrenFromAPI = await api.fetchChildren(user.id);
 
-      const pending = utils.safeParse(offlineDataStr, {});
+      const pendingStr = await AsyncStorage.getItem("pending_child_updates");
+      const pending = pendingStr ? JSON.parse(pendingStr) : {};
+      const bfDeletionsStr = await AsyncStorage.getItem("pending_bf_day_deletions");
+      const bfDeletions = bfDeletionsStr ? JSON.parse(bfDeletionsStr) : [];
+      const sleepDeletionsStr = await AsyncStorage.getItem("pending_sleep_day_deletions");
+      const sleepDeletions = sleepDeletionsStr ? JSON.parse(sleepDeletionsStr) : [];
+      
+      const currentLocalChildren = allChildrenRef.current;
 
-      // 3. Jednoduché obohacení (Merge)
-      const enrichedChildren = childrenFromAPI.map((apiChild: Child) => {
-        // Pokud má dítě nevyřízené offline změny, prioritizujeme lokální stav
-        const isPending = !!pending[apiChild.id] || syncedIds.includes(apiChild.id);
-        
-        if (isPending) {
-          const local = localCache.find(c => c.id === apiChild.id);
-          return local ? { ...apiChild, ...local } : apiChild;
+      const mergedChildren = childrenFromAPI.map(apiChild => {
+        const localChild = currentLocalChildren.find(c => c.id === apiChild.id);
+
+        const apiBfRecords = (apiChild.breastfeedingRecords || []).filter(rec => 
+          !bfDeletions.some((del: any) => del.childId === apiChild.id && del.date === rec.date)
+        );
+        const apiSleepRecords = (apiChild.sleepRecords || []).filter(rec => 
+          !sleepDeletions.some((del: any) => del.childId === apiChild.id && del.date === rec.date)
+        );
+
+        const cleanedApiChild = {
+          ...apiChild,
+          breastfeedingRecords: apiBfRecords,
+          sleepRecords: apiSleepRecords,
+          // Preserve local timer states — API has timezone-bugged auto-computed values
+          currentModeSleep: localChild?.currentModeSleep ?? apiChild.currentModeSleep,
+          currentModeFeed: localChild?.currentModeFeed ?? apiChild.currentModeFeed,
+        };
+
+        if (pending[cleanedApiChild.id]) {
+          return localChild || cleanedApiChild;
         }
-        return apiChild;
+        return cleanedApiChild;
       });
 
-      // 4. Doplnění čistě lokálních dětí (které ještě nejsou v API)
-      const apiIds = childrenFromAPI.map((c: any) => c.id);
-      const onlyLocal = localCache.filter(lc => !apiIds.includes(lc.id));
-      const finalChildren = [...enrichedChildren, ...onlyLocal];
-
-      // 5. Uložení a update stavu
-      setAllChildren(finalChildren);
+      setAllChildren(mergedChildren);
+      await updateLocalCache(mergedChildren);
       setIsDataLoaded(true);
-      await AsyncStorage.setItem("children", JSON.stringify(finalChildren));
 
     } catch (error) {
-      console.warn("[RELOAD] Chyba při aktualizaci dat.", error);
+      console.log("ℹ️ [OFFLINE REŽIM] Načítám kompletní data dětí z lokální cache.");
+      
+      try {
+        const stored = await AsyncStorage.getItem("children");
+        if (stored) {
+          const parsedChildren = JSON.parse(stored);
+          setAllChildren(parsedChildren);
+        }
+      } catch (cacheError) {
+        console.error("Chyba při čtení dětí z cache:", cacheError);
+      } finally {
+        setIsDataLoaded(true);
+      }
     }
   }, [user, syncOfflineData]);
 
-  // Inicializace
+  // Inicializace při mountu / změně usera
   useEffect(() => {
+    let isMounted = true;
+
     const initData = async () => {
-      if (!user) return; // AuthContext ještě načítá
-
+      if (!user) return;
       try {
+        setIsDataLoaded(false); // Defenzivní nastavení na false před začátkem
         const storedId = await AsyncStorage.getItem("selectedChildId");
-        if (storedId) setSelectedChildIdState(storedId);
-
+        if (storedId && isMounted) {
+          setSelectedChildIdState(storedId);
+        }
         await reloadChildren();
       } catch (e) {
         console.error("Chyba při inicializaci ChildProvideru:", e);
+        setIsDataLoaded(true);
       }
     };
 
     initData();
+    return () => { isMounted = false; };
   }, [user, reloadChildren]);
 
   // --- SETTER ID ---
@@ -239,6 +283,11 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       ? allChildren.map(c => c.id === childData.id ? updatedChild : c)
       : [...allChildren, updatedChild];
 
+    setAllChildren(prev => {
+      const found = prev.some(c => c.id === childData.id);
+      if (found) return prev.map(c => c.id === childData.id ? { ...c, ...childData } : c);
+      return [...prev, childData as Child];
+    });
     await updateLocalCache(finalDispatchList);
 
     // 2. API Sync
@@ -290,66 +339,168 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [allChildren, selectedChildId, setSelectedChildId, updateLocalCache, user]);
 
-  // ============ BREASTFEEDING ============
   const updateBreastfeedingDayRecord = useCallback(
-    async (childId: string, date: string, bfData: BreastfeedingSyncDay) => {
-      // 1. Příprava dat z aktuálního stavu v paměti
-      const updatedList = allChildren.map((child) => {
-        if (child.id !== childId) return child;
-        const otherDaysRecords = (child.breastfeedingRecords || []).filter(
-          (r) => r.date !== date
-        );
-        const recordsWithChildId = bfData.map((item) => ({
-          ...item,
-          child_id: childId,
-        }));
-        return {
-          ...child,
-          breastfeedingRecords: [...otherDaysRecords, ...recordsWithChildId],
-        };
-      });
+    async (
+      childId: string,
+      date: string,
+      bfData: BreastfeedingSyncDay,
+      currentModeFeed?: Child["currentModeFeed"]
+    ) => {
 
-      // 2. Update UI a Cache naráz
-      await updateLocalCache(updatedList);
+      // 1. Optimistický update (aby UI ihned reagovalo před dokončením API requestu)
+      const buildUpdatedList = (modeFeed: Child["currentModeFeed"]) =>
+        allChildren.map((child) => {
+          if (child.id !== childId) return child;
+          const otherDaysRecords = (child.breastfeedingRecords || []).filter(r => r.date !== date);
+          const recordsWithChildId = bfData.map(item => ({
+            ...item,
+            child_id: childId,
+            id: item.id || `local-${Date.now()}-${Math.random()}` // Generování ID pokud chybí
+          }));
 
-      // 3. API Sync nebo Pending Queue pomocí helperu
+          // Pokud volající nepředal explicitní stav časovače, dopočítáme ho
+          // ze stejné logiky jako backend: poslední záznam dne určuje aktivní mód.
+          let resolvedModeFeed = modeFeed;
+          if (modeFeed === undefined) {
+            if (bfData.length > 0) {
+              const sortedData = [...bfData].sort((a, b) => a.time.localeCompare(b.time));
+              const lastRec = sortedData[sortedData.length - 1];
+              resolvedModeFeed = { mode: lastRec.state, start: new Date(`${date}T${lastRec.time}:00`).toISOString() };
+            } else {
+              resolvedModeFeed = null;
+            }
+          }
+
+          return {
+            ...child,
+            breastfeedingRecords: [...otherDaysRecords, ...recordsWithChildId],
+            currentModeFeed: resolvedModeFeed,
+          };
+        });
+
+      // provizorní stav do UI
+      const provisionalList = buildUpdatedList(currentModeFeed);
+      setAllChildren(provisionalList);
+      await updateLocalCache(provisionalList);
+
+      // 2. Odeslání na API
       try {
-        await api.updateBreastfeedingDay(childId, date, bfData, user!.id);
+        const shouldClearTimer = currentModeFeed === null;
+        const apiResponse = await api.updateBreastfeedingDay(childId, date, bfData, user!.id, shouldClearTimer);
+
+        const finalList = provisionalList.map((child) => {
+          if (child.id !== childId) return child;
+          const otherDaysRecords = (child.breastfeedingRecords || []).filter(r => r.date !== date);
+
+          // Server je zdroj pravdy; provisional (resolvedModeFeed) je jen fallback,
+          // kdyby z nějakého důvodu apiResponse neobsahovala currentModeFeed.
+          const finalModeFeed = currentModeFeed !== undefined
+            ? currentModeFeed
+            : apiResponse.currentModeFeed !== undefined
+              ? apiResponse.currentModeFeed
+              : child.currentModeFeed;
+
+          return {
+            ...child,
+            breastfeedingRecords: [...otherDaysRecords, ...apiResponse.records],
+            currentModeFeed: finalModeFeed,
+          };
+        });
+
+        setAllChildren(finalList);
+        await updateLocalCache(finalList);
+
       } catch (err) {
-        console.log("Offline: Záznam kojení uložen do pending_child_updates");
-        await utils.handleSyncError(childId, updatedList);
+        console.log("Offline nebo chyba: Záznam ukládáme optimisticky do cache");
+        await updateLocalCache(provisionalList);
+        await utils.handleSyncError(childId, provisionalList);
+
+        if (bfData.length === 0) {
+          await utils.addToDeletionQueue("pending_bf_day_deletions", { childId, date });
+        }
       }
-    },[allChildren, user, updateLocalCache]);
+    },
+    [allChildren, user, updateLocalCache]
+  );
 
   // ============ SLEEP ============
   const updateSleepDayRecord = useCallback(
-    async (childId: string, date: string, sleepData: SleepSyncDay) => {
-      // 1. Příprava dat
-      const updatedList = allChildren.map((child) => {
-        if (child.id !== childId) return child;
-        const otherDaysRecords = (child.sleepRecords || []).filter(
-          (r) => r.date !== date
-        );
-        const recordsWithChildId = sleepData.map((item) => ({
-          ...item,
-          child_id: childId,
-        }));
-        return {
-          ...child,
-          sleepRecords: [...otherDaysRecords, ...recordsWithChildId],
-        };
-      });
-      // 2. Update UI a Cache
-      await updateLocalCache(updatedList);
+    async (
+      childId: string,
+      date: string,
+      sleepData: SleepSyncDay,
+      currentModeSleep?: Child["currentModeSleep"]
+    ) => {
 
-      // 3. API Sync nebo Pending Queue pomocí helperu
+      const buildUpdatedList = (modeSleep: Child["currentModeSleep"]) =>
+        allChildren.map((child) => {
+          if (child.id !== childId) return child;
+
+          const otherDaysRecords = (child.sleepRecords || []).filter(r => r.date !== date);
+          const recordsWithChildId = sleepData.map(item => ({
+            ...item,
+            child_id: childId,
+            id: item.id || `local-${Date.now()}-${Math.random()}`
+          }));
+
+          let resolvedModeSleep = modeSleep;
+          if (modeSleep === undefined) {
+            if (sleepData.length > 0) {
+              const sortedData = [...sleepData].sort((a, b) => a.time.localeCompare(b.time));
+              const lastRec = sortedData[sortedData.length - 1];
+              resolvedModeSleep = { mode: lastRec.state, start: new Date(`${date}T${lastRec.time}:00`).toISOString() };
+            } else {
+              resolvedModeSleep = null;
+            }
+          }
+
+          return {
+            ...child,
+            sleepRecords: [...otherDaysRecords, ...recordsWithChildId],
+            currentModeSleep: resolvedModeSleep,
+          };
+        });
+
+      const provisionalList = buildUpdatedList(currentModeSleep);
+      setAllChildren(provisionalList);
+      await updateLocalCache(provisionalList);
+
       try {
-        await api.updateSleepDay(childId, date, sleepData, user!.id);
+        const shouldClearTimer = currentModeSleep === null;
+        const apiResponse = await api.updateSleepDay(childId, date, sleepData, user!.id, shouldClearTimer);
+
+        const finalList = provisionalList.map((child) => {
+          if (child.id !== childId) return child;
+          const otherDaysRecords = (child.sleepRecords || []).filter(r => r.date !== date);
+
+          const finalModeSleep = currentModeSleep !== undefined
+            ? currentModeSleep          // explicit null (reset) or explicit object (new record) — trust the client
+            : apiResponse.currentModeSleep !== undefined
+              ? apiResponse.currentModeSleep
+              : child.currentModeSleep;
+
+          return {
+            ...child,
+            sleepRecords: [...otherDaysRecords, ...apiResponse.records],
+            currentModeSleep: finalModeSleep,
+          };
+        });
+
+        setAllChildren(finalList);
+        await updateLocalCache(finalList);
+
       } catch (err) {
-        console.log("Offline: Záznam spánku uložen do pending_child_updates");
-        await utils.handleSyncError(childId, updatedList);
+        console.log("Offline nebo chyba: Záznam spánku ukládáme optimisticky do cache");
+        await updateLocalCache(provisionalList);
+        await utils.handleSyncError(childId, provisionalList);
+
+        if (sleepData.length === 0) {
+          await utils.addToDeletionQueue("pending_sleep_day_deletions", { childId, date });
+        }
       }
-    },[allChildren, user, updateLocalCache]);
+    },
+    [allChildren, user, updateLocalCache]
+  );
 
   // ============ WEIGHT & HEIGHT ============
   const addWeightHeightRecord = useCallback(async (childId: string, entry: Omit<WeightHeight, 'id' | 'child_id'>) => {
@@ -360,7 +511,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       if (child.id !== childId) return child;
       return { ...child, wh: [...(child.wh || []), newFullEntry] };
     });
-
+    setAllChildren(newList);
     await updateLocalCache(newList);
 
     // 2. API Sync / Pending Queue
@@ -385,6 +536,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       return { ...child, wh: newWhList };
     });
     // 2. Update UI i Cache
+    setAllChildren(newList);
     await updateLocalCache(newList);
     // 3. API Sync / Pending Queue
     try {
@@ -399,14 +551,26 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
   }, [allChildren, user, updateLocalCache]);
 
   const deleteWeightHeightRecord = useCallback(async (childId: string, whId: string) => {
-    const child = allChildren.find(c => c.id === childId);
-    if (child) {
-      const updatedWh = (child.wh || []).filter(r => r.id !== whId);
-      const updatedChild = { ...child, wh: updatedWh };
-      
-      await updateChild(updatedChild);
+    const newList = allChildren.map(child => {
+      if (child.id !== childId) return child;
+      return { ...child, wh: (child.wh || []).filter(r => r.id !== whId) };
+    });
+    
+    setAllChildren(newList);
+    await updateLocalCache(newList);
+
+    await utils.removeFromPendingUpdates(childId, 'wh', whId);
+
+    if (whId.toString().startsWith("local-")) return;
+
+    try {
+      const childData = newList.find(c => c.id === childId);
+      await api.syncWeightHeights(childId, childData?.wh || [], user!.id);
+    } catch (err) {
+      console.log("Offline: Smazání WH uloženo do fronty");
+      await utils.addToDeletionQueue("pending_wh_deletions", { childId, whId });
     }
-  }, [allChildren, updateChild]);
+  }, [allChildren, user, updateLocalCache]);
 
   // ============ FOOD ============
   const updateFoodRecord = useCallback(async (childId: string, foodRecords: FoodRecord[]) => {
@@ -415,6 +579,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       child.id === childId ? { ...child, foodRecords } : child
     );
     // 2. Update UI i Cache
+    setAllChildren(newList);
     await updateLocalCache(newList); 
     // 3. API Sync
     try {
@@ -456,6 +621,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       return { ...child, diaryRecords: [newFullEntry, ...(child.diaryRecords || [])] };
     });
     // Update UI i Cache naráz
+    setAllChildren(newList);
     await updateLocalCache(newList);
     // 2. API Sync / Pending Queue
     try {
@@ -480,6 +646,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       return { ...child, diaryRecords: updatedRecords };
     });
 
+    setAllChildren(newList);
     // 2. Update UI a Cache
     await updateLocalCache(newList);
 
@@ -536,6 +703,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       return { ...child, words: [...(child.words || []), newWord] };
     });
 
+    setAllChildren(newList);
     await updateLocalCache(newList);
     // 2. API volání přes createWord
     try {
@@ -557,6 +725,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
         )
       };
     });
+    setAllChildren(newList);
     await updateLocalCache(newList);
 
     // 2. API volání
@@ -600,6 +769,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
     const newList = allChildren.map(child => 
       child.id === childId ? { ...child, teethRecords } : child
     );
+    setAllChildren(newList);
     // 2. Update UI a Cache
     await updateLocalCache(newList);
     // 3. API Sync / Offline Fronta
@@ -623,6 +793,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
         milestones: [...(child.milestones || []), tempRecord]
       };
     });
+    setAllChildren(updatedList);
     await updateLocalCache(updatedList);
     // 2. API Sync / Pending Queue
     try {
@@ -654,6 +825,7 @@ export const ChildProvider = ({ children }: { children: React.ReactNode }) => {
       };
     });
     // 2. Update UI a Cache naráz
+    setAllChildren(updatedChildren);
     await updateLocalCache(updatedChildren);
     // 3. API Sync / Offline Fronta
     try {

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, JSON
 from enum import Enum
-from pydantic import model_validator
+from pydantic import model_validator, BaseModel
 
 # ============ USER MODELS ============
 
@@ -44,11 +44,21 @@ class CurrentModeSleep(SQLModel):
     
 class ChildBase(SQLModel):
     name: str
-    birthDate: str
+    birthDate: str = Field(alias="birthdate", sa_column_kwargs={"name": "birthdate"})
     sex: str
     photo: Optional[str] = None
-    currentModeFeed: Optional[CurrentModeFeed] = Field(default=None, sa_column=Column(JSON))
-    currentModeSleep: Optional[CurrentModeSleep] = Field(default=None, sa_column=Column(JSON))
+    currentModeFeed: Optional[CurrentModeFeed] = Field(
+        default=None, 
+        sa_column=Column(JSON, name="currentmodefeed") 
+    )
+    currentModeSleep: Optional[CurrentModeSleep] = Field(
+        default=None, 
+        sa_column=Column(JSON, name="currentmodesleep") 
+    )
+
+    # PYDANTIC DO API PROPUSTÍ CAMELCASE
+    class Config:
+        populate_by_name = True
 
 # --- TABLE MODEL ---
 class Child(ChildBase, table=True):
@@ -171,6 +181,11 @@ class WeightHeightCreate(WeightHeightBase):
 
 
 # ============ BREASTFEEDING MODELS ============
+
+class CurrentModeFeed(BaseModel):
+    mode: str          # "start" nebo "stop"
+    start: str         # ISO string s časem spuštění
+
 class BreastfeedingState(str, Enum):
     start = "start"
     stop = "stop"
@@ -205,11 +220,19 @@ class BreastfeedingDaySummary(SQLModel):
     date: str
     total_minutes: int
 
+class BreastfeedingSyncResponse(BaseModel):
+    records: List[BreastfeedingRecordRead]
+    currentModeFeed: Optional[CurrentModeFeed] = None
+
 # ============ SLEEP MODELS ============
 
 class SleepState(str, Enum):
     sleep = "sleep"
     awake = "awake"
+
+class CurrentModeSleep(BaseModel):
+    mode: SleepState  # "sleep" nebo "awake"
+    start: str        # ISO string s časem spuštění časovače
 
 class SleepRecordBase(SQLModel):
     date: str           # YYYY-MM-DD
@@ -240,6 +263,12 @@ class SleepRecordUpdate(SQLModel):
 class SleepDaySummary(SQLModel):
     date: str
     total_minutes: int
+    night_minutes: int
+
+class SleepSyncResponse(BaseModel):
+    """Model pro odpověď z backendu (vrací uložení záznamů a stav časovače)."""
+    records: List[SleepRecordRead]
+    currentModeSleep: Optional[CurrentModeSleep] = None
 
 # ============ ENTRY MODELS ============
 

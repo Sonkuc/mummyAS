@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
@@ -12,7 +13,7 @@ import { useChild } from "@/contexts/ChildContext";
 import { WORDS } from "@/data/words";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 export default function SpeakingAdd() {
   const router = useRouter();
@@ -26,13 +27,13 @@ export default function SpeakingAdd() {
     const finalName = name.trim();
 
     if (!selectedChildId || !selectedChild) {
-      Alert.alert("Chyba", "Není vybráno dítě.");
+      showAlert("Chyba", "Není vybráno dítě.");
       return;
     }
 
     // Kontrola duplicity zůstává na frontendu pro rychlou reakci
     if (selectedChild.words?.some(w => w.name.toLowerCase() === finalName.toLowerCase())) {
-      Alert.alert("Info", "Toto slovo už existuje.");
+      showAlert("Info", "Toto slovo už existuje.");
       return;
     }
 
@@ -41,7 +42,7 @@ export default function SpeakingAdd() {
 
       router.back();
     } catch (error) {
-      Alert.alert("Chyba", "Nepodařilo se uložit slovo.");
+      showAlert("Chyba", "Nepodařilo se uložit slovo.");
     }
   };
 

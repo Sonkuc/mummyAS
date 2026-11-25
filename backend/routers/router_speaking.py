@@ -55,6 +55,7 @@ def add_entry(
     session.refresh(w)
     return w
 
+@router.put("/children/{child_id}/words/{word_id}", response_model=SpeakingRead)
 def update_word(
     child_id: str, 
     word_id: str, 

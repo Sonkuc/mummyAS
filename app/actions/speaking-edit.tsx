@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import DeleteButton from "@/components/DeleteButton";
@@ -12,7 +13,7 @@ import { useChild } from "@/contexts/ChildContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function SpeakingEdit() {
   const { wordId } = useLocalSearchParams();
@@ -51,7 +52,7 @@ export default function SpeakingEdit() {
       router.back();
     } catch (error) {
       console.error("Chyba při ukládání:", error);
-      Alert.alert("Chyba", "Nepodařilo se uložit změny.");
+      showAlert("Chyba", "Nepodařilo se uložit změny.");
     }
   };
 

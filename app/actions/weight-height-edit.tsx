@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
@@ -14,7 +15,7 @@ import { useChild } from "@/contexts/ChildContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 export default function WeightHeightEdit() {
   const { whId } = useLocalSearchParams<{ whId: string }>();
@@ -94,7 +95,7 @@ const handleSave = async () => {
   );   
 
   if (dateExists) {
-    Alert.alert("Chyba", "Záznam pro toto datum už existuje.");
+    showAlert("Chyba", "Záznam pro toto datum už existuje.");
     return;
   }
 
@@ -120,7 +121,7 @@ const handleSave = async () => {
     router.back();
   } catch (error) {
     console.error("Chyba při ukládání:", error);
-    Alert.alert("Chyba", "Nepodařilo se aktualizovat data.");
+    showAlert("Chyba", "Nepodařilo se aktualizovat data.");
   } finally {
     setIsSaving(false);
   }

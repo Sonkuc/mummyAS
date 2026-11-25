@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CustomHeader from "@/components/CustomHeader";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
@@ -12,7 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function ProfileEdit() {
   const router = useRouter();
@@ -36,11 +37,11 @@ export default function ProfileEdit() {
     // 1. Validace hesel (pokud se uživatel snaží vyplnit nové heslo)
     if (newPassword || confirmPassword) {
       if (newPassword.length < 6) {
-        Alert.alert("Chyba", "Nové heslo musí mít alespoň 6 znaků.");
+        showAlert("Chyba", "Nové heslo musí mít alespoň 6 znaků.");
         return;
       }
       if (newPassword !== confirmPassword) {
-        Alert.alert("Chyba", "Nová hesla se neshodují.");
+        showAlert("Chyba", "Nová hesla se neshodují.");
         return;
       }
     }
@@ -62,9 +63,9 @@ export default function ProfileEdit() {
     setLoading(false);
 
     if (error) {
-      Alert.alert("Chyba", error.message);
+      showAlert("Chyba", error.message);
     } else {
-      Alert.alert("Úspěch", "Profil byl úspěšně aktualizován.");
+      showAlert("Úspěch", "Profil byl úspěšně aktualizován.");
       // Vyčistíme pole pro hesla
       setNewPassword("");
       setConfirmPassword("");
@@ -77,7 +78,7 @@ export default function ProfileEdit() {
     // 1. Kontrola připojení
     const state = await NetInfo.fetch();
     if (!state.isConnected) {
-      Alert.alert(
+      showAlert(
         "Jste offline", 
         "Pro smazání účtu musíte být připojeni k internetu, aby bylo možné data bezpečně odstranit i ze serveru."
       );
@@ -85,7 +86,7 @@ export default function ProfileEdit() {
     }
 
     // 2. Potvrzovací okno
-    Alert.alert(
+    showAlert(
       "⚠️ Trvalé smazání účtu",
       "Opravdu chcete smazat svůj profil a veškerá data o dětech? Tato akce je nevratná.",
       [
@@ -115,7 +116,7 @@ export default function ProfileEdit() {
     await supabase.auth.signOut();
 
     // D. Navigace
-    Alert.alert("Smazáno", "Účet byl smazán.");
+    showAlert("Smazáno", "Účet byl smazán.");
     router.replace("/auth/login");
   } catch (error) {
     console.error(error);

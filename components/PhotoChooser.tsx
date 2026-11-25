@@ -1,9 +1,9 @@
 import { avatars } from "@/assets/images/avatars";
-import { getPhotoSource } from "@/components/PhotoFunctions";
+import { getPhotoSource, resizeImageForWeb } from "@/components/PhotoFunctions";
 import { COLORS } from "@/constants/MyColors";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import MyButton from "./MyButton";
 
 type Props = {
@@ -34,6 +34,19 @@ export default function PhotoChooser({ childId, onSelect, initialUri }: Props) {
 
     if (!res.canceled && res.assets.length) {
       const pickedUri = res.assets[0].uri;
+
+      if (Platform.OS === "web") {
+        // Web: zmenšit a uložit jako data URL (bez ?t=, rozbilo by base64)
+        try {
+          const dataUrl = await resizeImageForWeb(pickedUri);
+          setPreviewUri(dataUrl);
+          onSelect(dataUrl);
+        } catch (err) {
+          console.error("Chyba při zpracování fotky:", err);
+        }
+        return;
+      }
+
       const uriWithTimestamp = `${pickedUri}?t=${Date.now()}`;
 
       setPreviewUri(uriWithTimestamp);

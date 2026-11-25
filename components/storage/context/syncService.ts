@@ -1,37 +1,6 @@
 import { Child } from "@/components/storage/interfaces";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Pomocník pro "per-day" synchronizaci (Spánek, Kojení)
-export const syncDailyRecords = async (
-  childId: string, 
-  localRecords: { date: string }[] | undefined, 
-  apiFunc: (id: string, date: string, data: any[]) => Promise<any>,
-  fetchApiFunc: (id: string) => Promise<any[]> // Přidáme funkci pro načtení aktuálního stavu ze serveru
-) => {
-  // 1. Získáme data, která jsou aktuálně na serveru
-  const currentApiData = await fetchApiFunc(childId).catch(() => []);
-  
-  // 2. Unikátní data (lokální i serverová)
-  const uniqueDates = new Set([
-    ...(localRecords?.map(r => r.date) || []),
-    ...currentApiData.map(r => r.date)
-  ]);
-
-  if (uniqueDates.size === 0) return;
-
-  for (const date of uniqueDates) {
-    const dayRecords = (localRecords || []).filter(r => r.date === date);
-    
-    // Zda se data liší 
-    const apiDayRecords = currentApiData.filter(r => r.date === date);
-    
-    // Jednoduché porovnání délky nebo obsahu stačí pro vyvolání syncu (lokal vs. server)
-    if (JSON.stringify(dayRecords) !== JSON.stringify(apiDayRecords)) {
-        await apiFunc(childId, date, dayRecords);
-    }
-  }
-};
-
 export const safeParse = (data: string | null, fallback: any) => {
   try { return data ? JSON.parse(data) : fallback; } 
   catch { return fallback; }
@@ -78,33 +47,30 @@ export const syncSectionByDate = async (
   records: any[] | undefined,
   syncFunction: (childId: string, date: string, data: any, userId: string) => Promise<any>
 ) => {
-  if (!records || records.length === 0) return;
+  if (records === undefined) return;
 
-  const grouped = records.reduce((acc, rec) => {
-    if (!acc[rec.date]) acc[rec.date] = [];
-    const { child_id, ...rest } = rec; // Očištění dat
-    acc[rec.date].push(rest);
-    return acc;
-  }, {} as Record<string, any[]>);
+  const grouped: Record<string, any[]> = {};
 
+  if (records && records.length > 0) {
+    records.forEach((rec) => {
+      if (!grouped[rec.date]) grouped[rec.date] = [];
+      const { child_id, ...rest } = rec;
+      grouped[rec.date].push(rest);
+    });
+  }
+
+  if (records.length === 0) {
+    // Pokud potřebujeme smazat dnešek při kompletním vyčištění:
+    const today = new Date().toISOString().slice(0, 10);
+    grouped[today] = [];
+  }
+  
   for (const [date, data] of Object.entries(grouped)) {
     try {
       await syncFunction(childId, date, data, userId);
     } catch (err) {
       console.warn(`[SYNC] Failed for date ${date}`, err);
     }
-  }
-};
-
-export const syncGenericSection = async (
-  label: string,
-  syncPromise: Promise<any>
-) => {
-  try {
-    await syncPromise;
-    console.log(`[SYNC] ${label} success.`);
-  } catch (err) {
-    console.warn(`[SYNC] ${label} failed.`, err);
   }
 };
 

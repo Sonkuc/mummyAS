@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import AddButton from "./AddButton";
 import CustomHeader from "./CustomHeader";
+import DateSelector from "./DateSelector";
 import GroupSection from "./GroupSection";
 import LookUp from "./LookUpButton";
 import MainScreenContainer from "./MainScreenContainer";
@@ -12,7 +13,6 @@ import Note from "./Note";
 import { FoodRecord, FoodRecordUpdate } from "./storage/interfaces";
 import Subtitle from "./Subtitle";
 import Title from "./Title";
-import ValidatedDateInput from "./ValidDateInput";
 
 type FoodItem = {
   label: string;
@@ -263,38 +263,30 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
       <Modal visible={!!selectedFood} transparent animationType="slide">
         {selectedFood && (() => {
           const record = getRecord(selectedFood);
+          const displayDate = record?.date ? new Date(record.date) : new Date();
           return (
             <View style={styles.modalOverlay}>
               <GroupSection style={styles.dateSelectorBox}>
                 <View style={styles.titleRow}>
                   <Subtitle style={{ color: COLORS.primary, marginTop: -10}}>{selectedFood}</Subtitle>
-                  <View style={styles.datePickerContainer}>
-                    <Text style={styles.label}>Datum zavedení (RRRR-MM-DD):</Text>
-                    <ValidatedDateInput
-                      value={record?.date || ""}
-                      onChange={(newDate) => {
-                        // Tady newDate už přichází jako validní string "YYYY-MM-DD"
-                        if (newDate) handleDateChange(selectedFood, new Date(newDate));
-                      }}
-                      birthISO={selectedChild?.birthDate}
-                      fallbackOnError="original"
-                      originalValue={record?.date || ""}
-                      placeholder="Např. 2024-05-20"
-                    />
-                  </View>
+                  <DateSelector
+                    date={record?.date ? new Date(record.date) : new Date()}
+                    onChange={date => handleDateChange(selectedFood, date)}
+                    birthISO={selectedChild ? selectedChild.birthDate : null}
+                  />
                 </View>
 
-                {/* Odstranění DATA */}
-                {record?.date && (
-                  <View style={styles.row}>
+                {/* ZOBRAZENÍ DATA A IKONY PRO SMAZÁNÍ (Styling jako v Teeth) */}
+                {record?.date ? (
+                  <View style={[styles.row, { marginTop: 10, marginBottom: 20 }]}>
                     <Pressable onPress={handleDateDelete}>
-                      <Text style={{ fontSize: 14, marginRight: 5 }}>🚮</Text>
+                      <Text style={{ fontSize: 18, marginRight: 8 }}>🚮</Text>
                     </Pressable>
                     <Text style={styles.dateText}>
                       Datum zavedení: {new Date(record.date).toLocaleDateString("cs-CZ")}
                     </Text>
                   </View>
-                )}
+                ) : null}
 
                 <View style= {styles.titleRow}>
                   {/* ÚPLNÉ SMAZÁNÍ potraviny */}
@@ -376,10 +368,6 @@ const styles = StyleSheet.create({
   dateText: { color: COLORS.primary, fontWeight: "500" },
   row: { flexDirection: "row", marginBottom: 30, marginTop: -20 },
 
-  deleteAction: {
-    alignItems: "center",
-    padding: 10,
-  },
   uiButton: {
     paddingVertical: 10,
     paddingHorizontal: 15,
@@ -393,15 +381,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: COLORS.darkRedText,
-  },
-  label: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
-    fontWeight: "500",
-  },
-  datePickerContainer: {
-    marginVertical: 15,
-    width: "100%",
   },
 });

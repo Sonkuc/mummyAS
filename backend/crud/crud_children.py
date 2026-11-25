@@ -5,13 +5,19 @@ from sqlalchemy.orm import selectinload
 
 def create_child(session: Session, child_data: ChildCreate, user_id: str) -> Child:
     """Vytvoří dítě a přiřadí mu user_id majitele."""
-    child = Child.from_orm(child_data) 
-    child.user_id = user_id
+    data = child_data.model_dump(exclude={"user_id"}) 
+    db_child = Child(**data, user_id=user_id)
     
-    session.add(child)
-    session.commit()
-    session.refresh(child)
-    return child
+    session.add(db_child)
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        # Pokud už ID existuje, zkusíme update místo failu
+        return update_child(session, str(db_child.id), child_data, user_id)
+        
+    session.refresh(db_child)
+    return db_child
 
 def get_child(session: Session, child_id: str, user_id: str) -> Optional[Child]:
     statement = (

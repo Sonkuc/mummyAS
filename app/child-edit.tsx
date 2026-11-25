@@ -15,7 +15,7 @@ import { useChild } from "@/contexts/ChildContext";
 import { File, Paths } from "expo-file-system";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function ChildEdit() {
   const router = useRouter();
@@ -72,6 +72,9 @@ export default function ChildEdit() {
       const basePhoto = photoUri.split("?")[0];
       if (basePhoto.startsWith("avatar")) {
         finalPhotoUri = basePhoto;
+      } else if (Platform.OS === "web") {
+        // Na webu je fotka už zmenšená jako data URL (base64) – uloží se přímo
+        finalPhotoUri = photoUri;
       } else {
         try {
           const sourceFile = new File(basePhoto);

@@ -1,3 +1,4 @@
+import { showAlert } from "@/components/showAlert";
 import CheckButton from "@/components/CheckButton";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
@@ -14,7 +15,7 @@ import { useChild } from "@/contexts/ChildContext";
 import { MILESTONES } from "@/data/milestones";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 export default function EditMilestone() {
   const { milId } = useLocalSearchParams<{ milId: string }>();
@@ -70,7 +71,7 @@ export default function EditMilestone() {
     
     router.back();
   } catch (error) {
-    Alert.alert("Chyba", "Nepodařilo se uložit změny.");
+    showAlert("Chyba", "Nepodařilo se uložit změny.");
   }
 };
   
