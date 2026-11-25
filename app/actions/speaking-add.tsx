@@ -41,7 +41,7 @@ export default function SpeakingAdd() {
       await addWordRecord(selectedChildId, finalName, date, note.trim());
 
       router.back();
-    } catch (error) {
+    } catch {
       showAlert("Chyba", "Nepodařilo se uložit slovo.");
     }
   };

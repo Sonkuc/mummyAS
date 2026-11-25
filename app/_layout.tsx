@@ -1,5 +1,5 @@
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { ChildProvider, useChild } from "@/contexts/ChildContext";
+import { ChildProvider } from "@/contexts/ChildContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
@@ -34,7 +34,6 @@ function RootLayoutNav() {
   const { session, isGuest, isLoading: isAuthLoading } = useAuth(); 
   const segments = useSegments(); 
   const router = useRouter();
-  const { isDataLoaded } = useChild();
 
   // Kontrola, zda už Expo Router může navigovat
   const [isReady, setIsReady] = useState(false);

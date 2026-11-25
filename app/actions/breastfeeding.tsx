@@ -4,7 +4,7 @@ import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
 import { formatDuration, toTimestamp } from "@/components/HelperFunctions";
-import { formatDateToCzech } from "@/components/IsoFormatDate";
+import { formatDateToCzech, formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Note from "@/components/Note";
 import type { DisplayBreastfeedingRecord } from "@/components/storage/interfaces";
@@ -38,7 +38,7 @@ export default function Breastfeeding() {
   const clearState = async () => {
     if (!selectedChildId || !selectedChild) return;
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = formatDateLocal(new Date());
     const todaysCleanRecords = (selectedChild.breastfeedingRecords || [])
       .filter((r) => r.date === today)
       .map(({ id, date: d, time: t, state: s, note: n }) => ({
@@ -97,7 +97,7 @@ export default function Breastfeeding() {
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
     const time = `${hours}:${minutes}`;
-    const date = now.toISOString().slice(0, 10);
+    const date = formatDateLocal(now);
     const localISOStart = `${date}T${time}:00.000Z`;
 
     const newRec: DisplayBreastfeedingRecord = {

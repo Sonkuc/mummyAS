@@ -1,4 +1,4 @@
-import FoodCategoryScreen from "@/components/FoodCategoryScreen.tsx";
+import FoodCategoryScreen from "@/components/FoodCategoryScreen";
 import { LEGUME } from "@/data/food/legume";
 
 export default function Legume() {

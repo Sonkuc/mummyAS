@@ -31,7 +31,7 @@ export default function SleepEdit() {
   const router = useRouter();
   const { selectedChildId, selectedChild, updateSleepDayRecord } = useChild();
 
-  const [records, setRecords] = useState<DisplaySleepRecord[]>([]);  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const [records, setRecords] = useState<DisplaySleepRecord[]>([]);
   const [newTime, setNewTime] = useState("");
   const [newState, setNewState] = useState<"awake" | "sleep">("awake");
 

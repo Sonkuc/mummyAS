@@ -6,7 +6,7 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
-export default function ({ children, style, ...rest }: Props) {
+export default function GroupSection({ children, style, ...rest }: Props) {
   return (
     <View style={[styles.group, style]} {...rest}>
       {children}

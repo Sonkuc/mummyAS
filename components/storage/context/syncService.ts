@@ -1,3 +1,4 @@
+import { formatDateLocal } from "@/components/IsoFormatDate";
 import { Child } from "@/components/storage/interfaces";
 import { isGuestMode } from "@/lib/guest";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -65,7 +66,7 @@ export const syncSectionByDate = async (
 
   if (records.length === 0) {
     // Pokud potřebujeme smazat dnešek při kompletním vyčištění:
-    const today = new Date().toISOString().slice(0, 10);
+    const today = formatDateLocal(new Date());
     grouped[today] = [];
   }
   

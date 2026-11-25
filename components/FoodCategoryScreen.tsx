@@ -1,3 +1,4 @@
+import { formatDateLocal } from "@/components/IsoFormatDate";
 import { COLORS } from "@/constants/MyColors";
 import { useChild } from "@/contexts/ChildContext";
 import React, { useState } from "react";
@@ -139,7 +140,7 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
 
   // Změna data (Ukládání na backend)
   const handleDateChange = async (foodLabel: string, date: Date | string) => {
-    const isoDate = typeof date === 'string' ? date : date.toISOString().slice(0, 10);
+    const isoDate = typeof date === 'string' ? date : formatDateLocal(date);
     
     const record = getRecord(foodLabel);
     if (record?.date === isoDate) return;
@@ -263,7 +264,6 @@ export default function FoodCategoryScreen({ title, categoryKey, dataList }: Pro
       <Modal visible={!!selectedFood} transparent animationType="slide">
         {selectedFood && (() => {
           const record = getRecord(selectedFood);
-          const displayDate = record?.date ? new Date(record.date) : new Date();
           return (
             <View style={styles.modalOverlay}>
               <GroupSection style={styles.dateSelectorBox}>

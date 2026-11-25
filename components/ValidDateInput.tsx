@@ -1,3 +1,4 @@
+import { formatDateLocal } from "@/components/IsoFormatDate";
 import { showAlert } from "@/components/showAlert";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, TextInput } from "react-native";
@@ -46,7 +47,7 @@ export default function ValidatedDateInput({ value, onChange, ...props }: Props)
       // Fallback logika
       const fallback = (props.fallbackOnError === "original" && props.originalValue) 
         ? props.originalValue 
-        : new Date().toISOString().slice(0, 10);
+        : formatDateLocal(new Date());
       
       setInternal(fallback);
       onChange(fallback);

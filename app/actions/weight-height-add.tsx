@@ -81,7 +81,7 @@ export default function WeightHeightAdd() {
         });
 
         router.back();
-    } catch (error) {
+    } catch {
         showAlert("Chyba", "Nepodařilo se uložit data.");
     } finally {
         setIsSaving(false);

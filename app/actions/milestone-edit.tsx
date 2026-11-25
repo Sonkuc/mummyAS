@@ -45,7 +45,7 @@ export default function EditMilestone() {
       }
       
       if (!rawDate || rawDate.includes("undefined")) {
-        rawDate = new Date().toISOString().slice(0, 10);
+        rawDate = formatDateLocal(new Date());
       }
 
       setDate(rawDate);
@@ -70,7 +70,7 @@ export default function EditMilestone() {
     });
     
     router.back();
-  } catch (error) {
+  } catch {
     showAlert("Chyba", "Nepodařilo se uložit změny.");
   }
 };

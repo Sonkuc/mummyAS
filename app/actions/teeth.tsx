@@ -1,3 +1,4 @@
+import { formatDateLocal } from "@/components/IsoFormatDate";
 import CustomHeader from "@/components/CustomHeader";
 import DateSelector from "@/components/DateSelector";
 import GroupSection from "@/components/GroupSection";
@@ -61,7 +62,7 @@ export default function Teeth() {
 
   // PŘIDÁNÍ NEBO ZMĚNA DATA
   const handleDateChange = async (toothId: string, date: Date) => {
-    const localIsoDate = date.toISOString().split('T')[0];
+    const localIsoDate = formatDateLocal(date);
     
     // Vytvoříme nový záznam (bez id a child_id, ty si pořeší backend při syncu)
     const newRecord = { tooth_id: toothId, date: localIsoDate };

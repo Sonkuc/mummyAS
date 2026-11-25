@@ -3,7 +3,6 @@ import MainScreenContainer from "@/components/MainScreenContainer";
 import MyButton from "@/components/MyButton";
 import Title from "@/components/Title";
 import { COLORS } from "@/constants/MyColors";
-import { useChild } from "@/contexts/ChildContext";
 import { useRouter, type Href } from "expo-router";
 import { Apple, Bean, Carrot, Drumstick, Flower, Nut, Wheat } from "lucide-react-native";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
@@ -26,7 +25,6 @@ const categories: Category[] = [
 
 export default function Food() {
   const router = useRouter();
-  const { selectedChildId } = useChild(); // I když ho tu nepoužiješ, je dobré ho mít pro jistotu
 
   return (
     <MainScreenContainer contentContainerStyle={{ position: "relative" }}>

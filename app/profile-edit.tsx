@@ -24,7 +24,6 @@ export default function ProfileEdit() {
   const [loading, setLoading] = useState(false);
   
   // Stavy pro hesla
-  const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -70,7 +69,6 @@ export default function ProfileEdit() {
       // Vyčistíme pole pro hesla
       setNewPassword("");
       setConfirmPassword("");
-      setOldPassword("");
       router.back();
     }
   };

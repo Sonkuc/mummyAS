@@ -1,3 +1,4 @@
+import { formatDateLocal } from "@/components/IsoFormatDate";
 import { useMemo } from "react";
 
 export type PeriodMode = "week" | "month" | "halfYear";
@@ -20,7 +21,7 @@ export function useChartData(
     const sorted = [...stats].sort((a, b) => a.date.localeCompare(b.date));
 
     // 2. Filtrace: dnešek a záznamy nad 22 hodin
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = formatDateLocal(new Date());
     
     const filtered = sorted.filter(s => {
       const totalH = s.total_minutes / 60;
@@ -58,7 +59,7 @@ export function useChartData(
         const chunk = last30.slice(i, i + 5);
         if (chunk.length === 0) continue;
         const avg = chunk.reduce((sum, d) => sum + d.hours, 0) / chunk.length;
-        const [y, m, dd] = chunk[0].date.split("-");
+        const [, m, dd] = chunk[0].date.split("-");
         chunks.push({
           hours: avg,
           label: `od ${dd}/${m}`, 

@@ -4,7 +4,7 @@ import CustomHeader from "@/components/CustomHeader";
 import EditPencil from "@/components/EditPencil";
 import GroupSection from "@/components/GroupSection";
 import { formatDuration, toTimestamp } from "@/components/HelperFunctions";
-import { formatDateToCzech } from "@/components/IsoFormatDate";
+import { formatDateToCzech, formatDateLocal } from "@/components/IsoFormatDate";
 import MainScreenContainer from "@/components/MainScreenContainer";
 import Note from "@/components/Note";
 import Title from "@/components/Title";
@@ -31,7 +31,7 @@ export default function Sleep() {
   const clearState = async () => {
     if (!selectedChildId || !selectedChild) return;
     
-    const today = new Date().toISOString().slice(0, 10);
+    const today = formatDateLocal(new Date());
     const todaysCleanRecords = (selectedChild.sleepRecords || [])
       .filter((r) => r.date === today)
       .map(({ id, date: d, time: t, state: s, note: n }) => ({
@@ -51,7 +51,7 @@ export default function Sleep() {
       setMode("");
       setModeStart(null);
       setMinutesSinceMode(null);
-    } catch (error) {
+    } catch {
       showAlert("Chyba", "Nepodařilo se resetovat stav.");
     } finally {
       setIsSubmitting(false);
@@ -108,8 +108,8 @@ export default function Sleep() {
     if (!selectedChildId || !selectedChild) return;
 
     const now = new Date();
-    const time = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
-    const date = now.toISOString().slice(0, 10);
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const date = formatDateLocal(now);
     const startISO = now.toISOString();
 
     const newRec = {
@@ -339,7 +339,7 @@ export default function Sleep() {
                         try {
                           // 4. Odeslání očištěných dat do provideru
                           await updateSleepDayRecord(selectedChildId, rec.date, daySyncData);
-                        } catch (err) {
+                        } catch {
                           showAlert("Chyba", "Nepodařilo se uložit poznámku.");
                         }
                       }} 
