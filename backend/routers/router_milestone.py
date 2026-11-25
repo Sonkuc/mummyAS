@@ -4,6 +4,7 @@ from sqlmodel import Session
 
 from ..crud import crud_milestone as cm
 from ..models import Child, MilestoneCreate, MilestoneUpdate, MilestoneRead
+from ..auth import get_current_user_id
 from ..db import get_session
 
 router = APIRouter()
@@ -21,7 +22,7 @@ def verify_child_ownership(session: Session, child_id: str, x_user_id: str):
 def list_milestones(
     child_id: str, 
     session: Session = Depends(get_session), 
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Seznam milníků dítěte s ověřením vlastníka."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -32,7 +33,7 @@ def create_milestone(
     child_id: str,
     milestone_data: MilestoneCreate,
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Vytvoření nového milníku s kontrolou hierarchie."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -43,7 +44,7 @@ def get_milestone(
     child_id: str, 
     milestone_id: str, 
     session: Session = Depends(get_session), 
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Detail milníku s kontrolou integrity (patří dítěti i uživateli)."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -59,7 +60,7 @@ def update_milestone(
     milestone_id: str, 
     milestone_data: MilestoneUpdate, 
     session: Session = Depends(get_session), 
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Aktualizace milníku s ověřením vlastníka a vazby na dítě."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -75,7 +76,7 @@ def delete_milestone(
     child_id: str, 
     milestone_id: str, 
     session: Session = Depends(get_session), 
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Smazání milníku s ověřením vlastníka."""
     verify_child_ownership(session, child_id, x_user_id)

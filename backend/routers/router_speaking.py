@@ -4,6 +4,7 @@ from sqlmodel import Session
 
 from ..crud import crud_speaking as cspeak
 from ..models import Child, SpeakingRead, SpeakingCreate, SpeakingUpdate
+from ..auth import get_current_user_id
 from ..db import get_session
 
 router = APIRouter()
@@ -21,7 +22,7 @@ def verify_child_ownership(session: Session, child_id: str, x_user_id: str):
 def list_words(
     child_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     verify_child_ownership(session, child_id, x_user_id)
     return cspeak.get_words_for_child(session, child_id)
@@ -31,7 +32,7 @@ def create_word(
     child_id: str,
     speaking_data: SpeakingCreate,
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     verify_child_ownership(session, child_id, x_user_id)
     return cspeak.create_word(session, child_id, speaking_data)
@@ -42,7 +43,7 @@ def add_entry(
     word_id: str,
     entry_data: dict, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Přidá novou výslovnost k existujícímu slovu s kontrolou integrity."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -61,7 +62,7 @@ def update_word(
     word_id: str, 
     word_data: SpeakingUpdate,
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     verify_child_ownership(session, child_id, x_user_id)
     
@@ -76,7 +77,7 @@ def delete_word(
     child_id: str, 
     word_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     verify_child_ownership(session, child_id, x_user_id)
     

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlmodel import Session
 from ..crud import crud_food as cfood
 from ..models import Child, FoodRecordRead, FoodRecordCreate, FoodRecordUpdate
+from ..auth import get_current_user_id
 from ..db import get_session
 
 router = APIRouter()
@@ -21,7 +22,7 @@ def sync_food(
     child_id: str, 
     food_list: List[FoodRecordCreate], 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """
     Hromadně synchronizuje jídla (Upsert podle food_name).
@@ -43,7 +44,7 @@ def list_food(
     date: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Zůstává pro úvodní načtení dat při startu aplikace."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -54,7 +55,7 @@ def delete_food_by_name(
     child_id: str, 
     food_name: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Smaže jídlo podle názvu (pro úplné odstranění vlastních potravin)."""
     verify_child_ownership(session, child_id, x_user_id)

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlmodel import Session
 from ..crud import crud_children as cc
 from ..models import ChildRead, ChildCreate, ChildUpdate
+from ..auth import get_current_user_id
 from ..db import get_session
 
 router = APIRouter()
@@ -11,7 +12,7 @@ router = APIRouter()
 def list_children(
     session: Session = Depends(get_session), 
     name: Optional[str] = Query(None),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     return cc.get_all_children(session, x_user_id, name)
 
@@ -19,7 +20,7 @@ def list_children(
 def get_child(
     child_id: str, 
     session: Session = Depends(get_session), 
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     child = cc.get_child(session, child_id, x_user_id)
     if not child:
@@ -30,7 +31,7 @@ def get_child(
 def create_child(
     child_data: ChildCreate, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     if child_data.id:
         return cc.update_child(session, str(child_data.id), child_data, x_user_id)
@@ -42,7 +43,7 @@ def update_child(
     child_id: str, 
     child_data: ChildUpdate, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     child = cc.update_child(session, child_id, child_data, x_user_id)
     if not child:
@@ -53,7 +54,7 @@ def update_child(
 def delete_child(
     child_id: str, 
     session: Session = Depends(get_session), 
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     success = cc.delete_child(session, child_id, x_user_id)
     if not success:

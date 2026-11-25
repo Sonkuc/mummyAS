@@ -4,6 +4,7 @@ from sqlmodel import Session, delete
 
 from ..crud import crud_wh as cwh
 from ..models import Child, WeightHeight, WeightHeightCreate, WeightHeightRead
+from ..auth import get_current_user_id
 from ..db import get_session
 
 router = APIRouter()
@@ -21,7 +22,7 @@ def verify_child_ownership(session: Session, child_id: str, x_user_id: str):
 def list_wh(
     child_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Získá všechna měření dítěte s ověřením vlastníka."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -32,7 +33,7 @@ def sync_wh_collection(
     child_id: str, 
     data: List[WeightHeightCreate], 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """
     Smaže všechna měření dítěte a nahradí je novými z mobilu.

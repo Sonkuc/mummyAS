@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlmodel import Session
+from ..auth import get_current_user_id
 from ..db import get_session
 from ..models import UserProfile
 from ..crud import crud_user as cu # Importujeme náš CRUD
@@ -10,7 +11,7 @@ router = APIRouter()
 def ensure_profile(
     profile_data: UserProfile, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(..., alias="X-User-Id")
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Zajistí existenci profilu po přihlášení."""
     if profile_data.id != x_user_id:
@@ -21,7 +22,7 @@ def ensure_profile(
 def get_profile(
     user_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Načte profil přihlášeného uživatele."""
     if user_id != x_user_id:
@@ -37,7 +38,7 @@ def update_profile(
     user_id: str, 
     profile_data: UserProfile, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Aktualizuje data v profilu."""
     if user_id != x_user_id:
@@ -52,7 +53,7 @@ def update_profile(
 def delete_profile(
     user_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Smaže profil uživatele."""
     if user_id != x_user_id:

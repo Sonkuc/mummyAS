@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from ..crud import crud_sleep as cs
 from ..models import Child, SleepRecord, SleepRecordCreate, SleepRecordRead, SleepDaySummary, SleepSyncResponse
+from ..auth import get_current_user_id
 from ..db import get_session
 
 router = APIRouter()
@@ -23,7 +24,7 @@ def list_sleep(
     child_id: str, 
     date: Optional[str] = Query(None), 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     verify_child_ownership(session, child_id, x_user_id)
     return cs.get_sleep_for_child(session, child_id, date)
@@ -33,7 +34,7 @@ def list_sleep(
 def get_sleep_stats(
     child_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Výpočet statistik spánku s ověřením hierarchie."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -90,7 +91,7 @@ def get_sleep(
     child_id: str, 
     sleep_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     verify_child_ownership(session, child_id, x_user_id)
     
@@ -106,7 +107,7 @@ def update_sleep_day(
     sleep_data: List[SleepRecordCreate],
     clear_timer: bool = Query(False),
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Aktualizace celého dne spánku a synchronizace stavu časovače."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -130,7 +131,7 @@ def delete_sleep(
     child_id: str, 
     sleep_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     verify_child_ownership(session, child_id, x_user_id)
     

@@ -4,6 +4,7 @@ from sqlmodel import Session
 
 from ..crud import crud_teeth as cteeth
 from ..models import Child, TeethRecordRead, TeethRecordCreate
+from ..auth import get_current_user_id
 from ..db import get_session
 
 router = APIRouter()
@@ -21,7 +22,7 @@ def verify_child_ownership(session: Session, child_id: str, x_user_id: str):
 def list_teeth(
     child_id: str, 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Načte aktuální schéma zubů dítěte s ověřením vlastníka."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -32,7 +33,7 @@ def sync_teeth(
     child_id: str, 
     records: List[TeethRecordCreate], 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """
     Hromadně aktualizuje stav zubů dítěte.

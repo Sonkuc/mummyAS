@@ -1,16 +1,27 @@
 // API functions for backend integration using fetch
 // Assumes backend is running on http://localhost:8000 (adjust if needed, e.g., for mobile use your machine's IP)
 
+import { supabase } from "@/lib/supabase";
 import { BreastfeedingRecord, BreastfeedingSyncDay, Child, ChildUpdate, Diary, DiaryCreate, DiaryUpdate, FoodRecord, FoodRecordCreate, Milestone, SleepRecord, SleepSyncDay, TeethRecord, WeightHeight, Word, WordEntry, WordUpdatePayload } from "./interfaces";
 
 // Adresa backendu: při buildu se bere z EXPO_PUBLIC_API_URL (soubor .env v kořeni projektu
 // nebo proměnná prostředí na hostingu), jinak lokální IP pro testování doma.
 export const BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://192.168.31.152:8000').replace(/\/+$/, '');
 
+// fetch, který ke každému požadavku přidá přihlašovací token Supabase
+// (Authorization: Bearer ...). Backend podle něj ověřuje uživatele.
+const authFetch = async (input: string, init: RequestInit = {}): Promise<Response> => {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const headers = new Headers(init.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return fetch(input, { ...init, headers });
+};
+
 // ============ USER API FUNCTIONS ============
 
 export const ensureUserProfile = async (userId: string, email: string) => {
-  const response = await fetch(`${BASE_URL}/profiles`, {
+  const response = await authFetch(`${BASE_URL}/profiles`, {
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
@@ -29,7 +40,7 @@ export const ensureUserProfile = async (userId: string, email: string) => {
 };
 
 export const deleteUserProfile = async (userId: string): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/profiles/${userId}`, {
+  const response = await authFetch(`${BASE_URL}/profiles/${userId}`, {
     method: 'DELETE',
     headers: { 
       'X-User-Id': userId 
@@ -41,7 +52,7 @@ export const deleteUserProfile = async (userId: string): Promise<void> => {
 // ============ CHILD API FUNCTIONS ============
 
 export const fetchChildren = async (userId: string): Promise<Child[]> => {
-  const response = await fetch(`${BASE_URL}/children`, {
+  const response = await authFetch(`${BASE_URL}/children`, {
     headers: { 'X-User-Id': userId },
   });
   if (!response.ok) throw new Error('Failed to fetch children');
@@ -49,7 +60,7 @@ export const fetchChildren = async (userId: string): Promise<Child[]> => {
 };
 
 export const createChild = async (childData: any, userId: string): Promise<any> => {
-  const response = await fetch(`${BASE_URL}/children`, {
+  const response = await authFetch(`${BASE_URL}/children`, {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',
@@ -78,7 +89,7 @@ export const updateChild = async (childId: string, childData: ChildUpdate, userI
   if ('currentModeFeed' in childData) payload.currentModeFeed = childData.currentModeFeed;
   if ('currentModeSleep' in childData) payload.currentModeSleep = childData.currentModeSleep;
 
-  const response = await fetch(`${BASE_URL}/children/${childId}`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}`, {
     method: 'PUT',
     headers: { 
       'Content-Type': 'application/json',
@@ -95,7 +106,7 @@ export const updateChild = async (childId: string, childData: ChildUpdate, userI
 };
 
 export const deleteChild = async (childId: string, userId: string): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}`, {
     method: 'DELETE',
     headers: { 'X-User-Id': userId },
   });
@@ -110,7 +121,7 @@ export const createMilestone = async (
   milestoneData: Omit<Milestone, 'id' | 'child_id'>,
   userId: string
 ): Promise<Milestone> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/milestones`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/milestones`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
     body: JSON.stringify(milestoneData),
@@ -126,7 +137,7 @@ export const updateMilestone = async (
   milestoneData: Partial<Milestone>,
   userId: string
 ): Promise<Milestone> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/milestones/${milestoneId}`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/milestones/${milestoneId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
     body: JSON.stringify(milestoneData),
@@ -164,7 +175,7 @@ export const syncMilestones = async (childId: string, milestones: Milestone[], u
 
 // Smazání milníku
 export const deleteMilestone = async (childId: string, milestoneId: string, userId: string): Promise<Response> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/milestones/${milestoneId}`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/milestones/${milestoneId}`, {
     method: 'DELETE',
     headers: { 'X-User-Id': userId }
   });
@@ -184,7 +195,7 @@ export const syncWeightHeights = async (childId: string, records: WeightHeight[]
     clothes: rec.clothes || null
   }));
 
-  const response = await fetch(`${BASE_URL}/children/${childId}/weight-height/sync`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/weight-height/sync`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
     body: JSON.stringify(payload),
@@ -207,7 +218,7 @@ export const updateBreastfeedingDay = async (
   // Přidáme query parametr ?clear_timer=true v případě resetu
   const url = `${BASE_URL}/children/${childId}/breastfeeding/day/${date}${clearTimer ? '?clear_timer=true' : ''}`;
   
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: 'PUT',
     headers: { 
       'Content-Type': 'application/json', 
@@ -226,7 +237,7 @@ export const updateBreastfeedingDay = async (
 };
 
 export const fetchBreastfeedingStats = async (childId: string, userId: string): Promise<any[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/breastfeeding/stats`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/breastfeeding/stats`, {
     headers: { 'X-User-Id': userId }
   });
   if (!response.ok) throw new Error('Nepodařilo se načíst statistiky kojení');
@@ -246,7 +257,7 @@ export const updateSleepDay = async (
   
   const url = `${BASE_URL}/children/${childId}/sleep/day/${date}${clearTimer ? '?clear_timer=true' : ''}`;
 
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: 'PUT',
     headers: { 
       'Content-Type': 'application/json', 
@@ -264,7 +275,7 @@ export const updateSleepDay = async (
 
 // Statistiky pro grafy
 export const fetchSleepStats = async (childId: string, userId: string): Promise<any[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/sleep/stats`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/sleep/stats`, {
     headers: { 'X-User-Id': userId }
   });
   if (!response.ok) throw new Error('Failed to fetch sleep stats');
@@ -274,7 +285,7 @@ export const fetchSleepStats = async (childId: string, userId: string): Promise<
 // ============ SPEAKING (WORD) API FUNCTIONS ============
 
 export const createWord = async (childId: string, data: { name: string; entries: Omit<WordEntry, 'id'>[] }, userId: string): Promise<Word> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/words`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/words`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
     body: JSON.stringify(data),
@@ -289,7 +300,7 @@ export const updateWord = async (
   data: { name: string; entries: Omit<WordEntry, 'id'>[] }, 
   userId: string
 ): Promise<Word> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/words/${wordId}`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/words/${wordId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
     body: JSON.stringify(data),
@@ -341,7 +352,7 @@ export const syncWords = async (childId: string, words: Word[], userId: string):
 };
 
 export const deleteWord = async (childId: string, wordId: string, userId: string): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/words/${wordId}`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/words/${wordId}`, {
     method: 'DELETE',
     headers: { 'X-User-Id': userId }
   });
@@ -356,7 +367,7 @@ export const syncTeethRecords = async (
   userId: string, 
   records: Omit<TeethRecord, 'id' | 'child_id' | 'created_at'>[]
 ): Promise<TeethRecord[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/teeth/sync`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/teeth/sync`, {
     method: 'PUT',
     headers: { 
       'Content-Type': 'application/json', 
@@ -379,7 +390,7 @@ export const syncFoodRecords = async (
   foodRecords: FoodRecordCreate[], 
   userId: string
 ): Promise<FoodRecord[]> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/food/sync`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/food/sync`, {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json', 
@@ -398,7 +409,7 @@ export const deleteFoodRecord = async (
   foodLabel: string,
   userId: string
 ): Promise<void> => {
-  const response = await fetch(
+  const response = await authFetch(
     `${BASE_URL}/children/${childId}/food/name/${encodeURIComponent(foodLabel)}`, 
     {
       method: 'DELETE',
@@ -415,7 +426,7 @@ export const createDiaryEntry = async (
   userId: string, 
   diaryData: DiaryCreate
 ): Promise<Diary> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/diary`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/diary`, {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json', 
@@ -438,7 +449,7 @@ export const updateDiaryEntry = async (
   diaryId: string, 
   diaryData: DiaryUpdate
 ): Promise<Diary> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/diary/${diaryId}`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/diary/${diaryId}`, {
     method: 'PUT',
     headers: { 
       'Content-Type': 'application/json', 
@@ -460,7 +471,7 @@ export const deleteDiaryEntry = async (
   userId: string, 
   diaryId: string
 ): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/children/${childId}/diary/${diaryId}`, {
+  const response = await authFetch(`${BASE_URL}/children/${childId}/diary/${diaryId}`, {
     method: 'DELETE',
     headers: { 
       'X-User-Id': userId 

@@ -5,6 +5,7 @@ from datetime import datetime
 
 from ..crud import crud_bf as cbf
 from ..models import Child, BreastfeedingRecordCreate, BreastfeedingRecord, BreastfeedingRecordRead, BreastfeedingDaySummary, BreastfeedingSyncResponse
+from ..auth import get_current_user_id
 from ..db import get_session
 
 router = APIRouter()
@@ -23,7 +24,7 @@ def list_bf(
     child_id: str, 
     date: Optional[str] = Query(None), 
     session: Session = Depends(get_session), 
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     verify_child_ownership(session, child_id, x_user_id)
     return cbf.get_bf_for_child(session, child_id, date)
@@ -33,7 +34,7 @@ def get_bf(
     child_id: str, 
     bf_id: str, 
     session: Session = Depends(get_session), 
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     verify_child_ownership(session, child_id, x_user_id)
     bf = cbf.get_bf_record(session, bf_id)
@@ -48,7 +49,7 @@ def update_bf_day(
     bf_data: List[BreastfeedingRecordCreate],
     clear_timer: bool = Query(False), 
     session: Session = Depends(get_session),
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Synchronizuje záznamy pro celý den a vrací je spolu s novým stavem časovače."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -73,7 +74,7 @@ def update_bf_day(
 def get_bf_stats(
     child_id: str, 
     session: Session = Depends(get_session), 
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     """Výpočet statistik délky kojení pro dané dítě (plně podporuje přechod přes půlnoc)."""
     verify_child_ownership(session, child_id, x_user_id)
@@ -121,7 +122,7 @@ def delete_bf(
     child_id: str, 
     bf_id: str, 
     session: Session = Depends(get_session), 
-    x_user_id: str = Header(...)
+    x_user_id: str = Depends(get_current_user_id)
 ):
     verify_child_ownership(session, child_id, x_user_id)
     
