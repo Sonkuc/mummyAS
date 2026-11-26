@@ -66,7 +66,7 @@ export function createDemoChildren(): Child[] {
       name: "Ukázková Anička",
       sex: "divka",
       birthDate: day(300),
-      photo: "avatar1",
+      photo: "avatar5",
       currentModeSleep: null,
       currentModeFeed: null,
       sleepRecords,
